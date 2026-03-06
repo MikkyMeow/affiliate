@@ -1,0 +1,8 @@
+{
+  "name": "affilate",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}

@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp.*
+.npm/
+
+# Logs and diagnostics
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build and cache output
+dist/
+build/
+.cache/
+.parcel-cache/
+.sass-cache/
+.turbo/
+.next/
+**/.next/
+out/
+**/out/
+.vercel/
+tmp/
+temp/
+coverage/
+.nyc_output/
+lib-cov/
+.eslintcache
+*.tsbuildinfo
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+.envrc
+**/.envrc
+.direnv/
+!**/*.example
+!**/*.sample
+!**/*.template
