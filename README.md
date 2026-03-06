@@ -1,6 +1,6 @@
 # affilate monorepo
 
-Монорепа с Node/Express backend и Next.js frontend. Бэкенд работает с PostgreSQL (локально поднимается в Docker), фронтенд делает тестовый запрос к API на главной странице.
+Монорепа с Node/Express backend и Next.js frontend. Бэкенд работает с PostgreSQL (локально поднимается в Docker)
 
 ## Требования
 
