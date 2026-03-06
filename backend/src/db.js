@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { applyMigrations } from './migrate.js';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -25,34 +26,7 @@ export async function verifyDatabaseConnection() {
 }
 
 export async function ensureDatabaseSetup() {
-  const client = await pool.connect();
-  try {
-    await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        display_name TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS refresh_tokens (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        token_hash TEXT NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
-    await client.query(
-      'CREATE INDEX IF NOT EXISTS refresh_tokens_user_id_idx ON refresh_tokens(user_id);',
-    );
-  } finally {
-    client.release();
-  }
+  await applyMigrations();
 }
 
 export default pool;

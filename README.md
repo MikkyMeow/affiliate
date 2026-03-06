@@ -34,6 +34,7 @@
    npm run dev
    ```
    Сервер стартует на `http://localhost:4000`. Проверка БД: `GET http://localhost:4000/api/health`.
+   При запуске backend автоматически применяет все новые миграции БД через `node-pg-migrate`.
 
 2. **Frontend**
    ```bash
@@ -47,6 +48,19 @@
 ```bash
 docker compose down
 ```
+
+## Миграции БД
+
+Backend использует `node-pg-migrate` и хранит миграции в `backend/migrations`. Для ручного управления схемой используй npm workspaces:
+
+- Применить все новые миграции:  
+  `npm run migrate:up --workspace backend`
+- Откатить последнюю миграцию:  
+  `npm run migrate:down --workspace backend -- 1`
+- Создать новую миграцию:  
+  `npm run migrate:create --workspace backend -- add_new_table`
+
+CLI подхватывает параметры подключения из `backend/.env` (или `DATABASE_URL`). После создания миграции не забудь заполнить `up`/`down` функции в файле.
 
 ## Следующие шаги
 
