@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { BackendMessage } from "../components/BackendMessage";
+import { AuthStatus } from "../components/AuthStatus";
 
 export default function Home() {
   return (
@@ -28,6 +29,15 @@ export default function Home() {
           </p>
         </div>
         <BackendMessage />
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Авторизация
+          </h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            После входа статус обновится автоматически, а кнопка «Выйти» сразу очистит токен.
+          </p>
+          <AuthStatus />
+        </div>
       </main>
     </div>
   );

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-const MESSAGE_ENDPOINT =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/message';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:4000';
+const MESSAGE_ENDPOINT = `${API_BASE_URL}/api/message`;
 
 export function BackendMessage() {
   const [message, setMessage] = useState<string>('Загружаем сообщение...');
