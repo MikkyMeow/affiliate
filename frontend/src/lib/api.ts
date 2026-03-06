@@ -31,7 +31,9 @@ export async function apiFetch<TResponse>(
     const message =
       (data as { message?: string } | null)?.message ??
       'Не удалось выполнить запрос';
-    throw new Error(message);
+    const error = new Error(message) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   return data as TResponse;
