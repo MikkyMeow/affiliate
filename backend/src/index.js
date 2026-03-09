@@ -4,6 +4,7 @@ import cors from 'cors';
 import { ensureDatabaseSetup, verifyDatabaseConnection } from './db.js';
 import advertisersRouter from './routes/advertisers.js';
 import affiliatesRouter from './routes/affiliates.js';
+import offersRouter from './routes/offers.routes.js';
 import {
   sendSuccess,
   ERROR_CODES,
@@ -37,6 +38,7 @@ app.get(`${API_PREFIX}/message`, (req, res) =>
 app.use(`${API_PREFIX}/auth`, authRouter);
 app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
 app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
+app.use(`${API_PREFIX}/offers`, offersRouter);
 
 app.get(
   `${API_PREFIX}/health`,
