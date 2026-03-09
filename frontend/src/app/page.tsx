@@ -59,6 +59,16 @@ export default function Home() {
               </Link>
               .
             </p>
+            <p>
+              Управлять{" "}
+              <Link
+                href="/dashboard/offers"
+                className="font-medium text-black underline-offset-2 hover:underline dark:text-white"
+              >
+                офферами
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </main>

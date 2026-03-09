@@ -3,6 +3,7 @@ export const API_BASE_URL =
 
 type RequestOptions = RequestInit & {
   token?: string;
+  withMeta?: boolean;
 };
 
 type ApiSuccessEnvelope<T> = {
@@ -30,9 +31,17 @@ export type ApiError = Error & {
 
 export async function apiFetch<TResponse>(
   path: string,
+  options?: RequestOptions,
+): Promise<TResponse>;
+export async function apiFetch<TResponse, TMeta>(
+  path: string,
+  options: RequestOptions & { withMeta: true },
+): Promise<{ data: TResponse; meta: TMeta }>;
+export async function apiFetch<TResponse, TMeta = unknown>(
+  path: string,
   options: RequestOptions = {},
-): Promise<TResponse> {
-  const { token, headers, ...rest } = options;
+): Promise<TResponse | { data: TResponse; meta: TMeta }> {
+  const { token, headers, withMeta = false, ...rest } = options;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
@@ -70,6 +79,13 @@ export async function apiFetch<TResponse>(
     error.code = payload.error.code;
     error.details = payload.error.details;
     throw error;
+  }
+
+  if (withMeta) {
+    return {
+      data: payload.data,
+      meta: payload.meta as TMeta,
+    };
   }
 
   return payload.data;

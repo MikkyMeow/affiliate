@@ -35,31 +35,35 @@ export default function AdvertisersPage() {
     }
 
     let active = true;
-    setLoading(true);
-    setError(null);
 
-    apiFetch<Advertiser[]>('/api/v1/advertisers', {
-      token: accessToken,
-    })
-      .then((fetchedAdvertisers) => {
+    const fetchAdvertisers = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const fetchedAdvertisers = await apiFetch<Advertiser[]>('/api/v1/advertisers', {
+          token: accessToken,
+        });
+
         if (!active) {
           return;
         }
         setAdvertisers(fetchedAdvertisers);
-      })
-      .catch((fetchError: Error) => {
+      } catch (fetchError) {
         if (!active) {
           return;
         }
-        setError(fetchError.message);
+        setError((fetchError as Error).message);
         setAdvertisers([]);
-      })
-      .finally(() => {
+      } finally {
         if (!active) {
           return;
         }
         setLoading(false);
-      });
+      }
+    };
+
+    fetchAdvertisers();
 
     return () => {
       active = false;

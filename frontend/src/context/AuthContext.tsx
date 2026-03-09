@@ -105,58 +105,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      try {
-        const data = await apiFetch<{ user: AuthUser }>('/api/v1/auth/me', {
-          token: tokenToUse,
-        });
-        setUser(data.user);
-      } catch (error) {
-        const status = (error as ApiError).status;
+      const attemptFetch = async (token: string, allowRetry: boolean) => {
+        try {
+          const data = await apiFetch<{ user: AuthUser }>('/api/v1/auth/me', {
+            token,
+          });
+          setUser(data.user);
+        } catch (error) {
+          const status = (error as ApiError).status;
 
-        if (status === 401 && retryOnUnauthorized && refreshToken) {
-          try {
-            const newToken = await refreshAccessToken();
-            await fetchProfile({
-              tokenOverride: newToken,
-              retryOnUnauthorized: false,
-            });
-            return;
-          } catch (refreshError) {
-            console.warn('Refresh token invalid', refreshError);
+          if (status === 401 && allowRetry && refreshToken) {
+            try {
+              const newToken = await refreshAccessToken();
+              await attemptFetch(newToken, false);
+              return;
+            } catch (refreshError) {
+              console.warn('Refresh token invalid', refreshError);
+            }
           }
-        }
 
-        persistTokens({ access: null, refresh: null });
-        setUser(null);
-      }
+          persistTokens({ access: null, refresh: null });
+          setUser(null);
+        }
+      };
+
+      await attemptFetch(tokenToUse, retryOnUnauthorized);
     },
     [accessToken, refreshToken, persistTokens, refreshAccessToken],
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
 
-    const storedAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-    const storedRefresh = window.localStorage.getItem(REFRESH_TOKEN_KEY);
-    persistTokens({
-      access: storedAccess ?? null,
-      refresh: storedRefresh ?? null,
-    });
+    const settleLoading = () => {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
 
-    if (storedAccess) {
-      fetchProfile({ tokenOverride: storedAccess }).finally(() =>
-        setLoading(false),
-      );
-    } else if (storedRefresh) {
-      refreshAccessToken(storedRefresh)
-        .then(() => fetchProfile({ retryOnUnauthorized: false }))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const initialize = async () => {
+      await Promise.resolve();
+
+      if (typeof window === 'undefined') {
+        settleLoading();
+        return;
+      }
+
+      const storedAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+      const storedRefresh = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+      persistTokens({
+        access: storedAccess ?? null,
+        refresh: storedRefresh ?? null,
+      });
+
+      if (storedAccess) {
+        try {
+          await fetchProfile({ tokenOverride: storedAccess });
+        } finally {
+          settleLoading();
+        }
+        return;
+      }
+
+      if (storedRefresh) {
+        try {
+          await refreshAccessToken(storedRefresh);
+          await fetchProfile({ retryOnUnauthorized: false });
+        } finally {
+          settleLoading();
+        }
+        return;
+      }
+
+      settleLoading();
+    };
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchProfile, persistTokens, refreshAccessToken]);
 
   const login = useCallback(

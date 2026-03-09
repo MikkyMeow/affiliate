@@ -37,31 +37,35 @@ export default function AffiliatesPage() {
     }
 
     let active = true;
-    setLoading(true);
-    setError(null);
 
-    apiFetch<Affiliate[]>('/api/v1/affiliates', {
-      token: accessToken,
-    })
-      .then((fetched) => {
+    const fetchAffiliates = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const fetched = await apiFetch<Affiliate[]>('/api/v1/affiliates', {
+          token: accessToken,
+        });
+
         if (!active) {
           return;
         }
         setAffiliates(fetched);
-      })
-      .catch((fetchError: Error) => {
+      } catch (fetchError) {
         if (!active) {
           return;
         }
-        setError(fetchError.message);
+        setError((fetchError as Error).message);
         setAffiliates([]);
-      })
-      .finally(() => {
+      } finally {
         if (!active) {
           return;
         }
         setLoading(false);
-      });
+      }
+    };
+
+    fetchAffiliates();
 
     return () => {
       active = false;
