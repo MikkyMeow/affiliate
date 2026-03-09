@@ -5,10 +5,7 @@ import { ensureDatabaseSetup, verifyDatabaseConnection } from './db.js';
 import advertisersRouter from './routes/advertisers.js';
 import affiliatesRouter from './routes/affiliates.js';
 import offersRouter from './routes/offers.routes.js';
-import {
-  sendSuccess,
-  ERROR_CODES,
-} from './utils/response.js';
+import { sendSuccess, ERROR_CODES } from './utils/response.js';
 import authRouter from './routes/auth.js';
 import { authenticate } from './middleware/auth.js';
 import { findUserById } from './models/userModel.js';
@@ -17,8 +14,7 @@ import { asyncHandler } from './utils/asyncHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
-import { registerClick } from './services/tracking/clicks.service.js';
-import postbackRouter from './routes/postback.routes.js';
+import trackingRouter from './routes/tracking.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -41,7 +37,7 @@ app.use(`${API_PREFIX}/auth`, authRouter);
 app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
 app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
 app.use(`${API_PREFIX}/offers`, offersRouter);
-app.use('/track', postbackRouter);
+app.use('/track', trackingRouter);
 
 app.get(
   `${API_PREFIX}/health`,
@@ -72,142 +68,6 @@ app.get(
     return sendSuccess(res, { user });
   }),
 );
-
-function extractQueryParam(value) {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-
-  const singleValue = Array.isArray(value) ? value[0] : value;
-  const stringValue = String(singleValue).trim();
-
-  return stringValue === '' ? undefined : stringValue;
-}
-
-function extractRequestIp(req) {
-  const forwardedFor = req.get('x-forwarded-for');
-
-  if (forwardedFor) {
-    const [first] = forwardedFor.split(',');
-
-    if (first && first.trim()) {
-      return first.trim();
-    }
-  }
-
-  return req.ip ?? null;
-}
-
-const SUB_PARAM_KEYS = ['sub1', 'sub2', 'sub3', 'sub4', 'sub5'];
-const MAX_SUB_PARAM_LENGTH = 255;
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function isValidUuid(value) {
-  return typeof value === 'string' && UUID_REGEX.test(value);
-}
-
-function validateSubParam(key, value) {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (typeof value !== 'string') {
-    return `${key} должен быть строкой`;
-  }
-
-  if (value.length > MAX_SUB_PARAM_LENGTH) {
-    return `${key} не должен превышать ${MAX_SUB_PARAM_LENGTH} символов`;
-  }
-
-  return null;
-}
-
-function validateTrackingQuery(params) {
-  if (!params.offerId) {
-    return { ok: false, message: 'offerId обязателен' };
-  }
-
-  if (!isValidUuid(params.offerId)) {
-    return { ok: false, message: 'offerId должен быть валидным UUID' };
-  }
-
-  if (!params.affiliateId) {
-    return { ok: false, message: 'affiliateId обязателен' };
-  }
-
-  if (!isValidUuid(params.affiliateId)) {
-    return { ok: false, message: 'affiliateId должен быть валидным UUID' };
-  }
-
-  for (const key of SUB_PARAM_KEYS) {
-    const error = validateSubParam(key, params[key]);
-
-    if (error) {
-      return { ok: false, message: error };
-    }
-  }
-
-  return { ok: true };
-}
-
-app.get('/track/click', async (req, res, next) => {
-  const startedAt = Date.now();
-  const clickPayload = {
-    offerId: extractQueryParam(req.query.offerId),
-    affiliateId: extractQueryParam(req.query.affiliateId),
-    ip: extractRequestIp(req),
-    userAgent: req.get('user-agent') ?? null,
-    referer: req.get('referer') ?? null,
-  };
-
-  for (const key of SUB_PARAM_KEYS) {
-    clickPayload[key] = extractQueryParam(req.query[key]);
-  }
-
-  const logClickEvent = (status, extra = {}) => {
-    const logEntry = {
-      event: 'track_click',
-      request_id: req.id ?? null,
-      offerId: clickPayload.offerId ?? null,
-      affiliateId: clickPayload.affiliateId ?? null,
-      clickId: extra.clickId ?? null,
-      status,
-      duration_ms: Date.now() - startedAt,
-    };
-
-    console.log(JSON.stringify(logEntry));
-  };
-
-  const validationResult = validateTrackingQuery(clickPayload);
-
-  if (!validationResult.ok) {
-    logClickEvent('validation_error');
-    return res.status(400).json({
-      error: validationResult.message,
-      code: ERROR_CODES.VALIDATION_ERROR,
-    });
-  }
-
-  try {
-    const { redirectUrl, clickId } = await registerClick(clickPayload);
-    logClickEvent('redirect', { clickId });
-
-    return res.redirect(302, redirectUrl);
-  } catch (error) {
-    if (error instanceof ApiError) {
-      logClickEvent('api_error');
-      return res.status(error.status ?? 500).json({
-        error: error.message,
-        code: error.code ?? ERROR_CODES.INTERNAL_ERROR,
-        details: error.details ?? null,
-      });
-    }
-
-    logClickEvent('error');
-    return next(error);
-  }
-});
 
 app.use(errorHandler);
 
