@@ -21,7 +21,10 @@ export async function createAdvertiser({ name, status = 'active' }) {
   return result.rows[0];
 }
 
-export async function listAdvertisers({ status } = {}) {
+export async function listAdvertisers(
+  { status } = {},
+  { limit = 20, offset = 0 } = {},
+) {
   const params = [];
   const conditions = [];
 
@@ -32,17 +35,31 @@ export async function listAdvertisers({ status } = {}) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM advertisers
+      ${whereClause};
+    `,
+    params,
+  );
+
   const result = await pool.query(
     `
       SELECT ${advertiserFields}
       FROM advertisers
       ${whereClause}
-      ORDER BY created_at DESC;
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
     `,
-    params,
+    [...params, limit, offset],
   );
 
-  return result.rows;
+  return {
+    items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
 }
 
 export async function findAdvertiserById(id) {

@@ -10,6 +10,15 @@ const conversionFields = `
   created_at AS "createdAt"
 `;
 
+const conversionListFields = `
+  click_id AS "clickId",
+  offer_id AS "offerId",
+  affiliate_id AS "affiliateId",
+  status,
+  payout_rub AS "payoutRub",
+  created_at AS "createdAt"
+`;
+
 export async function createConversion({
   clickId,
   offerId,
@@ -46,4 +55,101 @@ export async function findByClickId(clickId) {
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function listConversions(
+  { offerId, affiliateId, status } = {},
+  { limit = 20, offset = 0 } = {},
+) {
+  const conditions = [];
+  const params = [];
+
+  if (offerId) {
+    params.push(offerId);
+    conditions.push(`offer_id = $${params.length}`);
+  }
+
+  if (affiliateId) {
+    params.push(affiliateId);
+    conditions.push(`affiliate_id = $${params.length}`);
+  }
+
+  if (status) {
+    params.push(status);
+    conditions.push(`status = $${params.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM conversions
+      ${whereClause};
+    `,
+    params,
+  );
+
+  const result = await pool.query(
+    `
+      SELECT ${conversionListFields}
+      FROM conversions
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
+    `,
+    [...params, limit, offset],
+  );
+
+  return {
+    items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
+}
+
+export async function getConversionTotals({ offerId, affiliateId } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (offerId) {
+    params.push(offerId);
+    conditions.push(`offer_id = $${params.length}`);
+  }
+
+  if (affiliateId) {
+    params.push(affiliateId);
+    conditions.push(`affiliate_id = $${params.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query(
+    `
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'approved')::int AS approved,
+        COUNT(*) FILTER (WHERE status = 'rejected')::int AS rejected,
+        COALESCE(SUM(payout_rub), 0)::numeric AS "totalPayoutRub"
+      FROM conversions
+      ${whereClause};
+    `,
+    params,
+  );
+
+  const row = result.rows[0] ?? {
+    total: 0,
+    approved: 0,
+    rejected: 0,
+    totalPayoutRub: 0,
+  };
+
+  return {
+    total: row.total ?? 0,
+    approved: row.approved ?? 0,
+    rejected: row.rejected ?? 0,
+    totalPayoutRub: Number(row.totalPayoutRub ?? 0),
+  };
 }

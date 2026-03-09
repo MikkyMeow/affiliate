@@ -22,7 +22,10 @@ export async function createAffiliate({ name, email, status = 'active' }) {
   return result.rows[0];
 }
 
-export async function listAffiliates({ status } = {}) {
+export async function listAffiliates(
+  { status } = {},
+  { limit = 20, offset = 0 } = {},
+) {
   const params = [];
   const conditions = [];
 
@@ -33,17 +36,31 @@ export async function listAffiliates({ status } = {}) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM affiliates
+      ${whereClause};
+    `,
+    params,
+  );
+
   const result = await pool.query(
     `
       SELECT ${affiliateFields}
       FROM affiliates
       ${whereClause}
-      ORDER BY created_at DESC;
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
     `,
-    params,
+    [...params, limit, offset],
   );
 
-  return result.rows;
+  return {
+    items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
 }
 
 export async function findAffiliateById(id) {

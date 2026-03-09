@@ -1,4 +1,7 @@
 const allowedStatuses = new Set(['active', 'inactive']);
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
+const DEFAULT_OFFSET = 0;
 
 /**
  * @typedef {Object} CreateAffiliateDto
@@ -16,6 +19,32 @@ const allowedStatuses = new Set(['active', 'inactive']);
 
 function buildError(field, message) {
   return { field, message };
+}
+
+function parseInteger(value) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) {
+      return null;
+    }
+
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    if (!/^-?\d+$/.test(trimmed)) {
+      return null;
+    }
+
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 function normalizeName(value) {
@@ -179,3 +208,88 @@ export function validateAffiliateStatusFilter(value) {
 }
 
 export { allowedStatuses };
+
+function validateLimit(value) {
+  if (value === undefined || value === null || value === '') {
+    return { value: DEFAULT_LIMIT, errors: [] };
+  }
+
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError('limit', 'Limit должен быть целым числом')],
+    };
+  }
+
+  if (parsed <= 0) {
+    return {
+      value: undefined,
+      errors: [buildError('limit', 'Limit должен быть больше 0')],
+    };
+  }
+
+  if (parsed > MAX_LIMIT) {
+    return {
+      value: undefined,
+      errors: [
+        buildError('limit', `Limit не может быть больше ${MAX_LIMIT}`),
+      ],
+    };
+  }
+
+  return { value: parsed, errors: [] };
+}
+
+function validateOffset(value) {
+  if (value === undefined || value === null || value === '') {
+    return { value: DEFAULT_OFFSET, errors: [] };
+  }
+
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError('offset', 'Offset должен быть целым числом')],
+    };
+  }
+
+  if (parsed < 0) {
+    return {
+      value: undefined,
+      errors: [buildError('offset', 'Offset не может быть отрицательным')],
+    };
+  }
+
+  return { value: parsed, errors: [] };
+}
+
+export function validateAffiliateListFilters(payload = {}) {
+  const errors = [];
+  const filter = {};
+  const pagination = {};
+
+  if (Object.hasOwn(payload, 'status')) {
+    const { value: status, errors: statusErrors } = validateAffiliateStatusFilter(
+      payload.status,
+    );
+    errors.push(...statusErrors);
+    if (status) {
+      filter.status = status;
+    }
+  }
+
+  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
+  errors.push(...limitErrors);
+  if (typeof limit === 'number') {
+    pagination.limit = limit;
+  }
+
+  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
+  errors.push(...offsetErrors);
+  if (typeof offset === 'number') {
+    pagination.offset = offset;
+  }
+
+  return { filter, pagination, errors };
+}

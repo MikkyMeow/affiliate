@@ -11,8 +11,8 @@ export async function createAdvertiser(dto) {
   return createAdvertiserModel(dto);
 }
 
-export async function listAdvertisers(filter) {
-  return listAdvertisersModel(filter);
+export async function listAdvertisers(filter, pagination) {
+  return listAdvertisersModel(filter, pagination);
 }
 
 export async function getAdvertiserById(id) {

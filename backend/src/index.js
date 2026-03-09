@@ -15,6 +15,10 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import trackingRouter from './routes/tracking.routes.js';
+import clicksRouter from './routes/clicks.routes.js';
+import conversionsRouter from './routes/conversions.routes.js';
+import adminStatsRouter from './routes/admin-stats.routes.js';
+import statsRouter from './routes/stats.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,6 +41,10 @@ app.use(`${API_PREFIX}/auth`, authRouter);
 app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
 app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
 app.use(`${API_PREFIX}/offers`, offersRouter);
+app.use(`${API_PREFIX}/clicks`, clicksRouter);
+app.use(`${API_PREFIX}/conversions`, conversionsRouter);
+app.use(`${API_PREFIX}/admin/stats`, adminStatsRouter);
+app.use(`${API_PREFIX}/stats`, statsRouter);
 app.use('/track', trackingRouter);
 
 app.get(

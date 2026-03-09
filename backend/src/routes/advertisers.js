@@ -3,9 +3,9 @@ import { authenticate } from '../middleware/auth.js';
 import {
   validateCreateAdvertiserDto,
   validateUpdateAdvertiserDto,
-  validateAdvertiserStatusFilter,
+  validateAdvertiserListFilters,
 } from '../validators/advertisers.js';
-import { ERROR_CODES, sendList, sendSuccess } from '../utils/response.js';
+import { ERROR_CODES, sendSuccess } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
@@ -41,9 +41,9 @@ router.post(
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status } = req.query ?? {};
-
-    const { value: statusValue, errors } = validateAdvertiserStatusFilter(status);
+    const { filter, pagination, errors } = validateAdvertiserListFilters(
+      req.query ?? {},
+    );
 
     if (errors.length) {
       throw new ApiError(
@@ -54,8 +54,14 @@ router.get(
       );
     }
 
-    const advertisers = await listAdvertisers({ status: statusValue });
-    return sendList(res, advertisers);
+    const { items, total } = await listAdvertisers(filter, pagination);
+    return sendSuccess(res, items, {
+      meta: {
+        total,
+        limit: pagination.limit,
+        offset: pagination.offset,
+      },
+    });
   }),
 );
 

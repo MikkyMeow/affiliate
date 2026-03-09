@@ -28,8 +28,8 @@ export async function createAffiliate(dto) {
   }
 }
 
-export async function listAffiliates(filter) {
-  return listAffiliatesModel(filter);
+export async function listAffiliates(filter, pagination) {
+  return listAffiliatesModel(filter, pagination);
 }
 
 export async function getAffiliateById(id) {

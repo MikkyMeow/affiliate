@@ -16,6 +16,16 @@ const clickFields = `
   sub5
 `;
 
+const clickListFields = `
+  click_id AS "clickId",
+  offer_id AS "offerId",
+  affiliate_id AS "affiliateId",
+  created_at AS "createdAt",
+  ip,
+  referer,
+  sub1
+`;
+
 export async function createClick({
   clickId,
   offerId,
@@ -76,4 +86,82 @@ export async function findByClickId(clickId) {
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function listClicks(
+  { offerId, affiliateId } = {},
+  { limit = 20, offset = 0 } = {},
+) {
+  const conditions = [];
+  const params = [];
+
+  if (offerId) {
+    params.push(offerId);
+    conditions.push(`offer_id = $${params.length}`);
+  }
+
+  if (affiliateId) {
+    params.push(affiliateId);
+    conditions.push(`affiliate_id = $${params.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM clicks
+      ${whereClause};
+    `,
+    params,
+  );
+
+  const result = await pool.query(
+    `
+      SELECT ${clickListFields}
+      FROM clicks
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
+    `,
+    [...params, limit, offset],
+  );
+
+  return {
+    items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
+}
+
+export async function getClickTotals({ offerId, affiliateId } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (offerId) {
+    params.push(offerId);
+    conditions.push(`offer_id = $${params.length}`);
+  }
+
+  if (affiliateId) {
+    params.push(affiliateId);
+    conditions.push(`affiliate_id = $${params.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query(
+    `
+      SELECT COUNT(*)::int AS total
+      FROM clicks
+      ${whereClause};
+    `,
+    params,
+  );
+
+  return {
+    total: result.rows[0]?.total ?? 0,
+  };
 }
