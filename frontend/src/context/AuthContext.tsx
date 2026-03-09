@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, type ApiError } from '@/lib/api';
 
 export type AuthUser = {
   id: string;
@@ -31,8 +31,6 @@ type AuthContextValue = {
   logout(): void;
   refreshProfile(): Promise<void>;
 };
-
-type ApiError = Error & { status?: number };
 
 const ACCESS_TOKEN_KEY = 'affilate_access_token';
 const REFRESH_TOKEN_KEY = 'affilate_refresh_token';

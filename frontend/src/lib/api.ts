@@ -5,6 +5,29 @@ type RequestOptions = RequestInit & {
   token?: string;
 };
 
+type ApiSuccessEnvelope<T> = {
+  success: true;
+  data: T;
+  meta: unknown | null;
+};
+
+type ApiErrorEnvelope = {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+};
+
+type ApiEnvelope<T> = ApiSuccessEnvelope<T> | ApiErrorEnvelope;
+
+export type ApiError = Error & {
+  status?: number;
+  code?: string;
+  details?: unknown;
+};
+
 export async function apiFetch<TResponse>(
   path: string,
   options: RequestOptions = {},
@@ -20,21 +43,34 @@ export async function apiFetch<TResponse>(
     },
   });
 
-  let data: unknown = null;
+  let payload: ApiEnvelope<TResponse> | null = null;
   try {
-    data = await response.json();
+    payload = (await response.json()) as ApiEnvelope<TResponse>;
   } catch {
     // ignore JSON parse errors and fall through
   }
 
-  if (!response.ok) {
-    const message =
-      (data as { message?: string } | null)?.message ??
-      'Не удалось выполнить запрос';
-    const error = new Error(message) as Error & { status?: number };
+  if (!response.ok || !payload) {
+    const error = new Error(
+      payload && 'error' in payload
+        ? payload.error.message
+        : 'Не удалось выполнить запрос',
+    ) as ApiError;
     error.status = response.status;
+    if (payload && 'error' in payload) {
+      error.code = payload.error.code;
+      error.details = payload.error.details;
+    }
     throw error;
   }
 
-  return data as TResponse;
+  if (!payload.success) {
+    const error = new Error(payload.error.message) as ApiError;
+    error.status = response.status;
+    error.code = payload.error.code;
+    error.details = payload.error.details;
+    throw error;
+  }
+
+  return payload.data;
 }

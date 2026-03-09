@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:4000';
-const MESSAGE_ENDPOINT = `${API_BASE_URL}/api/v1/message`;
+import { apiFetch } from '@/lib/api';
 
 export function BackendMessage() {
   const [message, setMessage] = useState<string>('Загружаем сообщение...');
@@ -14,15 +12,10 @@ export function BackendMessage() {
 
     async function loadMessage() {
       try {
-        const response = await fetch(MESSAGE_ENDPOINT, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Ошибка ${response.status}`);
-        }
-
-        const payload: { message?: string } = await response.json();
+        const payload = await apiFetch<{ message?: string }>(
+          '/api/v1/message',
+          { signal: controller.signal },
+        );
         setMessage(payload.message ?? 'Сообщение не найдено');
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {

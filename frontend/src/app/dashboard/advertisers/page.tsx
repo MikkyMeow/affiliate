@@ -38,14 +38,14 @@ export default function AdvertisersPage() {
     setLoading(true);
     setError(null);
 
-    apiFetch<{ advertisers: Advertiser[] }>('/api/v1/advertisers', {
+    apiFetch<Advertiser[]>('/api/v1/advertisers', {
       token: accessToken,
     })
-      .then(({ advertisers }) => {
+      .then((fetchedAdvertisers) => {
         if (!active) {
           return;
         }
-        setAdvertisers(advertisers);
+        setAdvertisers(fetchedAdvertisers);
       })
       .catch((fetchError: Error) => {
         if (!active) {

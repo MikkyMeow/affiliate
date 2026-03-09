@@ -40,10 +40,10 @@ export default function AffiliatesPage() {
     setLoading(true);
     setError(null);
 
-    apiFetch<{ affiliates: Affiliate[] }>('/api/v1/affiliates', {
+    apiFetch<Affiliate[]>('/api/v1/affiliates', {
       token: accessToken,
     })
-      .then(({ affiliates: fetched }) => {
+      .then((fetched) => {
         if (!active) {
           return;
         }
