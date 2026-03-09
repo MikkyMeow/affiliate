@@ -11,20 +11,36 @@ const offerFields = `
   updated_at AS "updatedAt"
 `;
 
+const offerPostbackFields = `
+  id,
+  payout_rub AS "payoutRub",
+  status,
+  postback_token AS "postbackToken"
+`;
+
 export async function createOffer({
   title,
   advertiserId,
   targetUrl,
   payoutRub,
   status = 'inactive',
+  postbackToken,
 }) {
   const result = await pool.query(
     `
-      INSERT INTO offers (title, advertiser_id, target_url, payout_rub, status)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING ${offerFields};
+      INSERT INTO offers (
+        title,
+        advertiser_id,
+        target_url,
+        payout_rub,
+        status,
+        postback_token
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING ${offerFields},
+        postback_token AS "postbackToken";
     `,
-    [title, advertiserId, targetUrl, payoutRub, status],
+    [title, advertiserId, targetUrl, payoutRub, status, postbackToken],
   );
 
   return result.rows[0];
@@ -80,6 +96,19 @@ export async function findOfferById(id) {
   const result = await pool.query(
     `
       SELECT ${offerFields}
+      FROM offers
+      WHERE id = $1;
+    `,
+    [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findOfferForPostback(id) {
+  const result = await pool.query(
+    `
+      SELECT ${offerPostbackFields}
       FROM offers
       WHERE id = $1;
     `,

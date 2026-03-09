@@ -1,6 +1,7 @@
 import { CONVERSION_STATUSES } from '../services/postback/conversions.service.js';
 
 const MAX_CLICK_ID_LENGTH = 255;
+const MAX_TOKEN_LENGTH = 255;
 
 function buildError(field, message) {
   return { field, message };
@@ -33,9 +34,29 @@ function parsePayout(value) {
   return { value: num, error: null };
 }
 
-export function validatePostbackParams(source) {
+export function validatePostbackParams(source = {}) {
   const errors = [];
   const dto = { status: 'approved' };
+
+  const rawToken = source.token;
+
+  if (rawToken === undefined || rawToken === null) {
+    errors.push(buildError('token', 'token обязателен'));
+  } else if (typeof rawToken !== 'string') {
+    errors.push(buildError('token', 'token должен быть строкой'));
+  } else {
+    const token = rawToken.trim();
+
+    if (!token) {
+      errors.push(buildError('token', 'token обязателен'));
+    } else if (token.length > MAX_TOKEN_LENGTH) {
+      errors.push(
+        buildError('token', `token не должен превышать ${MAX_TOKEN_LENGTH} символов`),
+      );
+    } else {
+      dto.token = token;
+    }
+  }
 
   const rawClickId = source.clickId ?? source.click_id;
 
@@ -87,6 +108,22 @@ export function validatePostbackParams(source) {
     errors.push(buildError('payoutRub', payoutError));
   } else if (typeof payoutRub === 'number') {
     dto.payoutRub = payoutRub;
+  }
+
+  const rawSignature = source.signature ?? source.sig;
+
+  if (rawSignature === undefined || rawSignature === null) {
+    errors.push(buildError('signature', 'Подпись обязательна'));
+  } else if (typeof rawSignature !== 'string') {
+    errors.push(buildError('signature', 'Подпись должна быть строкой'));
+  } else {
+    const normalizedSignature = rawSignature.trim();
+
+    if (!normalizedSignature) {
+      errors.push(buildError('signature', 'Подпись обязательна'));
+    } else {
+      dto.signature = normalizedSignature;
+    }
   }
 
   return { dto, errors };

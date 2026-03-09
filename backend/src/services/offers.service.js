@@ -7,6 +7,7 @@ import {
 import { findAdvertiserById } from '../models/advertiserModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
+import { generatePostbackToken } from '../lib/generatePostbackToken.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -85,7 +86,10 @@ export async function createOffer(dto) {
   assertValidTargetUrl(dto.targetUrl);
   assertValidPayout(dto.payoutRub);
 
-  return createOfferModel(dto);
+  return createOfferModel({
+    ...dto,
+    postbackToken: generatePostbackToken(),
+  });
 }
 
 export async function listOffers(filter, pagination) {
