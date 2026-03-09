@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register } = useAuth();
   const [form, setForm] = useState({
     email: '',
@@ -15,6 +16,14 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = useMemo(() => {
+    const next = searchParams.get('next');
+    if (next && next.startsWith('/')) {
+      return next;
+    }
+    return '/';
+  }, [searchParams]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -26,7 +35,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form);
-      router.push('/');
+      router.push(redirectTo);
     } catch (err) {
       setError((err as Error).message ?? 'Не удалось создать аккаунт');
     } finally {
@@ -95,7 +104,7 @@ export default function RegisterPage() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Уже есть аккаунт?{' '}
           <Link
-            href="/auth/login"
+            href={`/auth/login?next=${encodeURIComponent(redirectTo)}`}
             className="font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
           >
             Войдите

@@ -1,17 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = useMemo(() => {
+    const next = searchParams.get('next');
+    if (next && next.startsWith('/')) {
+      return next;
+    }
+    return '/';
+  }, [searchParams]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -19,7 +28,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login({ email, password });
-      router.push('/');
+      router.push(redirectTo);
     } catch (err) {
       setError((err as Error).message ?? 'Не удалось войти');
     } finally {
@@ -75,7 +84,7 @@ export default function LoginPage() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Нет аккаунта?{' '}
           <Link
-            href="/auth/register"
+            href={`/auth/register?next=${encodeURIComponent(redirectTo)}`}
             className="font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
           >
             Зарегистрируйтесь

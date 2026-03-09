@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { BackendMessage } from "../components/BackendMessage";
 import { AuthStatus } from "../components/AuthStatus";
 
@@ -37,6 +38,16 @@ export default function Home() {
             После входа статус обновится автоматически, а кнопка «Выйти» сразу очистит токен.
           </p>
           <AuthStatus />
+          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+            Перейти к списку{" "}
+            <Link
+              href="/dashboard/advertisers"
+              className="font-medium text-black underline-offset-2 hover:underline dark:text-white"
+            >
+              рекламодателей
+            </Link>
+            .
+          </div>
         </div>
       </main>
     </div>
