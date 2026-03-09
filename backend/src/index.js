@@ -7,6 +7,11 @@ import { authenticate } from './middleware/auth.js';
 import { findUserById } from './models/userModel.js';
 import advertisersRouter from './routes/advertisers.js';
 import affiliatesRouter from './routes/affiliates.js';
+import {
+  sendError,
+  sendSuccess,
+  ERROR_CODES,
+} from './utils/response.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -15,9 +20,9 @@ const API_PREFIX = '/api/v1';
 app.use(cors());
 app.use(express.json());
 
-app.get(`${API_PREFIX}/message`, (req, res) => {
-  res.json({ message: 'Привет из backend!' });
-});
+app.get(`${API_PREFIX}/message`, (req, res) =>
+  sendSuccess(res, { message: 'Привет из backend!' }),
+);
 
 app.use(`${API_PREFIX}/auth`, authRouter);
 app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
@@ -26,9 +31,14 @@ app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
 app.get(`${API_PREFIX}/health`, async (req, res) => {
   try {
     await verifyDatabaseConnection();
-    res.json({ status: 'ok' });
+    sendSuccess(res, { status: 'ok' });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'DB unavailable' });
+    sendError(res, {
+      status: 500,
+      code: ERROR_CODES.DB_UNAVAILABLE,
+      message: 'DB unavailable',
+      details: { reason: error.message },
+    });
   }
 });
 
@@ -36,10 +46,15 @@ app.get(`${API_PREFIX}/profile`, authenticate, async (req, res) => {
   const user = await findUserById(req.user.sub);
 
   if (!user) {
-    return res.status(404).json({ message: 'Пользователь не найден' });
+    return sendError(res, {
+      status: 404,
+      code: ERROR_CODES.NOT_FOUND,
+      message: 'Пользователь не найден',
+      details: { userId: req.user.sub },
+    });
   }
 
-  return res.json({ user });
+  return sendSuccess(res, { user });
 });
 
 async function bootstrap() {

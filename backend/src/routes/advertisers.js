@@ -11,6 +11,12 @@ import {
   validateUpdateAdvertiserDto,
   validateAdvertiserStatusFilter,
 } from '../validators/advertisers.js';
+import {
+  ERROR_CODES,
+  sendError,
+  sendList,
+  sendSuccess,
+} from '../utils/response.js';
 
 const router = express.Router();
 
@@ -20,11 +26,16 @@ router.post('/', async (req, res) => {
   const { dto, errors } = validateCreateAdvertiserDto(req.body);
 
   if (errors.length) {
-    return res.status(400).json({ message: 'Ошибка валидации', errors });
+    return sendError(res, {
+      status: 400,
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: 'Ошибка валидации',
+      details: { errors },
+    });
   }
 
   const advertiser = await createAdvertiser(dto);
-  return res.status(201).json({ advertiser });
+  return sendSuccess(res, { advertiser }, { status: 201 });
 });
 
 router.get('/', async (req, res) => {
@@ -33,37 +44,57 @@ router.get('/', async (req, res) => {
   const { value: statusValue, errors } = validateAdvertiserStatusFilter(status);
 
   if (errors.length) {
-    return res.status(400).json({ message: 'Ошибка валидации', errors });
+    return sendError(res, {
+      status: 400,
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: 'Ошибка валидации',
+      details: { errors },
+    });
   }
 
   const advertisers = await listAdvertisers({ status: statusValue });
-  return res.json({ advertisers });
+  return sendList(res, advertisers);
 });
 
 router.get('/:id', async (req, res) => {
   const advertiser = await findAdvertiserById(req.params.id);
 
   if (!advertiser) {
-    return res.status(404).json({ message: 'Рекламодатель не найден' });
+    return sendError(res, {
+      status: 404,
+      code: ERROR_CODES.NOT_FOUND,
+      message: 'Рекламодатель не найден',
+      details: { advertiserId: req.params.id },
+    });
   }
 
-  return res.json({ advertiser });
+  return sendSuccess(res, { advertiser });
 });
 
 router.patch('/:id', async (req, res) => {
   const { dto, errors } = validateUpdateAdvertiserDto(req.body);
 
   if (errors.length) {
-    return res.status(400).json({ message: 'Ошибка валидации', errors });
+    return sendError(res, {
+      status: 400,
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: 'Ошибка валидации',
+      details: { errors },
+    });
   }
 
   const advertiser = await updateAdvertiser(req.params.id, dto);
 
   if (!advertiser) {
-    return res.status(404).json({ message: 'Рекламодатель не найден' });
+    return sendError(res, {
+      status: 404,
+      code: ERROR_CODES.NOT_FOUND,
+      message: 'Рекламодатель не найден',
+      details: { advertiserId: req.params.id },
+    });
   }
 
-  return res.json({ advertiser });
+  return sendSuccess(res, { advertiser });
 });
 
 export default router;
