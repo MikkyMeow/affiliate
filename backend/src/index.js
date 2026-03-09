@@ -6,6 +6,7 @@ import authRouter from './routes/auth.js';
 import { authenticate } from './middleware/auth.js';
 import { findUserById } from './models/userModel.js';
 import advertisersRouter from './routes/advertisers.js';
+import affiliatesRouter from './routes/affiliates.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -19,6 +20,7 @@ app.get('/api/message', (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/advertisers', advertisersRouter);
+app.use('/api/affiliates', affiliatesRouter);
 
 app.get('/api/health', async (req, res) => {
   try {

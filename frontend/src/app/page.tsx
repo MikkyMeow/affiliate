@@ -38,15 +38,27 @@ export default function Home() {
             После входа статус обновится автоматически, а кнопка «Выйти» сразу очистит токен.
           </p>
           <AuthStatus />
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">
-            Перейти к списку{" "}
-            <Link
-              href="/dashboard/advertisers"
-              className="font-medium text-black underline-offset-2 hover:underline dark:text-white"
-            >
-              рекламодателей
-            </Link>
-            .
+          <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p>
+              Перейти к списку{" "}
+              <Link
+                href="/dashboard/advertisers"
+                className="font-medium text-black underline-offset-2 hover:underline dark:text-white"
+              >
+                рекламодателей
+              </Link>
+              .
+            </p>
+            <p>
+              Посмотреть, как живут{" "}
+              <Link
+                href="/dashboard/affiliates"
+                className="font-medium text-black underline-offset-2 hover:underline dark:text-white"
+              >
+                аффилиаты
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </main>
