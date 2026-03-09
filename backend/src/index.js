@@ -17,6 +17,7 @@ import { asyncHandler } from './utils/asyncHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { registerClick } from './services/tracking/clicks.service.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -69,6 +70,88 @@ app.get(
     return sendSuccess(res, { user });
   }),
 );
+
+function extractQueryParam(value) {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const singleValue = Array.isArray(value) ? value[0] : value;
+  const stringValue = String(singleValue);
+
+  return stringValue === '' ? undefined : stringValue;
+}
+
+function extractRequestIp(req) {
+  const forwardedFor = req.get('x-forwarded-for');
+
+  if (forwardedFor) {
+    const [first] = forwardedFor.split(',');
+
+    if (first && first.trim()) {
+      return first.trim();
+    }
+  }
+
+  return req.ip ?? null;
+}
+
+app.get('/track/click', async (req, res, next) => {
+  const startedAt = Date.now();
+  const clickPayload = {
+    offerId: extractQueryParam(req.query.offerId),
+    affiliateId: extractQueryParam(req.query.affiliateId),
+    ip: extractRequestIp(req),
+    userAgent: req.get('user-agent') ?? null,
+    referer: req.get('referer') ?? null,
+    sub1: extractQueryParam(req.query.sub1),
+    sub2: extractQueryParam(req.query.sub2),
+    sub3: extractQueryParam(req.query.sub3),
+    sub4: extractQueryParam(req.query.sub4),
+    sub5: extractQueryParam(req.query.sub5),
+  };
+
+  const logClickEvent = (status, extra = {}) => {
+    const logEntry = {
+      event: 'track_click',
+      request_id: req.id ?? null,
+      offerId: clickPayload.offerId ?? null,
+      affiliateId: clickPayload.affiliateId ?? null,
+      clickId: extra.clickId ?? null,
+      status,
+      duration_ms: Date.now() - startedAt,
+    };
+
+    console.log(JSON.stringify(logEntry));
+  };
+
+  if (!clickPayload.offerId || !clickPayload.affiliateId) {
+    logClickEvent('validation_error');
+    return res.status(400).json({
+      error: 'offerId и affiliateId обязательны',
+      code: ERROR_CODES.VALIDATION_ERROR,
+    });
+  }
+
+  try {
+    const { redirectUrl, clickId } = await registerClick(clickPayload);
+    logClickEvent('redirect', { clickId });
+
+    return res.redirect(302, redirectUrl);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      logClickEvent('api_error');
+      return res.status(error.status ?? 500).json({
+        error: error.message,
+        code: error.code ?? ERROR_CODES.INTERNAL_ERROR,
+        details: error.details ?? null,
+      });
+    }
+
+    logClickEvent('error');
+    return next(error);
+  }
+});
 
 app.use(errorHandler);
 

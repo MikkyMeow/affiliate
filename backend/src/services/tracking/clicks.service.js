@@ -119,7 +119,7 @@ export async function registerClick(input) {
   }
 
   return {
-    clickId: clickPayload.clickId,
     redirectUrl,
+    clickId: clickPayload.clickId,
   };
 }
