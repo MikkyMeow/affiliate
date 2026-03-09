@@ -77,7 +77,7 @@ function extractQueryParam(value) {
   }
 
   const singleValue = Array.isArray(value) ? value[0] : value;
-  const stringValue = String(singleValue);
+  const stringValue = String(singleValue).trim();
 
   return stringValue === '' ? undefined : stringValue;
 }
@@ -96,6 +96,59 @@ function extractRequestIp(req) {
   return req.ip ?? null;
 }
 
+const SUB_PARAM_KEYS = ['sub1', 'sub2', 'sub3', 'sub4', 'sub5'];
+const MAX_SUB_PARAM_LENGTH = 255;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value) {
+  return typeof value === 'string' && UUID_REGEX.test(value);
+}
+
+function validateSubParam(key, value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return `${key} должен быть строкой`;
+  }
+
+  if (value.length > MAX_SUB_PARAM_LENGTH) {
+    return `${key} не должен превышать ${MAX_SUB_PARAM_LENGTH} символов`;
+  }
+
+  return null;
+}
+
+function validateTrackingQuery(params) {
+  if (!params.offerId) {
+    return { ok: false, message: 'offerId обязателен' };
+  }
+
+  if (!isValidUuid(params.offerId)) {
+    return { ok: false, message: 'offerId должен быть валидным UUID' };
+  }
+
+  if (!params.affiliateId) {
+    return { ok: false, message: 'affiliateId обязателен' };
+  }
+
+  if (!isValidUuid(params.affiliateId)) {
+    return { ok: false, message: 'affiliateId должен быть валидным UUID' };
+  }
+
+  for (const key of SUB_PARAM_KEYS) {
+    const error = validateSubParam(key, params[key]);
+
+    if (error) {
+      return { ok: false, message: error };
+    }
+  }
+
+  return { ok: true };
+}
+
 app.get('/track/click', async (req, res, next) => {
   const startedAt = Date.now();
   const clickPayload = {
@@ -104,12 +157,11 @@ app.get('/track/click', async (req, res, next) => {
     ip: extractRequestIp(req),
     userAgent: req.get('user-agent') ?? null,
     referer: req.get('referer') ?? null,
-    sub1: extractQueryParam(req.query.sub1),
-    sub2: extractQueryParam(req.query.sub2),
-    sub3: extractQueryParam(req.query.sub3),
-    sub4: extractQueryParam(req.query.sub4),
-    sub5: extractQueryParam(req.query.sub5),
   };
+
+  for (const key of SUB_PARAM_KEYS) {
+    clickPayload[key] = extractQueryParam(req.query[key]);
+  }
 
   const logClickEvent = (status, extra = {}) => {
     const logEntry = {
@@ -125,10 +177,12 @@ app.get('/track/click', async (req, res, next) => {
     console.log(JSON.stringify(logEntry));
   };
 
-  if (!clickPayload.offerId || !clickPayload.affiliateId) {
+  const validationResult = validateTrackingQuery(clickPayload);
+
+  if (!validationResult.ok) {
     logClickEvent('validation_error');
     return res.status(400).json({
-      error: 'offerId и affiliateId обязательны',
+      error: validationResult.message,
       code: ERROR_CODES.VALIDATION_ERROR,
     });
   }
