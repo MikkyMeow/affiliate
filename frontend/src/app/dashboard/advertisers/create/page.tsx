@@ -51,7 +51,7 @@ export default function CreateAdvertiserPage() {
     setSubmitting(true);
 
     try {
-      await apiFetch('/api/advertisers', {
+      await apiFetch('/api/v1/advertisers', {
         method: 'POST',
         token: accessToken,
         body: JSON.stringify({ name: normalizedName, status: form.status }),

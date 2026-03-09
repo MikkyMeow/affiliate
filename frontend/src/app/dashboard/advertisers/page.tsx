@@ -38,7 +38,7 @@ export default function AdvertisersPage() {
     setLoading(true);
     setError(null);
 
-    apiFetch<{ advertisers: Advertiser[] }>('/api/advertisers', {
+    apiFetch<{ advertisers: Advertiser[] }>('/api/v1/advertisers', {
       token: accessToken,
     })
       .then(({ advertisers }) => {

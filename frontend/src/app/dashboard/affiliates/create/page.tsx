@@ -65,7 +65,7 @@ export default function CreateAffiliatePage() {
     setSubmitting(true);
 
     try {
-      const { affiliate } = await apiFetch<{ affiliate: { id: string } }>('/api/affiliates', {
+      const { affiliate } = await apiFetch<{ affiliate: { id: string } }>('/api/v1/affiliates', {
         method: 'POST',
         token: accessToken,
         body: JSON.stringify({

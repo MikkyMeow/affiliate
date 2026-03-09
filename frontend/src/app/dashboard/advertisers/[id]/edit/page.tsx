@@ -63,7 +63,7 @@ export default function EditAdvertiserPage() {
     setInitialLoading(true);
     setLoadError(null);
 
-    apiFetch<{ advertiser: Advertiser }>(`/api/advertisers/${advertiserId}`, {
+    apiFetch<{ advertiser: Advertiser }>(`/api/v1/advertisers/${advertiserId}`, {
       token: accessToken,
     })
       .then(({ advertiser }) => {
@@ -115,7 +115,7 @@ export default function EditAdvertiserPage() {
     setSubmitting(true);
 
     try {
-      await apiFetch(`/api/advertisers/${advertiserId}`, {
+      await apiFetch(`/api/v1/advertisers/${advertiserId}`, {
         method: 'PATCH',
         token: accessToken,
         body: JSON.stringify({ name: normalizedName, status: form.status }),

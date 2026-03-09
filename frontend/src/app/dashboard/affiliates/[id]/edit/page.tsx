@@ -65,7 +65,7 @@ export default function EditAffiliatePage() {
     setInitialLoading(true);
     setLoadError(null);
 
-    apiFetch<{ affiliate: Affiliate }>(`/api/affiliates/${affiliateId}`, {
+    apiFetch<{ affiliate: Affiliate }>(`/api/v1/affiliates/${affiliateId}`, {
       token: accessToken,
     })
       .then(({ affiliate }) => {
@@ -125,7 +125,7 @@ export default function EditAffiliatePage() {
     setSubmitting(true);
 
     try {
-      await apiFetch(`/api/affiliates/${affiliateId}`, {
+      await apiFetch(`/api/v1/affiliates/${affiliateId}`, {
         method: 'PATCH',
         token: accessToken,
         body: JSON.stringify({

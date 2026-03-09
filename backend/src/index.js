@@ -10,19 +10,20 @@ import affiliatesRouter from './routes/affiliates.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const API_PREFIX = '/api/v1';
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/message', (req, res) => {
+app.get(`${API_PREFIX}/message`, (req, res) => {
   res.json({ message: 'Привет из backend!' });
 });
 
-app.use('/api/auth', authRouter);
-app.use('/api/advertisers', advertisersRouter);
-app.use('/api/affiliates', affiliatesRouter);
+app.use(`${API_PREFIX}/auth`, authRouter);
+app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
+app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
 
-app.get('/api/health', async (req, res) => {
+app.get(`${API_PREFIX}/health`, async (req, res) => {
   try {
     await verifyDatabaseConnection();
     res.json({ status: 'ok' });
@@ -31,7 +32,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-app.get('/api/profile', authenticate, async (req, res) => {
+app.get(`${API_PREFIX}/profile`, authenticate, async (req, res) => {
   const user = await findUserById(req.user.sub);
 
   if (!user) {

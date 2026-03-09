@@ -26,7 +26,7 @@ export default function Home() {
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400">
             Ниже выводится сообщение, которое приходит из Express-сервера.
-            Сейчас запрос идёт на <code className="rounded bg-zinc-100 px-1 text-sm dark:bg-zinc-900">/api/message</code>.
+            Сейчас запрос идёт на <code className="rounded bg-zinc-100 px-1 text-sm dark:bg-zinc-900">/api/v1/message</code>.
           </p>
         </div>
         <BackendMessage />
