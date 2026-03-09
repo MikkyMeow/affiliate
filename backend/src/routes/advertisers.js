@@ -1,10 +1,4 @@
 import express from 'express';
-import {
-  createAdvertiser,
-  listAdvertisers,
-  findAdvertiserById,
-  updateAdvertiser,
-} from '../models/advertiserModel.js';
 import { authenticate } from '../middleware/auth.js';
 import {
   validateCreateAdvertiserDto,
@@ -14,6 +8,12 @@ import {
 import { ERROR_CODES, sendList, sendSuccess } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import {
+  createAdvertiser,
+  getAdvertiserById,
+  listAdvertisers,
+  updateAdvertiser,
+} from '../services/advertisers.service.js';
 
 const router = express.Router();
 
@@ -62,14 +62,7 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const advertiser = await findAdvertiserById(req.params.id);
-
-    if (!advertiser) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Рекламодатель не найден', {
-        advertiserId: req.params.id,
-      });
-    }
-
+    const advertiser = await getAdvertiserById(req.params.id);
     return sendSuccess(res, { advertiser });
   }),
 );
@@ -89,13 +82,6 @@ router.patch(
     }
 
     const advertiser = await updateAdvertiser(req.params.id, dto);
-
-    if (!advertiser) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Рекламодатель не найден', {
-        advertiserId: req.params.id,
-      });
-    }
-
     return sendSuccess(res, { advertiser });
   }),
 );
