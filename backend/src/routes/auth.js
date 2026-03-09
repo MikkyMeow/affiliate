@@ -15,9 +15,10 @@ import {
 import { authenticate } from '../middleware/auth.js';
 import {
   ERROR_CODES,
-  sendError,
   sendSuccess,
 } from '../utils/response.js';
+import { ApiError } from '../utils/apiError.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me';
@@ -50,148 +51,158 @@ async function issueAuthPackage(user) {
   };
 }
 
-router.post('/register', async (req, res) => {
-  const { email, password, name } = req.body ?? {};
+router.post(
+  '/register',
+  asyncHandler(async (req, res) => {
+    const { email, password, name } = req.body ?? {};
 
-  if (!email || !password) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Email и пароль обязательны',
-      details: { provided: { email: Boolean(email), password: Boolean(password) } },
-    });
-  }
+    if (!email || !password) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Email и пароль обязательны',
+        { provided: { email: Boolean(email), password: Boolean(password) } },
+      );
+    }
 
-  if (password.length < 8) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Пароль должен быть длиннее 8 символов',
-      details: { field: 'password', minLength: 8 },
-    });
-  }
+    if (password.length < 8) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Пароль должен быть длиннее 8 символов',
+        { field: 'password', minLength: 8 },
+      );
+    }
 
-  const existing = await findUserByEmail(email);
-  if (existing) {
-    return sendError(res, {
-      status: 409,
-      code: ERROR_CODES.CONFLICT,
-      message: 'Пользователь с таким email уже существует',
-      details: { email },
-    });
-  }
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      throw new ApiError(
+        ERROR_CODES.CONFLICT,
+        409,
+        'Пользователь с таким email уже существует',
+        { email },
+      );
+    }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await createUser({ email, passwordHash, displayName: name });
-  const response = await issueAuthPackage(user);
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await createUser({ email, passwordHash, displayName: name });
+    const response = await issueAuthPackage(user);
 
-  return sendSuccess(res, response, { status: 201 });
-});
+    return sendSuccess(res, response, { status: 201 });
+  }),
+);
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body ?? {};
+router.post(
+  '/login',
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body ?? {};
 
-  if (!email || !password) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Email и пароль обязательны',
-      details: { provided: { email: Boolean(email), password: Boolean(password) } },
-    });
-  }
+    if (!email || !password) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Email и пароль обязательны',
+        { provided: { email: Boolean(email), password: Boolean(password) } },
+      );
+    }
 
-  const user = await findUserByEmail(email);
-  if (!user) {
-    return sendError(res, {
-      status: 401,
-      code: ERROR_CODES.INVALID_CREDENTIALS,
-      message: 'Неверный email или пароль',
-    });
-  }
+    const user = await findUserByEmail(email);
+    if (!user) {
+      throw new ApiError(
+        ERROR_CODES.INVALID_CREDENTIALS,
+        401,
+        'Неверный email или пароль',
+      );
+    }
 
-  const isValid = await bcrypt.compare(password, user.passwordHash);
+    const isValid = await bcrypt.compare(password, user.passwordHash);
 
-  if (!isValid) {
-    return sendError(res, {
-      status: 401,
-      code: ERROR_CODES.INVALID_CREDENTIALS,
-      message: 'Неверный email или пароль',
-    });
-  }
+    if (!isValid) {
+      throw new ApiError(
+        ERROR_CODES.INVALID_CREDENTIALS,
+        401,
+        'Неверный email или пароль',
+      );
+    }
 
-  const response = await issueAuthPackage(user);
+    const response = await issueAuthPackage(user);
 
-  return sendSuccess(res, response);
-});
+    return sendSuccess(res, response);
+  }),
+);
 
-router.post('/refresh', async (req, res) => {
-  const { refreshToken } = req.body ?? {};
+router.post(
+  '/refresh',
+  asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body ?? {};
 
-  if (!refreshToken) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Refresh token обязателен',
-    });
-  }
+    if (!refreshToken) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Refresh token обязателен',
+      );
+    }
 
-  const stored = await findRefreshToken(refreshToken);
+    const stored = await findRefreshToken(refreshToken);
 
-  if (!stored) {
-    return sendError(res, {
-      status: 401,
-      code: ERROR_CODES.TOKEN_INVALID,
-      message: 'Недействительный refresh token',
-    });
-  }
+    if (!stored) {
+      throw new ApiError(
+        ERROR_CODES.TOKEN_INVALID,
+        401,
+        'Недействительный refresh token',
+      );
+    }
 
-  if (new Date(stored.expiresAt).getTime() < Date.now()) {
+    if (new Date(stored.expiresAt).getTime() < Date.now()) {
+      await deleteRefreshTokenById(stored.id);
+      throw new ApiError(
+        ERROR_CODES.TOKEN_EXPIRED,
+        401,
+        'Refresh token просрочен',
+      );
+    }
+
+    const user = await findUserById(stored.userId);
     await deleteRefreshTokenById(stored.id);
-    return sendError(res, {
-      status: 401,
-      code: ERROR_CODES.TOKEN_EXPIRED,
-      message: 'Refresh token просрочен',
-    });
-  }
 
-  const user = await findUserById(stored.userId);
-  await deleteRefreshTokenById(stored.id);
+    if (!user) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
+        userId: stored.userId,
+      });
+    }
 
-  if (!user) {
-    return sendError(res, {
-      status: 404,
-      code: ERROR_CODES.NOT_FOUND,
-      message: 'Пользователь не найден',
-      details: { userId: stored.userId },
-    });
-  }
+    const response = await issueAuthPackage(user);
+    return sendSuccess(res, response);
+  }),
+);
 
-  const response = await issueAuthPackage(user);
-  return sendSuccess(res, response);
-});
+router.post(
+  '/logout',
+  asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body ?? {};
+    if (refreshToken) {
+      await deleteRefreshToken(refreshToken);
+    }
 
-router.post('/logout', async (req, res) => {
-  const { refreshToken } = req.body ?? {};
-  if (refreshToken) {
-    await deleteRefreshToken(refreshToken);
-  }
+    return sendSuccess(res, { message: 'Выход выполнен' });
+  }),
+);
 
-  return sendSuccess(res, { message: 'Выход выполнен' });
-});
+router.get(
+  '/me',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const profile = await findUserById(req.user.sub);
 
-router.get('/me', authenticate, async (req, res) => {
-  const profile = await findUserById(req.user.sub);
+    if (!profile) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
+        userId: req.user.sub,
+      });
+    }
 
-  if (!profile) {
-    return sendError(res, {
-      status: 404,
-      code: ERROR_CODES.NOT_FOUND,
-      message: 'Пользователь не найден',
-      details: { userId: req.user.sub },
-    });
-  }
-
-  return sendSuccess(res, { user: profile });
-});
+    return sendSuccess(res, { user: profile });
+  }),
+);
 
 export default router;

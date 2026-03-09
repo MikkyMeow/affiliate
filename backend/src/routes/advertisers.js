@@ -11,90 +11,93 @@ import {
   validateUpdateAdvertiserDto,
   validateAdvertiserStatusFilter,
 } from '../validators/advertisers.js';
-import {
-  ERROR_CODES,
-  sendError,
-  sendList,
-  sendSuccess,
-} from '../utils/response.js';
+import { ERROR_CODES, sendList, sendSuccess } from '../utils/response.js';
+import { ApiError } from '../utils/apiError.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.post('/', async (req, res) => {
-  const { dto, errors } = validateCreateAdvertiserDto(req.body);
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateCreateAdvertiserDto(req.body);
 
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
 
-  const advertiser = await createAdvertiser(dto);
-  return sendSuccess(res, { advertiser }, { status: 201 });
-});
+    const advertiser = await createAdvertiser(dto);
+    return sendSuccess(res, { advertiser }, { status: 201 });
+  }),
+);
 
-router.get('/', async (req, res) => {
-  const { status } = req.query ?? {};
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { status } = req.query ?? {};
 
-  const { value: statusValue, errors } = validateAdvertiserStatusFilter(status);
+    const { value: statusValue, errors } = validateAdvertiserStatusFilter(status);
 
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
 
-  const advertisers = await listAdvertisers({ status: statusValue });
-  return sendList(res, advertisers);
-});
+    const advertisers = await listAdvertisers({ status: statusValue });
+    return sendList(res, advertisers);
+  }),
+);
 
-router.get('/:id', async (req, res) => {
-  const advertiser = await findAdvertiserById(req.params.id);
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const advertiser = await findAdvertiserById(req.params.id);
 
-  if (!advertiser) {
-    return sendError(res, {
-      status: 404,
-      code: ERROR_CODES.NOT_FOUND,
-      message: 'Рекламодатель не найден',
-      details: { advertiserId: req.params.id },
-    });
-  }
+    if (!advertiser) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Рекламодатель не найден', {
+        advertiserId: req.params.id,
+      });
+    }
 
-  return sendSuccess(res, { advertiser });
-});
+    return sendSuccess(res, { advertiser });
+  }),
+);
 
-router.patch('/:id', async (req, res) => {
-  const { dto, errors } = validateUpdateAdvertiserDto(req.body);
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateAdvertiserDto(req.body);
 
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
 
-  const advertiser = await updateAdvertiser(req.params.id, dto);
+    const advertiser = await updateAdvertiser(req.params.id, dto);
 
-  if (!advertiser) {
-    return sendError(res, {
-      status: 404,
-      code: ERROR_CODES.NOT_FOUND,
-      message: 'Рекламодатель не найден',
-      details: { advertiserId: req.params.id },
-    });
-  }
+    if (!advertiser) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Рекламодатель не найден', {
+        advertiserId: req.params.id,
+      });
+    }
 
-  return sendSuccess(res, { advertiser });
-});
+    return sendSuccess(res, { advertiser });
+  }),
+);
 
 export default router;

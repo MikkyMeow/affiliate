@@ -11,118 +11,113 @@ import {
   validateUpdateAffiliateDto,
   validateAffiliateStatusFilter,
 } from '../validators/affiliates.js';
-import {
-  ERROR_CODES,
-  sendError,
-  sendList,
-  sendSuccess,
-} from '../utils/response.js';
+import { ERROR_CODES, sendList, sendSuccess } from '../utils/response.js';
+import { ApiError } from '../utils/apiError.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-function handleDbConflict(error, res) {
+function handleDbConflict(error) {
   if (error?.code === '23505') {
-    return sendError(res, {
-      status: 409,
-      code: ERROR_CODES.CONFLICT,
-      message: 'Аффилиат с таким email уже существует',
-      details: { field: 'email' },
-    });
+    throw new ApiError(
+      ERROR_CODES.CONFLICT,
+      409,
+      'Аффилиат с таким email уже существует',
+      { field: 'email' },
+    );
   }
 
   throw error;
 }
 
-router.post('/', async (req, res, next) => {
-  const { dto, errors } = validateCreateAffiliateDto(req.body);
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateCreateAffiliateDto(req.body);
 
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
-
-  try {
-    const affiliate = await createAffiliate(dto);
-    return sendSuccess(res, { affiliate }, { status: 201 });
-  } catch (error) {
-    try {
-      return handleDbConflict(error, res);
-    } catch (err) {
-      return next(err);
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
     }
-  }
-});
 
-router.get('/', async (req, res) => {
-  const { status } = req.query ?? {};
-  const { value: statusValue, errors } = validateAffiliateStatusFilter(status);
+    try {
+      const affiliate = await createAffiliate(dto);
+      return sendSuccess(res, { affiliate }, { status: 201 });
+    } catch (error) {
+      handleDbConflict(error);
+    }
+  }),
+);
 
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { status } = req.query ?? {};
+    const { value: statusValue, errors } = validateAffiliateStatusFilter(status);
 
-  const affiliates = await listAffiliates({ status: statusValue });
-  return sendList(res, affiliates);
-});
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
 
-router.get('/:id', async (req, res) => {
-  const affiliate = await findAffiliateById(req.params.id);
+    const affiliates = await listAffiliates({ status: statusValue });
+    return sendList(res, affiliates);
+  }),
+);
 
-  if (!affiliate) {
-    return sendError(res, {
-      status: 404,
-      code: ERROR_CODES.NOT_FOUND,
-      message: 'Аффилиат не найден',
-      details: { affiliateId: req.params.id },
-    });
-  }
-
-  return sendSuccess(res, { affiliate });
-});
-
-router.patch('/:id', async (req, res, next) => {
-  const { dto, errors } = validateUpdateAffiliateDto(req.body);
-
-  if (errors.length) {
-    return sendError(res, {
-      status: 400,
-      code: ERROR_CODES.VALIDATION_ERROR,
-      message: 'Ошибка валидации',
-      details: { errors },
-    });
-  }
-
-  try {
-    const affiliate = await updateAffiliate(req.params.id, dto);
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const affiliate = await findAffiliateById(req.params.id);
 
     if (!affiliate) {
-      return sendError(res, {
-        status: 404,
-        code: ERROR_CODES.NOT_FOUND,
-        message: 'Аффилиат не найден',
-        details: { affiliateId: req.params.id },
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+        affiliateId: req.params.id,
       });
     }
 
     return sendSuccess(res, { affiliate });
-  } catch (error) {
-    try {
-      return handleDbConflict(error, res);
-    } catch (err) {
-      return next(err);
+  }),
+);
+
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateAffiliateDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
     }
-  }
-});
+
+    try {
+      const affiliate = await updateAffiliate(req.params.id, dto);
+
+      if (!affiliate) {
+        throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+          affiliateId: req.params.id,
+        });
+      }
+
+      return sendSuccess(res, { affiliate });
+    } catch (error) {
+      handleDbConflict(error);
+    }
+  }),
+);
 
 export default router;

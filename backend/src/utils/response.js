@@ -1,6 +1,3 @@
-const safeDetails = (details) =>
-  details === undefined ? null : details;
-
 export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   AUTH_REQUIRED: 'AUTH_REQUIRED',
@@ -28,19 +25,5 @@ export function sendList(res, data, { status = 200, total } = {}) {
   return sendSuccess(res, data, {
     status,
     meta: resolvedTotal === null ? null : { total: resolvedTotal },
-  });
-}
-
-export function sendError(
-  res,
-  { status = 400, code = ERROR_CODES.INTERNAL_ERROR, message, details = null },
-) {
-  return res.status(status).json({
-    success: false,
-    error: {
-      code,
-      message,
-      details: safeDetails(details),
-    },
   });
 }
