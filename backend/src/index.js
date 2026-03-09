@@ -14,12 +14,18 @@ import { findUserById } from './models/userModel.js';
 import { ApiError } from './utils/apiError.js';
 import { asyncHandler } from './utils/asyncHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { requestId } from './middleware/requestId.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 const API_PREFIX = '/api/v1';
 
-app.use(cors());
+app.use(requestId);
+app.use(
+  cors({
+    exposedHeaders: ['X-Request-ID'],
+  }),
+);
 app.use(express.json());
 
 app.get(`${API_PREFIX}/message`, (req, res) =>
