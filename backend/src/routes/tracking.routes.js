@@ -8,7 +8,10 @@ import {
   SUB_PARAM_KEYS,
   validateTrackingQuery,
 } from '../validators/tracking.js';
-import { registerConversion } from '../services/postback/conversions.service.js';
+import {
+  registerConversion,
+  logPostbackValidationFailure,
+} from '../services/postback/conversions.service.js';
 import { getClientIp } from '../lib/getClientIp.js';
 
 const router = express.Router();
@@ -22,6 +25,34 @@ function extractQueryParam(value) {
   const stringValue = String(singleValue).trim();
 
   return stringValue === '' ? undefined : stringValue;
+}
+
+function resolvePostbackPayload(body) {
+  if (body && typeof body === 'object') {
+    return body;
+  }
+
+  if (body === undefined) {
+    return {};
+  }
+
+  return { raw: body };
+}
+
+function extractPostbackClickId(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  if (typeof payload.clickId === 'string') {
+    return payload.clickId;
+  }
+
+  if (typeof payload.click_id === 'string') {
+    return payload.click_id;
+  }
+
+  return null;
 }
 
 router.get('/click', async (req, res, next) => {
@@ -85,15 +116,26 @@ router.get('/click', async (req, res, next) => {
 router.post(
   '/postback',
   asyncHandler(async (req, res) => {
-    const { dto, errors } = validatePostbackParams(req.body ?? {});
+    const payload = resolvePostbackPayload(req.body);
+    const rawClickId = extractPostbackClickId(payload);
+    const { dto, errors } = validatePostbackParams(payload);
 
     if (errors.length) {
+      await logPostbackValidationFailure({
+        requestId: req.id ?? null,
+        payload,
+        clickId: rawClickId,
+      });
+
       throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
         errors,
       });
     }
 
-    const conversion = await registerConversion(dto);
+    const conversion = await registerConversion(dto, {
+      requestId: req.id ?? null,
+      payload,
+    });
 
     return sendSuccess(res, {
       clickId: conversion.clickId,

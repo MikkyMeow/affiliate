@@ -4,8 +4,63 @@ import { findOfferForPostback } from '../../models/offers.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
 import { getClickByClickId } from '../tracking/clicks.service.js';
+import {
+  createPostbackLog,
+  updatePostbackLogResult,
+} from '../../models/postback-logs.model.js';
 
 export const CONVERSION_STATUSES = ['approved', 'rejected'];
+
+function maskSensitiveValue(value) {
+  if (typeof value === 'string' && value.length <= 3) {
+    return '*'.repeat(value.length);
+  }
+
+  return '***';
+}
+
+function sanitizePayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    if (payload === undefined) {
+      return {};
+    }
+
+    return { raw: payload };
+  }
+
+  const allowedKeys = [
+    'clickId',
+    'click_id',
+    'status',
+    'payoutRub',
+    'payout_rub',
+    'payout',
+    'signature',
+    'sig',
+  ];
+
+  const sanitized = {};
+
+  for (const key of allowedKeys) {
+    if (Object.hasOwn(payload, key)) {
+      sanitized[key] = payload[key];
+    }
+  }
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof key === 'string' && key.toLowerCase().includes('token')) {
+      sanitized[key] = maskSensitiveValue(value);
+    }
+  }
+
+  return sanitized;
+}
+
+function buildLogPayload(payload) {
+  return {
+    body: sanitizePayload(payload),
+  };
+}
 
 function assertClickId(clickId) {
   if (!clickId || typeof clickId !== 'string') {
@@ -122,76 +177,246 @@ function resolvePayout({ offer, override, status }) {
   return offerPayout;
 }
 
-export async function registerConversion({
-  token,
-  clickId,
-  signature,
-  status = 'approved',
-  payoutRub,
-}) {
-  assertToken(token);
-  assertClickId(clickId);
-
-  const click = await getClickByClickId(clickId);
-  const offer = ensureOfferExists(await findOfferForPostback(click.offerId), {
-    offerId: click.offerId,
-    clickId,
-  });
-
-  assertTokenMatches({
-    provided: token,
-    actual: offer.postbackToken,
-    offerId: offer.id,
-    clickId,
-  });
-
-  verifySignature({
-    signature,
-    secret: offer.postbackToken,
-    clickId,
-    status,
-    payoutRub,
-  });
-
-  const existing = await findByClickId(clickId);
-
-  if (existing) {
-    throw new ApiError(
-      ERROR_CODES.DUPLICATE_CONVERSION,
-      409,
-      'Конверсия уже существует',
-      {
-        clickId,
-      },
-    );
-  }
-
-  const resolvedPayout = resolvePayout({ offer, override: payoutRub, status });
-
-  if (!Number.isFinite(resolvedPayout) || resolvedPayout < 0) {
-    throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Некорректный payout', {
-      payoutRub: payoutRub ?? offer.payoutRub,
+async function createPostbackLifecycleLog({ requestId, clickId, payload }) {
+  try {
+    return await createPostbackLog({
+      requestId,
+      clickId,
+      status: 'received',
+      payloadJson: buildLogPayload(payload ?? null),
     });
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'postback_log_error',
+        action: 'create',
+        request_id: requestId ?? null,
+        reason: error.message,
+      }),
+    );
+    return null;
+  }
+}
+
+async function updatePostbackLifecycleLog(logEntry, patch) {
+  if (!logEntry) {
+    return;
   }
 
   try {
-    return await createConversion({
-      clickId,
-      offerId: click.offerId,
-      affiliateId: click.affiliateId,
-      status,
-      payoutRub: resolvedPayout,
+    await updatePostbackLogResult({
+      id: logEntry.id,
+      ...patch,
     });
   } catch (error) {
-    if (error?.code === '23505') {
+    console.error(
+      JSON.stringify({
+        event: 'postback_log_error',
+        action: 'update',
+        log_id: logEntry.id,
+        reason: error.message,
+      }),
+    );
+  }
+}
+
+function resolveStatusForError(code) {
+  if (code === ERROR_CODES.DUPLICATE_CONVERSION) {
+    return 'duplicate';
+  }
+
+  if (
+    code === ERROR_CODES.INVALID_POSTBACK_TOKEN ||
+    code === ERROR_CODES.NOT_FOUND ||
+    code === ERROR_CODES.VALIDATION_ERROR ||
+    code === ERROR_CODES.UNAUTHORIZED
+  ) {
+    return 'rejected';
+  }
+
+  if (code === ERROR_CODES.INTERNAL_ERROR) {
+    return 'failed';
+  }
+
+  return 'rejected';
+}
+
+export async function logPostbackValidationFailure({
+  requestId = null,
+  clickId = null,
+  payload = null,
+}) {
+  const logEntry = await createPostbackLifecycleLog({
+    requestId,
+    clickId,
+    payload,
+  });
+
+  await updatePostbackLifecycleLog(logEntry, {
+    status: 'rejected',
+    errorCode: ERROR_CODES.VALIDATION_ERROR,
+    clickId: clickId ?? null,
+  });
+}
+
+export async function registerConversion(
+  { token, clickId, signature, status = 'approved', payoutRub },
+  { requestId = null, payload = null } = {},
+) {
+  const postbackLog = await createPostbackLifecycleLog({
+    requestId,
+    clickId: clickId ?? null,
+    payload,
+  });
+  const logContext = {
+    offerId: null,
+    affiliateId: null,
+  };
+
+  try {
+    assertToken(token);
+    assertClickId(clickId);
+
+    const click = await getClickByClickId(clickId);
+    logContext.offerId = click.offerId;
+    logContext.affiliateId = click.affiliateId;
+    await updatePostbackLifecycleLog(postbackLog, {
+      offerId: logContext.offerId,
+      affiliateId: logContext.affiliateId,
+    });
+
+    const offer = ensureOfferExists(await findOfferForPostback(click.offerId), {
+      offerId: click.offerId,
+      clickId,
+    });
+
+    assertTokenMatches({
+      provided: token,
+      actual: offer.postbackToken,
+      offerId: offer.id,
+      clickId,
+    });
+
+    verifySignature({
+      signature,
+      secret: offer.postbackToken,
+      clickId,
+      status,
+      payoutRub,
+    });
+
+    const existing = await findByClickId(clickId);
+
+    if (existing) {
+      logContext.offerId = existing.offerId ?? logContext.offerId;
+      logContext.affiliateId = existing.affiliateId ?? logContext.affiliateId;
+
+      await updatePostbackLifecycleLog(postbackLog, {
+        status: 'duplicate',
+        errorCode: ERROR_CODES.DUPLICATE_CONVERSION,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        clickId,
+      });
+
       throw new ApiError(
         ERROR_CODES.DUPLICATE_CONVERSION,
         409,
         'Конверсия уже существует',
         {
           clickId,
+          offerId: existing.offerId,
+          affiliateId: existing.affiliateId,
+          conversionId: existing.id,
         },
       );
+    }
+
+    const resolvedPayout = resolvePayout({ offer, override: payoutRub, status });
+
+    if (!Number.isFinite(resolvedPayout) || resolvedPayout < 0) {
+      throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Некорректный payout', {
+        payoutRub: payoutRub ?? offer.payoutRub,
+      });
+    }
+
+    try {
+      const conversion = await createConversion({
+        clickId,
+        offerId: click.offerId,
+        affiliateId: click.affiliateId,
+        status,
+        payoutRub: resolvedPayout,
+      });
+
+      await updatePostbackLifecycleLog(postbackLog, {
+        status: 'processed',
+        errorCode: null,
+        offerId: conversion.offerId,
+        affiliateId: conversion.affiliateId,
+        clickId: conversion.clickId,
+      });
+
+      return conversion;
+    } catch (error) {
+      if (error?.code === '23505') {
+        await updatePostbackLifecycleLog(postbackLog, {
+          status: 'duplicate',
+          errorCode: ERROR_CODES.DUPLICATE_CONVERSION,
+          offerId: logContext.offerId,
+          affiliateId: logContext.affiliateId,
+          clickId,
+        });
+
+        throw new ApiError(
+          ERROR_CODES.DUPLICATE_CONVERSION,
+          409,
+          'Конверсия уже существует',
+          {
+            clickId,
+            offerId: click.offerId,
+            affiliateId: click.affiliateId,
+          },
+        );
+      }
+
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof ApiError) {
+      const status = resolveStatusForError(error.code);
+      const errorCode = error.code ?? ERROR_CODES.INTERNAL_ERROR;
+      const patch = {
+        status,
+        errorCode,
+        clickId,
+      };
+
+      if (logContext.offerId) {
+        patch.offerId = logContext.offerId;
+      }
+
+      if (logContext.affiliateId) {
+        patch.affiliateId = logContext.affiliateId;
+      }
+
+      await updatePostbackLifecycleLog(postbackLog, patch);
+    } else {
+      const patch = {
+        status: 'failed',
+        errorCode: ERROR_CODES.INTERNAL_ERROR,
+        clickId,
+      };
+
+      if (logContext.offerId) {
+        patch.offerId = logContext.offerId;
+      }
+
+      if (logContext.affiliateId) {
+        patch.affiliateId = logContext.affiliateId;
+      }
+
+      await updatePostbackLifecycleLog(postbackLog, patch);
     }
 
     throw error;
