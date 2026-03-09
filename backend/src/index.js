@@ -5,6 +5,7 @@ import { ensureDatabaseSetup, verifyDatabaseConnection } from './db.js';
 import authRouter from './routes/auth.js';
 import { authenticate } from './middleware/auth.js';
 import { findUserById } from './models/userModel.js';
+import advertisersRouter from './routes/advertisers.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -17,6 +18,7 @@ app.get('/api/message', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/advertisers', advertisersRouter);
 
 app.get('/api/health', async (req, res) => {
   try {
