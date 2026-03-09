@@ -2,7 +2,11 @@ import jwt from 'jsonwebtoken';
 import { ERROR_CODES } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is required');
+}
 
 export function authenticate(req, res, next) {
   const header = req.headers.authorization;
