@@ -18,6 +18,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { registerClick } from './services/tracking/clicks.service.js';
+import postbackRouter from './routes/postback.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -40,6 +41,7 @@ app.use(`${API_PREFIX}/auth`, authRouter);
 app.use(`${API_PREFIX}/advertisers`, advertisersRouter);
 app.use(`${API_PREFIX}/affiliates`, affiliatesRouter);
 app.use(`${API_PREFIX}/offers`, offersRouter);
+app.use('/track', postbackRouter);
 
 app.get(
   `${API_PREFIX}/health`,
