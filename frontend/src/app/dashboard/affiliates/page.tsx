@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, type ApiError } from '@/lib/api';
+import { InlineAlert } from '@/components/InlineAlert';
 
 type Affiliate = {
   id: string;
@@ -55,7 +56,8 @@ export default function AffiliatesPage() {
         if (!active) {
           return;
         }
-        setError((fetchError as Error).message);
+        const apiError = fetchError as ApiError;
+        setError(apiError.message ?? 'Не удалось загрузить аффилиатов');
         setAffiliates([]);
       } finally {
         if (!active) {
@@ -194,8 +196,10 @@ export default function AffiliatesPage() {
         </div>
 
         {error ? (
-          <div className="px-6 py-10 text-center text-sm text-red-600 dark:text-red-400">
-            Не удалось загрузить данные: {error}
+          <div className="px-6 py-6">
+            <InlineAlert variant="error" title="Не удалось загрузить аффилиатов">
+              {error}
+            </InlineAlert>
           </div>
         ) : affiliates.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">

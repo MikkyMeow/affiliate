@@ -7,6 +7,9 @@ import { useAuth } from '@/context/AuthContext';
 
 const AUTH_LINKS = [
   { href: '/', label: 'Главная' },
+  { href: '/dashboard/stats', label: 'Статистика' },
+  { href: '/dashboard/clicks', label: 'Клики' },
+  { href: '/dashboard/conversions', label: 'Конверсии' },
   { href: '/dashboard/advertisers', label: 'Рекламодатели' },
   { href: '/dashboard/affiliates', label: 'Аффилиаты' },
   { href: '/dashboard/offers', label: 'Офферы' },

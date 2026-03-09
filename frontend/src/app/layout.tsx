@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
-import { AppNavbar } from "@/components/AppNavbar";
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Geist, Geist_Mono } from 'next/font/google';
+import './globals.css';
+import { Providers } from './providers';
+import { AppNavbar } from '@/components/AppNavbar';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,10 +33,18 @@ export default function RootLayout({
         <Providers>
           <>
             <AppNavbar />
-            {children}
+            <Suspense fallback={<AppPageFallback />}>{children}</Suspense>
           </>
         </Providers>
       </body>
     </html>
+  );
+}
+
+function AppPageFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center px-4 py-10 text-sm text-zinc-500 dark:text-zinc-400">
+      Загружаем страницу...
+    </div>
   );
 }

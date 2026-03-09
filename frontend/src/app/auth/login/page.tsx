@@ -2,10 +2,18 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback title="Вход" />}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, user, loading: authLoading } = useAuth();
@@ -99,6 +107,19 @@ export default function LoginPage() {
           >
             Зарегистрируйтесь
           </Link>
+        </p>
+      </main>
+    </div>
+  );
+}
+
+function AuthPageFallback({ title }: { title: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
+      <main className="flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-10 text-center shadow-xl dark:bg-black">
+        <p className="text-sm uppercase tracking-wide text-zinc-400">Загрузка</p>
+        <p className="text-base text-zinc-800 dark:text-zinc-100">
+          Открываем страницу «{title}»...
         </p>
       </main>
     </div>

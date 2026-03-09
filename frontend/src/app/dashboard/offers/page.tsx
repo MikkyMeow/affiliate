@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL, type ApiError } from '@/lib/api';
+import { InlineAlert } from '@/components/InlineAlert';
 
 type Offer = {
   id: string;
@@ -23,7 +24,16 @@ type OffersMeta = {
   offset?: number | null;
 } | null;
 
+type AffiliateOption = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+type CopyState = 'idle' | 'copied' | 'error';
+
 const PAGE_SIZE = 10;
+const TRACKING_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
 
 export default function OffersPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -35,6 +45,13 @@ export default function OffersPage() {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [linkOffer, setLinkOffer] = useState<Offer | null>(null);
+  const [affiliateOptions, setAffiliateOptions] = useState<AffiliateOption[]>([]);
+  const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const [affiliateError, setAffiliateError] = useState<string | null>(null);
+  const [selectedAffiliateId, setSelectedAffiliateId] = useState('');
+  const [sub1, setSub1] = useState('');
+  const [copyState, setCopyState] = useState<CopyState>('idle');
 
   const pageParam = searchParams?.get('page') ?? '1';
   const pageFromQuery = Number.parseInt(pageParam, 10);
@@ -89,7 +106,8 @@ export default function OffersPage() {
         if (!active) {
           return;
         }
-        setError((fetchError as Error).message);
+        const apiError = fetchError as ApiError;
+        setError(apiError.message ?? 'Не удалось загрузить офферы');
         setOffers([]);
         setTotal(0);
       } finally {
@@ -148,6 +166,102 @@ export default function OffersPage() {
       }),
     [],
   );
+
+  const generatedLink = useMemo(() => {
+    if (!linkOffer || !selectedAffiliateId) {
+      return '';
+    }
+
+    const url = new URL('/track/click', TRACKING_BASE_URL);
+    url.searchParams.set('offerId', linkOffer.id);
+    url.searchParams.set('affiliateId', selectedAffiliateId);
+    const trimmedSub = sub1.trim();
+    if (trimmedSub) {
+      url.searchParams.set('sub1', trimmedSub);
+    }
+    return url.toString();
+  }, [linkOffer, selectedAffiliateId, sub1]);
+
+  const loadAffiliates = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    setAffiliateLoading(true);
+    setAffiliateError(null);
+    try {
+      const data = await apiFetch<AffiliateOption[]>('/api/v1/affiliates', {
+        token: accessToken,
+      });
+      setAffiliateOptions(data);
+    } catch (affError) {
+        const apiError = affError as ApiError;
+        setAffiliateError(apiError.message ?? 'Не удалось загрузить аффилиатов');
+      setAffiliateOptions([]);
+    } finally {
+      setAffiliateLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!linkOffer) {
+      return;
+    }
+    if (affiliateOptions.length > 0 && !affiliateError) {
+      return;
+    }
+    void loadAffiliates();
+  }, [affiliateError, affiliateOptions.length, linkOffer, loadAffiliates]);
+
+  const openLinkModal = useCallback(
+    (offer: Offer) => {
+      setLinkOffer(offer);
+      setSelectedAffiliateId('');
+      setSub1('');
+      setCopyState('idle');
+      if (affiliateOptions.length === 0 && !affiliateLoading) {
+        setAffiliateError(null);
+      }
+    },
+    [affiliateLoading, affiliateOptions.length],
+  );
+
+  const closeLinkModal = useCallback(() => {
+    setLinkOffer(null);
+    setSelectedAffiliateId('');
+    setSub1('');
+    setCopyState('idle');
+  }, []);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!generatedLink) {
+      return;
+    }
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(generatedLink);
+      } else if (typeof document !== 'undefined') {
+        const temp = document.createElement('textarea');
+        temp.value = generatedLink;
+        temp.setAttribute('readonly', 'true');
+        temp.style.position = 'absolute';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+      } else {
+        throw new Error('Clipboard API недоступен');
+      }
+      setCopyState('copied');
+      setTimeout(() => setCopyState('idle'), 2000);
+    } catch (copyError) {
+      console.warn('Не удалось скопировать ссылку', copyError);
+      setCopyState('error');
+      setTimeout(() => setCopyState('idle'), 3000);
+    }
+  }, [generatedLink]);
 
   const currentLimit = limit > 0 ? limit : PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil((total || 0) / currentLimit));
@@ -228,8 +342,10 @@ export default function OffersPage() {
         </div>
 
         {error ? (
-          <div className="px-6 py-10 text-center text-sm text-red-600 dark:text-red-400">
-            Не удалось загрузить данные: {error}
+          <div className="px-6 py-6">
+            <InlineAlert variant="error" title="Не удалось загрузить офферы">
+              {error}
+            </InlineAlert>
           </div>
         ) : loading && offers.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
@@ -290,14 +406,23 @@ export default function OffersPage() {
                         {formatter.format(new Date(offer.createdAt))}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/dashboard/offers/${offer.id}/edit`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                          title="Редактировать"
-                          aria-label="Редактировать"
-                        >
-                          ✎
-                        </Link>
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => openLinkModal(offer)}
+                            className="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          >
+                            Generate link
+                          </button>
+                          <Link
+                            href={`/dashboard/offers/${offer.id}/edit`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                            title="Редактировать"
+                            aria-label="Редактировать"
+                          >
+                            ✎
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -330,6 +455,118 @@ export default function OffersPage() {
           </>
         )}
       </div>
+      {linkOffer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeLinkModal}
+            role="button"
+            tabIndex={-1}
+            aria-label="Закрыть окно"
+          />
+          <div className="relative w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-zinc-500">
+                  Генерация ссылки
+                </p>
+                <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  {linkOffer.title}
+                </h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  Укажите аффилиата и (опционально) sub1. Ссылка собирается на фронте из{' '}
+                  {TRACKING_BASE_URL}/track/click.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeLinkModal}
+                className="rounded-full border border-zinc-200 p-2 text-sm text-zinc-500 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                aria-label="Закрыть"
+              >
+                ✕
+              </button>
+            </div>
+
+            {affiliateLoading ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                Загружаем список аффилиатов...
+              </div>
+            ) : affiliateError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/60 dark:bg-red-500/10 dark:text-red-200">
+                <p className="mb-2">Не удалось загрузить список аффилиатов: {affiliateError}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadAffiliates()}
+                  className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-400/60 dark:text-red-200 dark:hover:bg-red-400/10"
+                >
+                  Повторить
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Аффилиат
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    value={selectedAffiliateId}
+                    onChange={(event) => setSelectedAffiliateId(event.target.value)}
+                  >
+                    <option value="">Выберите аффилиата</option>
+                    {affiliateOptions.map((affiliate) => (
+                      <option key={affiliate.id} value={affiliate.id}>
+                        {affiliate.name || affiliate.email || affiliate.id} · #{affiliate.id.slice(0, 8)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  sub1 (необязательно)
+                  <input
+                    type="text"
+                    value={sub1}
+                    onChange={(event) => setSub1(event.target.value)}
+                    placeholder="utm_source или любой маркер"
+                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                </label>
+              </div>
+            )}
+
+            <div className="mt-6 space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm dark:border-zinc-700 dark:bg-zinc-900/60">
+              <p className="text-xs uppercase tracking-wide text-zinc-500">
+                Готовая ссылка
+              </p>
+              {generatedLink ? (
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="text"
+                    readOnly
+                    value={generatedLink}
+                    className="flex-1 rounded-2xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="rounded-2xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    {copyState === 'copied'
+                      ? 'Скопировано!'
+                      : copyState === 'error'
+                        ? 'Ошибка копирования'
+                        : 'Скопировать'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Выберите аффилиата, чтобы получить ссылку вида{' '}
+                  {TRACKING_BASE_URL}/track/click?offerId=...&affiliateId=...
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
