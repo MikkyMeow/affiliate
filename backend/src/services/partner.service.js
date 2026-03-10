@@ -1,14 +1,11 @@
 import { findUserById } from '../models/userModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
-import {
-  ensureAffiliateForUser,
-  getAffiliateByUserId,
-} from './affiliates.service.js';
+import { requireAffiliateForUser } from './affiliates.service.js';
 import { getSummary } from './stats/stats.service.js';
 import { listOffers } from './offers.service.js';
 
-async function loadPartnerUser(userId) {
+export async function getPartnerProfile(userId) {
   const user = await findUserById(userId);
 
   if (!user) {
@@ -28,36 +25,19 @@ async function loadPartnerUser(userId) {
     );
   }
 
-  let affiliate = await getAffiliateByUserId(user.id);
-  if (!affiliate) {
-    affiliate = await ensureAffiliateForUser(user);
-  }
+  const affiliate = await requireAffiliateForUser(user.id);
 
-  const normalizedUser = {
-    ...user,
-    affiliateId: affiliate?.id ?? user.affiliateId ?? null,
+  return {
+    user: {
+      ...user,
+      affiliateId: affiliate.id,
+    },
+    affiliate,
   };
-
-  return { user: normalizedUser, affiliate };
-}
-
-export async function getPartnerProfile(userId) {
-  return loadPartnerUser(userId);
 }
 
 export async function getPartnerStatsSummary(userId) {
-  const { affiliate } = await loadPartnerUser(userId);
-
-  if (!affiliate) {
-    return {
-      clicksTotal: 0,
-      conversionsTotal: 0,
-      approvedConversionsTotal: 0,
-      rejectedConversionsTotal: 0,
-      payoutTotal: 0,
-    };
-  }
-
+  const { affiliate } = await getPartnerProfile(userId);
   return getSummary({ affiliateId: affiliate.id });
 }
 

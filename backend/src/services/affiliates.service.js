@@ -2,7 +2,6 @@ import {
   createAffiliate as createAffiliateModel,
   listAffiliates as listAffiliatesModel,
   findAffiliateById as findAffiliateByIdModel,
-  findAffiliateByEmail as findAffiliateByEmailModel,
   findAffiliateByUserId as findAffiliateByUserIdModel,
   updateAffiliate as updateAffiliateModel,
   linkAffiliateToUser as linkAffiliateToUserModel,
@@ -67,43 +66,51 @@ export async function getAffiliateByUserId(userId) {
   return findAffiliateByUserIdModel(userId);
 }
 
-export async function ensureAffiliateForUser(user) {
-  if (!user) {
-    throw new Error('User payload is required to ensure affiliate');
+export async function requireAffiliateForUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to fetch affiliate');
   }
 
-  const { id, email, displayName } = user;
+  const affiliate = await findAffiliateByUserIdModel(userId);
 
-  if (!id || !email) {
-    throw new Error('User id and email are required to ensure affiliate');
+  if (!affiliate) {
+    throw new ApiError(
+      ERROR_CODES.NOT_FOUND,
+      404,
+      'Аффилиат для пользователя не найден',
+      { userId },
+    );
   }
 
-  const existingByUser = await findAffiliateByUserIdModel(id);
-  if (existingByUser) {
-    return existingByUser;
+  return affiliate;
+}
+
+export async function linkAffiliateToUser(affiliateId, userId) {
+  if (!affiliateId || !userId) {
+    throw new Error('Affiliate id and user id are required to link a user');
   }
 
-  const existingByEmail = await findAffiliateByEmailModel(email);
-  if (existingByEmail) {
-    if (existingByEmail.userId === id) {
-      return existingByEmail;
-    }
+  const affiliate = await getAffiliateById(affiliateId);
 
-    if (!existingByEmail.userId) {
-      return linkAffiliateToUserModel(existingByEmail.id, id);
-    }
+  if (affiliate.userId && affiliate.userId !== userId) {
+    throw new ApiError(
+      ERROR_CODES.CONFLICT,
+      409,
+      'К аффилиату уже привязан другой пользователь',
+      { affiliateId, userId: affiliate.userId },
+    );
   }
 
-  try {
-    return await createAffiliateModel({
-      name: displayName?.trim?.() ? displayName : email,
-      email,
-      status: 'active',
-      userId: id,
-    });
-  } catch (error) {
-    handleAffiliateDbConflict(error);
+  const updatedAffiliate = await linkAffiliateToUserModel(affiliateId, userId);
+
+  if (!updatedAffiliate) {
+    throw new ApiError(
+      ERROR_CODES.NOT_FOUND,
+      404,
+      'Аффилиат не найден',
+      { affiliateId },
+    );
   }
 
-  return null;
+  return updatedAffiliate;
 }

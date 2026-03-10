@@ -1,11 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {
-  createUser,
-  findUserByEmail,
-  findUserById,
-} from '../models/userModel.js';
+import { findUserByEmail, findUserById } from '../models/userModel.js';
 import {
   createRefreshTokenForUser,
   deleteRefreshToken,
@@ -20,7 +16,7 @@ import {
 } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { ensureAffiliateForUser } from '../services/affiliates.service.js';
+import { requireAffiliateForUser } from '../services/affiliates.service.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -31,10 +27,17 @@ if (!JWT_SECRET) {
 }
 
 function buildTokenPayload(user) {
+  if (!user?.id) {
+    throw new Error('User id is required to build token payload');
+  }
+
+  if (!user.role) {
+    throw new Error('User role is required to build token payload');
+  }
+
   return {
-    sub: user.id,
-    email: user.email,
-    role: user.role ?? 'affiliate',
+    userId: user.id,
+    role: user.role,
     affiliateId: user.affiliateId ?? null,
   };
 }
@@ -47,8 +50,8 @@ async function issueAuthPackage(user) {
   let affiliateId = user.affiliateId ?? null;
 
   if (user.role === 'affiliate' && !affiliateId) {
-    const ensuredAffiliate = await ensureAffiliateForUser(user);
-    affiliateId = ensuredAffiliate?.id ?? null;
+    const affiliate = await requireAffiliateForUser(user.id);
+    affiliateId = affiliate.id;
   }
 
   const token = signToken(buildTokenPayload({ ...user, affiliateId }));
@@ -71,46 +74,11 @@ async function issueAuthPackage(user) {
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
-    const { email, password, name } = req.body ?? {};
-
-    if (!email || !password) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        'Email и пароль обязательны',
-        { provided: { email: Boolean(email), password: Boolean(password) } },
-      );
-    }
-
-    if (password.length < 8) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        'Пароль должен быть длиннее 8 символов',
-        { field: 'password', minLength: 8 },
-      );
-    }
-
-    const existing = await findUserByEmail(email);
-    if (existing) {
-      throw new ApiError(
-        ERROR_CODES.CONFLICT,
-        409,
-        'Пользователь с таким email уже существует',
-        { email },
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = await createUser({
-      email,
-      passwordHash,
-      displayName: name,
-      role: 'affiliate',
-    });
-    const response = await issueAuthPackage({ ...user, affiliateId: null });
-
-    return sendSuccess(res, response, { status: 201 });
+    throw new ApiError(
+      ERROR_CODES.FORBIDDEN,
+      403,
+      'Самостоятельная регистрация отключена. Обратитесь к администратору.',
+    );
   }),
 );
 
@@ -217,11 +185,11 @@ router.get(
   '/me',
   authenticate,
   asyncHandler(async (req, res) => {
-    const profile = await findUserById(req.user.sub);
+    const profile = await findUserById(req.user.userId);
 
     if (!profile) {
       throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
-        userId: req.user.sub,
+        userId: req.user.userId,
       });
     }
 

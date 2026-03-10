@@ -9,7 +9,32 @@ export function authorizeRole(...roles) {
   const allowed = new Set(roles);
 
   return (req, res, next) => {
-    const role = req.user?.role ?? 'admin';
+    if (!req.user) {
+      return next(
+        new ApiError(
+          ERROR_CODES.UNAUTHORIZED,
+          401,
+          'Требуется аутентификация для выполнения действия',
+        ),
+      );
+    }
+
+    const { role } = req.user;
+
+    if (!role) {
+      return next(
+        new ApiError(
+          ERROR_CODES.FORBIDDEN,
+          403,
+          'Недостаточно прав для выполнения действия',
+          {
+            requiredRoles: [...allowed],
+            actualRole: role ?? null,
+          },
+        ),
+      );
+    }
+
     if (!allowed.has(role)) {
       return next(
         new ApiError(

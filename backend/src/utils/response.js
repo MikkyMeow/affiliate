@@ -13,6 +13,7 @@ export const ERROR_CODES = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
   FORBIDDEN: 'FORBIDDEN',
+  AFFILIATE_NOT_LINKED: 'AFFILIATE_NOT_LINKED',
 };
 
 export function sendSuccess(res, data, { status = 200, meta = null } = {}) {

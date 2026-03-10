@@ -20,6 +20,7 @@ import conversionsRouter from './routes/conversions.routes.js';
 import adminStatsRouter from './routes/admin-stats.routes.js';
 import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
+import usersRouter from './routes/users.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -47,6 +48,7 @@ app.use(`${API_PREFIX}/conversions`, conversionsRouter);
 app.use(`${API_PREFIX}/admin/stats`, adminStatsRouter);
 app.use(`${API_PREFIX}/stats`, statsRouter);
 app.use(`${API_PREFIX}/partner`, partnerRouter);
+app.use(`${API_PREFIX}/users`, usersRouter);
 app.use('/track', trackingRouter);
 
 app.get(
@@ -67,11 +69,11 @@ app.get(
   `${API_PREFIX}/profile`,
   authenticate,
   asyncHandler(async (req, res) => {
-    const user = await findUserById(req.user.sub);
+    const user = await findUserById(req.user.userId);
 
     if (!user) {
       throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
-        userId: req.user.sub,
+        userId: req.user.userId,
       });
     }
 
