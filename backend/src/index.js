@@ -21,6 +21,7 @@ import adminStatsRouter from './routes/admin-stats.routes.js';
 import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
 import usersRouter from './routes/users.routes.js';
+import { initRedis } from './lib/redis.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -92,6 +93,8 @@ async function bootstrap() {
     console.error('❌ Failed to connect to database:', error);
     process.exit(1);
   }
+
+  await initRedis();
 
   app.listen(PORT, () => {
     console.log(`Backend listening on port ${PORT}`);

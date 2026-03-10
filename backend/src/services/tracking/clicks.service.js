@@ -1,10 +1,12 @@
 import { createClick, findByClickId } from '../../models/clicks.model.js';
-import { findOfferById } from '../../models/offers.model.js';
-import { findAffiliateById } from '../../models/affiliateModel.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
 import { generateClickId } from '../../lib/generateClickId.js';
 import { buildRedirectUrl } from '../../lib/buildRedirectUrl.js';
+import {
+  getAffiliateForTracking,
+  getOfferForTracking,
+} from './hot-lookup.service.js';
 
 function assertTrackingInput({ offerId, affiliateId }) {
   if (!offerId || typeof offerId !== 'string') {
@@ -31,7 +33,7 @@ export async function getClickByClickId(clickId) {
 }
 
 async function findActiveOffer(offerId) {
-  const offer = await findOfferById(offerId);
+  const offer = await getOfferForTracking(offerId);
 
   if (!offer) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', { offerId });
@@ -48,7 +50,7 @@ async function findActiveOffer(offerId) {
 }
 
 async function findActiveAffiliate(affiliateId) {
-  const affiliate = await findAffiliateById(affiliateId);
+  const affiliate = await getAffiliateForTracking(affiliateId);
 
   if (!affiliate) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Партнёр не найден', {
