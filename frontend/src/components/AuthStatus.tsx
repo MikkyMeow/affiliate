@@ -47,6 +47,17 @@ export function AuthStatus() {
         <p className="text-emerald-700 dark:text-emerald-200">
           Статус: авторизован
         </p>
+        <p className="text-emerald-700 dark:text-emerald-200">
+          Роль:{' '}
+          {user.role === 'admin'
+            ? 'Администратор'
+            : 'Аффилиат'}
+        </p>
+        {user.role === 'affiliate' && (
+          <p className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-200">
+            <Link href="/partner">Перейти в кабинет партнера →</Link>
+          </p>
+        )}
       </div>
       <button
         onClick={logout}

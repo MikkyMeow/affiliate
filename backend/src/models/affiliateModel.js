@@ -5,18 +5,24 @@ const affiliateFields = `
   name,
   email,
   status,
+  user_id AS "userId",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `;
 
-export async function createAffiliate({ name, email, status = 'active' }) {
+export async function createAffiliate({
+  name,
+  email,
+  status = 'active',
+  userId = null,
+}) {
   const result = await pool.query(
     `
-      INSERT INTO affiliates (name, email, status)
-      VALUES ($1, $2, $3)
+      INSERT INTO affiliates (name, email, status, user_id)
+      VALUES ($1, $2, $3, $4)
       RETURNING ${affiliateFields};
     `,
-    [name, email.toLowerCase(), status],
+    [name, email.toLowerCase(), status, userId],
   );
 
   return result.rows[0];
@@ -84,6 +90,33 @@ export async function findAffiliateByEmail(email) {
       WHERE LOWER(email) = LOWER($1);
     `,
     [email],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findAffiliateByUserId(userId) {
+  const result = await pool.query(
+    `
+      SELECT ${affiliateFields}
+      FROM affiliates
+      WHERE user_id = $1;
+    `,
+    [userId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function linkAffiliateToUser(id, userId) {
+  const result = await pool.query(
+    `
+      UPDATE affiliates
+      SET user_id = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING ${affiliateFields};
+    `,
+    [userId, id],
   );
 
   return result.rows[0] ?? null;

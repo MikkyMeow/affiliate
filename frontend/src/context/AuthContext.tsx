@@ -15,6 +15,8 @@ export type AuthUser = {
   email: string;
   displayName?: string | null;
   createdAt?: string;
+  role: 'admin' | 'affiliate';
+  affiliateId?: string | null;
 };
 
 type AuthContextValue = {

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { apiFetch, API_BASE_URL, type ApiError } from '@/lib/api';
+import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
+import { TRACKING_BASE_URL } from '@/lib/tracking';
 
 type Offer = {
   id: string;
@@ -33,7 +34,6 @@ type AffiliateOption = {
 type CopyState = 'idle' | 'copied' | 'error';
 
 const PAGE_SIZE = 10;
-const TRACKING_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
 
 export default function OffersPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -301,6 +301,25 @@ export default function OffersPage() {
             Зарегистрироваться
           </Link>
         </div>
+      </section>
+    );
+  }
+
+  if (user.role !== 'admin') {
+    return (
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Нет доступа
+        </h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Управление офферами доступно только администраторам.
+        </p>
+        <Link
+          href="/partner"
+          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+        >
+          В кабинет партнера
+        </Link>
       </section>
     );
   }

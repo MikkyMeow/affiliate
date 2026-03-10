@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { authorizeRole } from '../middleware/authorizeRole.js';
 import {
   validateCreateAffiliateDto,
   validateUpdateAffiliateDto,
@@ -18,6 +19,7 @@ import {
 const router = express.Router();
 
 router.use(authenticate);
+router.use(authorizeRole('admin'));
 
 router.post(
   '/',

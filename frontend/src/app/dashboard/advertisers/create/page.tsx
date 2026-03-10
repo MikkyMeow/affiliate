@@ -101,6 +101,25 @@ export default function CreateAdvertiserPage() {
     );
   }
 
+  if (user.role !== 'admin') {
+    return (
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Нет доступа
+        </h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Создавать рекламодателей могут только администраторы.
+        </p>
+        <Link
+          href="/partner"
+          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+        >
+          В кабинет партнера
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto min-h-screen max-w-3xl px-6 py-10">
       <div className="mb-8">

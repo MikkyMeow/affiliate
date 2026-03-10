@@ -19,6 +19,7 @@ import clicksRouter from './routes/clicks.routes.js';
 import conversionsRouter from './routes/conversions.routes.js';
 import adminStatsRouter from './routes/admin-stats.routes.js';
 import statsRouter from './routes/stats.routes.js';
+import partnerRouter from './routes/partner.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -45,6 +46,7 @@ app.use(`${API_PREFIX}/clicks`, clicksRouter);
 app.use(`${API_PREFIX}/conversions`, conversionsRouter);
 app.use(`${API_PREFIX}/admin/stats`, adminStatsRouter);
 app.use(`${API_PREFIX}/stats`, statsRouter);
+app.use(`${API_PREFIX}/partner`, partnerRouter);
 app.use('/track', trackingRouter);
 
 app.get(

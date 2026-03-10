@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-const AUTH_LINKS = [
+const ADMIN_LINKS = [
   { href: '/', label: 'Главная' },
   { href: '/dashboard/stats', label: 'Статистика' },
   { href: '/dashboard/clicks', label: 'Клики' },
@@ -13,6 +13,11 @@ const AUTH_LINKS = [
   { href: '/dashboard/advertisers', label: 'Рекламодатели' },
   { href: '/dashboard/affiliates', label: 'Аффилиаты' },
   { href: '/dashboard/offers', label: 'Офферы' },
+];
+
+const AFFILIATE_LINKS = [
+  { href: '/', label: 'Главная' },
+  { href: '/partner', label: 'Кабинет партнера' },
 ];
 
 const LINK_STYLES =
@@ -60,7 +65,7 @@ export function AppNavbar() {
         ) : user ? (
           <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
             <nav className="flex flex-wrap items-center gap-2">
-              {AUTH_LINKS.map((link) => {
+              {(user.role === 'admin' ? ADMIN_LINKS : AFFILIATE_LINKS).map((link) => {
                 const isActive =
                   pathname === link.href ||
                   (link.href !== '/' && pathname.startsWith(link.href));

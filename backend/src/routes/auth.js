@@ -20,6 +20,7 @@ import {
 } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { ensureAffiliateForUser } from '../services/affiliates.service.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -33,6 +34,8 @@ function buildTokenPayload(user) {
   return {
     sub: user.id,
     email: user.email,
+    role: user.role ?? 'affiliate',
+    affiliateId: user.affiliateId ?? null,
   };
 }
 
@@ -41,7 +44,14 @@ function signToken(payload) {
 }
 
 async function issueAuthPackage(user) {
-  const token = signToken(buildTokenPayload(user));
+  let affiliateId = user.affiliateId ?? null;
+
+  if (user.role === 'affiliate' && !affiliateId) {
+    const ensuredAffiliate = await ensureAffiliateForUser(user);
+    affiliateId = ensuredAffiliate?.id ?? null;
+  }
+
+  const token = signToken(buildTokenPayload({ ...user, affiliateId }));
   const refreshToken = await createRefreshTokenForUser(user.id);
 
   return {
@@ -52,6 +62,8 @@ async function issueAuthPackage(user) {
       email: user.email,
       displayName: user.displayName,
       createdAt: user.createdAt,
+      role: user.role,
+      affiliateId,
     },
   };
 }
@@ -90,8 +102,13 @@ router.post(
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await createUser({ email, passwordHash, displayName: name });
-    const response = await issueAuthPackage(user);
+    const user = await createUser({
+      email,
+      passwordHash,
+      displayName: name,
+      role: 'affiliate',
+    });
+    const response = await issueAuthPackage({ ...user, affiliateId: null });
 
     return sendSuccess(res, response, { status: 201 });
   }),
@@ -131,7 +148,8 @@ router.post(
       );
     }
 
-    const response = await issueAuthPackage(user);
+    const { passwordHash: _, ...sanitizedUser } = user;
+    const response = await issueAuthPackage(sanitizedUser);
 
     return sendSuccess(res, response);
   }),

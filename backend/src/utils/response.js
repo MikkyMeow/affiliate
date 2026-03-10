@@ -12,6 +12,7 @@ export const ERROR_CODES = {
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
+  FORBIDDEN: 'FORBIDDEN',
 };
 
 export function sendSuccess(res, data, { status = 200, meta = null } = {}) {
