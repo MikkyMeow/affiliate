@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { ERROR_CODES } from '../utils/response.js';
 import { getClientIp } from '../lib/getClientIp.js';
 
@@ -30,7 +30,14 @@ function createLimiter({ windowMs, limit, message }) {
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: buildHandler(message),
-    keyGenerator: (req) => getClientIp(req) ?? req.ip ?? 'unknown',
+    keyGenerator: (req) => {
+      const rawIp = getClientIp(req);
+      if (!rawIp) {
+        return 'unknown';
+      }
+
+      return ipKeyGenerator(rawIp);
+    },
   });
 }
 
