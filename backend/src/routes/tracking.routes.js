@@ -13,6 +13,10 @@ import {
   logPostbackValidationFailure,
 } from '../services/postback/conversions.service.js';
 import { getClientIp } from '../lib/getClientIp.js';
+import {
+  clickRateLimiter,
+  postbackRateLimiter,
+} from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -55,7 +59,7 @@ function extractPostbackClickId(payload) {
   return null;
 }
 
-router.get('/click', async (req, res, next) => {
+router.get('/click', clickRateLimiter, async (req, res, next) => {
   const startedAt = Date.now();
   const clickPayload = {
     offerId: extractQueryParam(req.query.offerId),
@@ -115,6 +119,7 @@ router.get('/click', async (req, res, next) => {
 
 router.post(
   '/postback',
+  postbackRateLimiter,
   asyncHandler(async (req, res) => {
     const payload = resolvePostbackPayload(req.body);
     const rawClickId = extractPostbackClickId(payload);

@@ -11,6 +11,7 @@ export const ERROR_CODES = {
   UNAUTHORIZED: 'UNAUTHORIZED',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
+  RATE_LIMITED: 'RATE_LIMITED',
 };
 
 export function sendSuccess(res, data, { status = 200, meta = null } = {}) {

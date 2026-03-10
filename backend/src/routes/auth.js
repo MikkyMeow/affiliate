@@ -13,6 +13,7 @@ import {
   findRefreshToken,
 } from '../models/refreshTokenModel.js';
 import { authenticate } from '../middleware/auth.js';
+import { loginRateLimiter } from '../middleware/rateLimit.js';
 import {
   ERROR_CODES,
   sendSuccess,
@@ -98,6 +99,7 @@ router.post(
 
 router.post(
   '/login',
+  loginRateLimiter,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body ?? {};
 
