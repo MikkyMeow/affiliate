@@ -28,7 +28,7 @@ type AuthContextValue = {
   register(payload: {
     email: string;
     password: string;
-    name?: string;
+    name: string;
   }): Promise<void>;
   logout(): void;
   refreshProfile(): Promise<void>;
@@ -207,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (payload: { email: string; password: string; name?: string }) => {
+    async (payload: { email: string; password: string; name: string }) => {
       const data = await apiFetch<{
         token: string;
         refreshToken: string;

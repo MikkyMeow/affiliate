@@ -64,3 +64,13 @@ export async function findUserById(id) {
 
   return result.rows[0] ?? null;
 }
+
+export async function deleteUserById(id) {
+  await pool.query(
+    `
+      DELETE FROM users
+      WHERE id = $1;
+    `,
+    [id],
+  );
+}

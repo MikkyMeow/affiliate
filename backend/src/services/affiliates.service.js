@@ -3,6 +3,7 @@ import {
   listAffiliates as listAffiliatesModel,
   findAffiliateById as findAffiliateByIdModel,
   findAffiliateByUserId as findAffiliateByUserIdModel,
+  findAffiliateByEmail as findAffiliateByEmailModel,
   updateAffiliate as updateAffiliateModel,
   linkAffiliateToUser as linkAffiliateToUserModel,
 } from '../models/affiliateModel.js';
@@ -67,6 +68,14 @@ export async function updateAffiliate(id, dto) {
 
 export async function getAffiliateByUserId(userId) {
   return findAffiliateByUserIdModel(userId);
+}
+
+export async function findAffiliateByEmail(email) {
+  if (!email) {
+    throw new Error('Email is required to fetch affiliate');
+  }
+
+  return findAffiliateByEmailModel(email);
 }
 
 export async function requireAffiliateForUser(userId) {

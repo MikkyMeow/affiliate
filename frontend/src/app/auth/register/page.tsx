@@ -81,10 +81,11 @@ function RegisterPageContent() {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Имя (необязательно)
+            Имя
             <input
               type="text"
               name="name"
+              required
               value={form.name}
               onChange={handleChange}
               className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"

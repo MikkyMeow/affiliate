@@ -112,3 +112,36 @@ export function validateCreateAffiliateUserDto(payload) {
 
   return { dto, errors };
 }
+
+export function validateRegisterDto(payload) {
+  const errors = [];
+  const source = payload ?? {};
+  const dto = {};
+
+  const { value: email, errors: emailErrors } = validateEmail(source.email, {
+    allowMissing: false,
+  });
+  errors.push(...emailErrors);
+  if (email) {
+    dto.email = email;
+  }
+
+  const { value: password, errors: passwordErrors } = validatePassword(
+    source.password,
+  );
+  errors.push(...passwordErrors);
+  if (password) {
+    dto.password = password;
+  }
+
+  const normalizedName = normalizeDisplayName(source.name ?? source.displayName);
+  if (!normalizedName) {
+    errors.push(
+      buildError('name', 'Имя обязательно и должно быть непустой строкой'),
+    );
+  } else {
+    dto.displayName = normalizedName;
+  }
+
+  return { dto, errors };
+}

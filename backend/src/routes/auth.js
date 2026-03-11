@@ -1,7 +1,12 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { findUserByEmail, findUserById } from '../models/userModel.js';
+import {
+  createUser,
+  deleteUserById,
+  findUserByEmail,
+  findUserById,
+} from '../models/userModel.js';
 import {
   createRefreshTokenForUser,
   deleteRefreshToken,
@@ -16,7 +21,12 @@ import {
 } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { requireAffiliateForUser } from '../services/affiliates.service.js';
+import {
+  createAffiliate,
+  findAffiliateByEmail,
+  requireAffiliateForUser,
+} from '../services/affiliates.service.js';
+import { validateRegisterDto } from '../validators/users.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -74,11 +84,64 @@ async function issueAuthPackage(user) {
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
-    throw new ApiError(
-      ERROR_CODES.FORBIDDEN,
-      403,
-      'Самостоятельная регистрация отключена. Обратитесь к администратору.',
-    );
+    const { dto, errors } = validateRegisterDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const existingUser = await findUserByEmail(dto.email);
+
+    if (existingUser) {
+      throw new ApiError(
+        ERROR_CODES.CONFLICT,
+        409,
+        'Пользователь с таким email уже существует',
+        { email: dto.email },
+      );
+    }
+
+    const existingAffiliate = await findAffiliateByEmail(dto.email);
+
+    if (existingAffiliate) {
+      throw new ApiError(
+        ERROR_CODES.CONFLICT,
+        409,
+        'Аффилиат с таким email уже существует',
+        { email: dto.email },
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    let user;
+    try {
+      user = await createUser({
+        email: dto.email,
+        passwordHash,
+        displayName: dto.displayName,
+        role: 'affiliate',
+      });
+
+      await createAffiliate({
+        name: dto.displayName,
+        email: dto.email,
+        userId: user.id,
+      });
+    } catch (error) {
+      if (user?.id) {
+        await deleteUserById(user.id);
+      }
+      throw error;
+    }
+
+    const response = await issueAuthPackage(user);
+    return sendSuccess(res, response, { status: 201 });
   }),
 );
 
