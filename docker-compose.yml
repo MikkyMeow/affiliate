@@ -81,7 +81,7 @@ services:
     container_name: affilate-web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE: https://staging.mikilead.ru
+      NEXT_PUBLIC_API_BASE: https://staging.mikilead.ru/api/v1
     depends_on:
       - api
     expose:

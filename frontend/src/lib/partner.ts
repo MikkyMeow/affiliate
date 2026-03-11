@@ -28,7 +28,7 @@ export async function fetchPartnerClicks(
   params.set('offset', String(offset));
 
   const { data, meta } = await apiFetch<PartnerClick[], RawListMeta>(
-    `/api/v1/partner/clicks?${params.toString()}`,
+    `/partner/clicks?${params.toString()}`,
     {
       token,
       withMeta: true,
@@ -79,7 +79,7 @@ export async function fetchPartnerConversions(
   }
 
   const { data, meta } = await apiFetch<PartnerConversion[], RawListMeta>(
-    `/api/v1/partner/conversions?${params.toString()}`,
+    `/partner/conversions?${params.toString()}`,
     {
       token,
       withMeta: true,

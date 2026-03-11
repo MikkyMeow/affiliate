@@ -74,7 +74,7 @@ export default function ClicksPage() {
 
       try {
         const { data, meta } = await apiFetch<Click[], ClicksMeta>(
-          `/api/v1/clicks?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/clicks?limit=${PAGE_SIZE}&offset=${offset}`,
           {
             token: accessToken,
             withMeta: true,

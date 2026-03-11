@@ -55,7 +55,7 @@ export default function CreateOfferPage() {
     setLoadingAdvertisers(true);
     setAdvertisersError(null);
 
-    apiFetch<Advertiser[]>('/api/v1/advertisers', { token: accessToken })
+    apiFetch<Advertiser[]>('/advertisers', { token: accessToken })
       .then((items) => {
         if (!active) {
           return;
@@ -131,7 +131,7 @@ export default function CreateOfferPage() {
     setSubmitting(true);
 
     try {
-      await apiFetch<{ offer: { id: string } }>('/api/v1/offers', {
+      await apiFetch<{ offer: { id: string } }>('/offers', {
         method: 'POST',
         token: accessToken,
         body: JSON.stringify({

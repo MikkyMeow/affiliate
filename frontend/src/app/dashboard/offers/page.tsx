@@ -79,7 +79,7 @@ export default function OffersPage() {
 
       try {
         const { data, meta } = await apiFetch<Offer[], OffersMeta>(
-          `/api/v1/offers?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/offers?limit=${PAGE_SIZE}&offset=${offset}`,
           {
             token: accessToken,
             withMeta: true,
@@ -190,7 +190,7 @@ export default function OffersPage() {
     setAffiliateLoading(true);
     setAffiliateError(null);
     try {
-      const data = await apiFetch<AffiliateOption[]>('/api/v1/affiliates', {
+      const data = await apiFetch<AffiliateOption[]>('/affiliates', {
         token: accessToken,
       });
       setAffiliateOptions(data);

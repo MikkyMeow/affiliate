@@ -105,7 +105,7 @@ export default function ConversionsPage() {
 
       try {
         const { data, meta } = await apiFetch<Conversion[], ConversionsMeta>(
-          `/api/v1/conversions?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/conversions?limit=${PAGE_SIZE}&offset=${offset}`,
           {
             token: accessToken,
             withMeta: true,

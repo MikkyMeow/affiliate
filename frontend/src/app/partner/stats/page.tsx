@@ -52,7 +52,7 @@ export default function PartnerStatsPage() {
     setLoadingStats(true);
     setStatsError(null);
     try {
-      const summary = await apiFetch<PartnerStatsSummary>('/api/v1/partner/stats', {
+      const summary = await apiFetch<PartnerStatsSummary>('/partner/stats', {
         token: accessToken,
       });
       setStats(summary);

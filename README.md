@@ -24,7 +24,7 @@
    cp backend/.env.production.example backend/.env.production
    # при необходимости скорректируй креды/порт и JWT секрет
    cp frontend/.env.local.example frontend/.env.local
-   # можно поменять NEXT_PUBLIC_API_BASE, если backend работает не на localhost:4000
+   # можно поменять NEXT_PUBLIC_API_BASE (указывает полный URL до /api/v1)
    ```
    Backend и связанные CLI-скрипты автоматически загружают `backend/.env.local`
    (или `backend/.env.production`, если запускать с `NODE_ENV=production`).

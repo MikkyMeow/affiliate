@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/api/v1/auth/refresh', {
+      }>('/auth/refresh', {
         method: 'POST',
         body: JSON.stringify({ refreshToken: tokenToUse }),
       });
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const attemptFetch = async (token: string, allowRetry: boolean) => {
         try {
-          const data = await apiFetch<{ user: AuthUser }>('/api/v1/auth/me', {
+          const data = await apiFetch<{ user: AuthUser }>('/auth/me', {
             token,
           });
           setUser(data.user);
@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/api/v1/auth/login', {
+      }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/api/v1/auth/register', {
+      }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
 
     if (currentRefresh) {
-      void apiFetch('/api/v1/auth/logout', {
+      void apiFetch('/auth/logout', {
         method: 'POST',
         body: JSON.stringify({ refreshToken: currentRefresh }),
       }).catch((error) => {

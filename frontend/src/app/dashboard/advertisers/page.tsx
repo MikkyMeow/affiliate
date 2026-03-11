@@ -41,7 +41,7 @@ export default function AdvertisersPage() {
       setError(null);
 
       try {
-        const fetchedAdvertisers = await apiFetch<Advertiser[]>('/api/v1/advertisers', {
+        const fetchedAdvertisers = await apiFetch<Advertiser[]>('/advertisers', {
           token: accessToken,
         });
 

@@ -72,7 +72,7 @@ export default function EditOfferPage() {
     setInitialLoading(true);
     setLoadError(null);
 
-    apiFetch<{ offer: Offer }>(`/api/v1/offers/${offerId}`, {
+    apiFetch<{ offer: Offer }>(`/offers/${offerId}`, {
       token: accessToken,
     })
       .then(({ offer }) => {
@@ -150,7 +150,7 @@ export default function EditOfferPage() {
     setSubmitting(true);
 
     try {
-      await apiFetch(`/api/v1/offers/${offerId}`, {
+      await apiFetch(`/offers/${offerId}`, {
         method: 'PATCH',
         token: accessToken,
         body: JSON.stringify({

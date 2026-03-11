@@ -13,7 +13,7 @@ export function BackendMessage() {
     async function loadMessage() {
       try {
         const payload = await apiFetch<{ message?: string }>(
-          '/api/v1/message',
+          '/message',
           { signal: controller.signal },
         );
         setMessage(payload.message ?? 'Сообщение не найдено');

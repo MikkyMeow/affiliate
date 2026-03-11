@@ -1,5 +1,8 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:4000';
+const DEFAULT_API_BASE = 'https://staging.mikilead.ru/api/v1';
+const rawApiBase = process.env.NEXT_PUBLIC_API_BASE ?? DEFAULT_API_BASE;
+export const API_BASE_URL = rawApiBase.endsWith('/')
+  ? rawApiBase.slice(0, -1)
+  : rawApiBase;
 
 type RequestOptions = RequestInit & {
   token?: string;
@@ -46,7 +49,7 @@ export async function apiFetch<TResponse, TMeta = unknown>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(headers ?? {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -61,12 +64,12 @@ export async function apiFetch<TResponse, TMeta = unknown>(
 
   if (!response.ok || !payload) {
     const error = new Error(
-      payload && 'error' in payload
+      payload && "error" in payload
         ? payload.error.message
-        : 'Не удалось выполнить запрос',
+        : "Не удалось выполнить запрос",
     ) as ApiError;
     error.status = response.status;
-    if (payload && 'error' in payload) {
+    if (payload && "error" in payload) {
       error.code = payload.error.code;
       error.details = payload.error.details;
     }

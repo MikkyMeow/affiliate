@@ -95,7 +95,7 @@ export default function PartnerDashboardPage() {
     setLoadingProfile(true);
     setProfileError(null);
     try {
-      const fetched = await apiFetch<PartnerProfile>('/api/v1/partner/profile', {
+      const fetched = await apiFetch<PartnerProfile>('/partner/profile', {
         token: accessToken,
       });
       setProfile(fetched);
@@ -116,7 +116,7 @@ export default function PartnerDashboardPage() {
     setLoadingStats(true);
     setStatsError(null);
     try {
-      const summary = await apiFetch<PartnerStatsSummary>('/api/v1/partner/stats', {
+      const summary = await apiFetch<PartnerStatsSummary>('/partner/stats', {
         token: accessToken,
       });
       setStats(summary);
@@ -137,7 +137,7 @@ export default function PartnerDashboardPage() {
     setLoadingOffers(true);
     setOffersError(null);
     try {
-      const list = await apiFetch<PartnerOffer[]>('/api/v1/partner/offers', {
+      const list = await apiFetch<PartnerOffer[]>('/partner/offers', {
         token: accessToken,
       });
       setOffers(list);

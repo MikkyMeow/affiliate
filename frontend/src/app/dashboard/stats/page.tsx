@@ -103,7 +103,7 @@ export default function StatsDashboardPage() {
     setError(null);
 
     try {
-      const data = await apiFetch<StatsSummary>('/api/v1/stats/summary', {
+      const data = await apiFetch<StatsSummary>('/stats/summary', {
         token: accessToken,
       });
       setSummary(data);

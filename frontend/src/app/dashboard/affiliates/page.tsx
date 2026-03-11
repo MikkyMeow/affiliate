@@ -44,7 +44,7 @@ export default function AffiliatesPage() {
       setError(null);
 
       try {
-        const fetched = await apiFetch<Affiliate[]>('/api/v1/affiliates', {
+        const fetched = await apiFetch<Affiliate[]>('/affiliates', {
           token: accessToken,
         });
 
