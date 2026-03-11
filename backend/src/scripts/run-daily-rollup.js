@@ -43,6 +43,8 @@ async function main() {
         event: 'daily_rollup_finished',
         startDate: result.startDate,
         endDate: result.endDate,
+        conversionsRowsProcessed: result.conversionsRowsProcessed,
+        clicksRowsProcessed: result.clicksRowsProcessed,
         rowsProcessed: result.rowsProcessed,
       }),
     );
@@ -60,4 +62,3 @@ async function main() {
 }
 
 main();
-

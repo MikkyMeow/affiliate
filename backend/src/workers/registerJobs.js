@@ -6,6 +6,7 @@ import {
 import {
   runDailyStatsRollup,
   updateConversionRollup,
+  updateClickRollup,
 } from '../services/stats/rollup.service.js';
 import {
   reserveAsyncEvent,
@@ -45,7 +46,7 @@ async function handleConversionCreatedJob(job, queueName) {
       conversionId,
       eventKey,
     });
-    rollupSkippedDuplicatesCounter.inc({ job_type: jobType });
+    rollupSkippedDuplicatesCounter.inc({ job_type: jobType, event_type: 'conversion' });
 
     return {
       conversionId,
@@ -71,12 +72,72 @@ async function handleConversionCreatedJob(job, queueName) {
       offerId: result.offerId,
       affiliateId: result.affiliateId,
     });
-    rollupUpdatesCounter.inc({ job_type: jobType });
+    rollupUpdatesCounter.inc({ job_type: jobType, event_type: 'conversion' });
 
     return result;
   } catch (error) {
     await releaseAsyncEvent(id);
-    rollupUpdateFailuresCounter.inc({ job_type: jobType });
+    rollupUpdateFailuresCounter.inc({ job_type: jobType, event_type: 'conversion' });
+    throw error;
+  }
+}
+
+async function handleClickCreatedJob(job, queueName) {
+  const clickId = job.data?.clickId;
+  const payload = {
+    clickId,
+    offerId: job.data?.offerId ?? null,
+    affiliateId: job.data?.affiliateId ?? null,
+    createdAt: job.data?.createdAt ?? null,
+  };
+
+  if (!clickId) {
+    throw new Error('clickId is required in click_created job payload');
+  }
+
+  const jobType = 'click_created';
+  const eventKey = `${jobType}:${clickId}`;
+  const { reserved, id } = await reserveAsyncEvent(eventKey, jobType);
+
+  if (!reserved) {
+    logStructured('click_rollup_job_deduplicated', {
+      queue: queueName,
+      jobId: job.id,
+      clickId,
+      eventKey,
+    });
+    rollupSkippedDuplicatesCounter.inc({ job_type: jobType, event_type: 'click' });
+
+    return {
+      clickId,
+      deduplicated: true,
+    };
+  }
+
+  logStructured('click_rollup_job_started', {
+    queue: queueName,
+    jobId: job.id,
+    clickId,
+    eventKey,
+  });
+
+  try {
+    const result = await updateClickRollup(payload);
+
+    logStructured('click_rollup_job_completed', {
+      queue: queueName,
+      jobId: job.id,
+      clickId,
+      date: result.date,
+      offerId: result.offerId,
+      affiliateId: result.affiliateId,
+    });
+    rollupUpdatesCounter.inc({ job_type: jobType, event_type: 'click' });
+
+    return result;
+  } catch (error) {
+    await releaseAsyncEvent(id);
+    rollupUpdateFailuresCounter.inc({ job_type: jobType, event_type: 'click' });
     throw error;
   }
 }
@@ -88,6 +149,16 @@ function registerWorkerJobs() {
 
     if (jobType === 'conversion_created') {
       const result = await handleConversionCreatedJob(job, queueName);
+
+      return {
+        handled: true,
+        type: jobType,
+        ...result,
+      };
+    }
+
+    if (jobType === 'click_created') {
+      const result = await handleClickCreatedJob(job, queueName);
 
       return {
         handled: true,
@@ -128,6 +199,8 @@ function registerWorkerJobs() {
       jobId: job.id,
       startDate: result.startDate,
       endDate: result.endDate,
+      conversionsRowsProcessed: result.conversionsRowsProcessed,
+      clicksRowsProcessed: result.clicksRowsProcessed,
       rowsProcessed: result.rowsProcessed,
     });
 
@@ -136,6 +209,8 @@ function registerWorkerJobs() {
       type: 'stats.rollup',
       startDate: result.startDate,
       endDate: result.endDate,
+      conversionsRowsProcessed: result.conversionsRowsProcessed,
+      clicksRowsProcessed: result.clicksRowsProcessed,
       rowsProcessed: result.rowsProcessed,
     };
   });

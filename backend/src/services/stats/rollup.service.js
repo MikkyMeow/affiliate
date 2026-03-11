@@ -1,9 +1,12 @@
 import {
   upsertConversionRollup,
+  upsertClickRollup,
   getDailyStatsTotals,
   incrementConversionRollup,
+  incrementClickRollup,
 } from '../../models/daily-stats.model.js';
 import { findConversionById } from '../../models/conversions.model.js';
+import { findByClickId } from '../../models/clicks.model.js';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -64,10 +67,18 @@ function resolveDateRange({ date, startDate, endDate } = {}) {
 export async function runDailyStatsRollup(params = {}) {
   const { startDate, endDate } = resolveDateRange(params);
 
-  const rollupResult = await upsertConversionRollup({ startDate, endDate });
+  const [conversionRollup, clickRollup] = await Promise.all([
+    upsertConversionRollup({ startDate, endDate }),
+    upsertClickRollup({ startDate, endDate }),
+  ]);
+
   return {
-    ...rollupResult,
-    type: 'conversions',
+    startDate,
+    endDate,
+    rowsProcessed:
+      Number(conversionRollup.rowsProcessed ?? 0) + Number(clickRollup.rowsProcessed ?? 0),
+    conversionsRowsProcessed: Number(conversionRollup.rowsProcessed ?? 0),
+    clicksRowsProcessed: Number(clickRollup.rowsProcessed ?? 0),
   };
 }
 
@@ -100,6 +111,67 @@ export async function updateConversionRollup(conversionId) {
     offerId: conversion.offerId,
     affiliateId: conversion.affiliateId,
     status: conversion.status,
+  };
+}
+
+function normalizeClickJobPayload(click) {
+  if (!click) {
+    return null;
+  }
+
+  const normalized = {
+    clickId: click.clickId ?? click.id ?? null,
+    offerId: click.offerId ?? null,
+    affiliateId: click.affiliateId ?? null,
+    createdAt: click.createdAt ?? null,
+  };
+
+  if (!normalized.clickId || !normalized.offerId || !normalized.affiliateId || !normalized.createdAt) {
+    return null;
+  }
+
+  return normalized;
+}
+
+export async function updateClickRollup(input) {
+  const normalizedInput = normalizeClickJobPayload(
+    typeof input === 'object' ? input : { clickId: input },
+  );
+
+  const clickId = normalizedInput?.clickId ?? (typeof input === 'string' ? input : input?.clickId);
+
+  if (!clickId) {
+    throw new Error('clickId is required for rollup update');
+  }
+
+  let click = normalizedInput;
+
+  if (!click) {
+    const clickFromDb = await findByClickId(clickId);
+
+    if (!clickFromDb) {
+      throw new Error(`Click ${clickId} not found`);
+    }
+
+    click = {
+      clickId: clickFromDb.clickId,
+      offerId: clickFromDb.offerId,
+      affiliateId: clickFromDb.affiliateId,
+      createdAt: clickFromDb.createdAt,
+    };
+  }
+
+  await incrementClickRollup({
+    date: click.createdAt,
+    offerId: click.offerId,
+    affiliateId: click.affiliateId,
+  });
+
+  return {
+    clickId: click.clickId ?? clickId,
+    date: click.createdAt,
+    offerId: click.offerId,
+    affiliateId: click.affiliateId,
   };
 }
 

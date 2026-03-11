@@ -7,6 +7,9 @@ import {
   getAffiliateForTracking,
   getOfferForTracking,
 } from './hot-lookup.service.js';
+import { dispatchAsyncJob } from '../async-jobs.service.js';
+import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
+import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
 
 function assertTrackingInput({ offerId, affiliateId }) {
   if (!offerId || typeof offerId !== 'string') {
@@ -104,12 +107,47 @@ export async function prepareClick(input) {
   };
 }
 
+async function publishClickCreatedJob(click) {
+  if (!click) {
+    return;
+  }
+
+  const jobType = 'click_created';
+  const payload = {
+    type: jobType,
+    clickId: click.clickId,
+    offerId: click.offerId,
+    affiliateId: click.affiliateId,
+    createdAt:
+      click.createdAt instanceof Date ? click.createdAt.toISOString() : click.createdAt ?? null,
+  };
+
+  try {
+    await dispatchAsyncJob(ASYNC_JOB_NAMES.POSTBACK_EVENT, payload);
+  } catch (error) {
+    queueJobEnqueueFailedCounter.inc({
+      queue_name: queueConfig.name,
+      job_type: jobType,
+    });
+    console.error(
+      JSON.stringify({
+        event: 'queue_enqueue_failed',
+        queue: queueConfig.name,
+        job_type: jobType,
+        click_id: click.clickId,
+        reason: error.message,
+      }),
+    );
+  }
+}
+
 export async function registerClick(input) {
   const prepared = await prepareClick(input);
   const { redirectUrl, ...clickPayload } = prepared;
 
   try {
-    await createClick(clickPayload);
+    const savedClick = await createClick(clickPayload);
+    await publishClickCreatedJob(savedClick);
   } catch (error) {
     if (error?.code === '23505') {
       throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {

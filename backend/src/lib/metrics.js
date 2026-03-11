@@ -88,19 +88,19 @@ const queueJobEnqueueFailedCounter = new client.Counter({
 const rollupUpdatesCounter = new client.Counter({
   name: 'rollup_updates_total',
   help: 'Number of rollup updates applied to aggregated stats',
-  labelNames: ['job_type'],
+  labelNames: ['job_type', 'event_type'],
 });
 
 const rollupUpdateFailuresCounter = new client.Counter({
   name: 'rollup_update_failures_total',
   help: 'Number of rollup update attempts that failed',
-  labelNames: ['job_type'],
+  labelNames: ['job_type', 'event_type'],
 });
 
 const rollupSkippedDuplicatesCounter = new client.Counter({
   name: 'rollup_skipped_duplicates_total',
   help: 'Number of rollup update attempts skipped due to duplicate detection',
-  labelNames: ['job_type'],
+  labelNames: ['job_type', 'event_type'],
 });
 
 register.registerMetric(httpRequestCounter);

@@ -82,6 +82,60 @@ function normalizePayoutValue(value) {
   return '0';
 }
 
+export async function upsertClickRollup({ startDate, endDate }) {
+  if (!startDate || !endDate) {
+    throw new Error('startDate and endDate are required for click rollup');
+  }
+
+  const result = await pool.query(
+    `
+      WITH params AS (
+        SELECT $1::date AS start_date, $2::date AS end_date
+      ),
+      rollup AS (
+        SELECT
+          DATE(c.created_at AT TIME ZONE 'UTC') AS rollup_date,
+          c.offer_id,
+          c.affiliate_id,
+          COUNT(*)::int AS clicks_count
+        FROM clicks c
+        CROSS JOIN params p
+        WHERE c.created_at >= p.start_date
+          AND c.created_at < p.end_date + INTERVAL '1 day'
+        GROUP BY rollup_date, c.offer_id, c.affiliate_id
+      )
+      INSERT INTO daily_stats (
+        date,
+        offer_id,
+        affiliate_id,
+        clicks_count,
+        created_at,
+        updated_at
+      )
+      SELECT
+        rollup_date,
+        offer_id,
+        affiliate_id,
+        clicks_count,
+        NOW(),
+        NOW()
+      FROM rollup
+      ON CONFLICT (date, offer_id, affiliate_id)
+      DO UPDATE
+      SET
+        clicks_count = EXCLUDED.clicks_count,
+        updated_at = NOW();
+    `,
+    [startDate, endDate],
+  );
+
+  return {
+    startDate,
+    endDate,
+    rowsProcessed: result.rowCount ?? 0,
+  };
+}
+
 export async function upsertConversionRollup({ startDate, endDate }) {
   if (!startDate || !endDate) {
     throw new Error('startDate and endDate are required for conversion rollup');
@@ -111,7 +165,6 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         date,
         offer_id,
         affiliate_id,
-        clicks_count,
         conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
@@ -123,7 +176,6 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         rollup_date,
         offer_id,
         affiliate_id,
-        0 AS clicks_count,
         conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
@@ -224,7 +276,6 @@ export async function incrementConversionRollup({
         date,
         offer_id,
         affiliate_id,
-        clicks_count,
         conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
@@ -236,7 +287,6 @@ export async function incrementConversionRollup({
         $1::date,
         $2,
         $3,
-        0,
         1,
         $4,
         $5,
@@ -256,5 +306,44 @@ export async function incrementConversionRollup({
         updated_at = NOW();
     `,
     [normalizedDate, offerId, affiliateId, approvedIncrement, rejectedIncrement, payoutIncrement],
+  );
+}
+
+export async function incrementClickRollup({ date, offerId, affiliateId }) {
+  if (!offerId) {
+    throw new Error('offerId is required for click rollup');
+  }
+
+  if (!affiliateId) {
+    throw new Error('affiliateId is required for click rollup');
+  }
+
+  const normalizedDate = toUtcDateString(date);
+
+  await pool.query(
+    `
+      INSERT INTO daily_stats (
+        date,
+        offer_id,
+        affiliate_id,
+        clicks_count,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        $1::date,
+        $2,
+        $3,
+        1,
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (date, offer_id, affiliate_id)
+      DO UPDATE
+      SET
+        clicks_count = daily_stats.clicks_count + EXCLUDED.clicks_count,
+        updated_at = NOW();
+    `,
+    [normalizedDate, offerId, affiliateId],
   );
 }
