@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/load-env.js';
 import { startAsyncWorker } from './workers/index.js';
 
 console.log('🚀 Launching async worker process...');

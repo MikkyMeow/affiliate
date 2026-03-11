@@ -5,7 +5,10 @@ function parseOptionalNumber(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-const asyncQueueName = process.env.ASYNC_JOBS_QUEUE || 'postback-events';
+const asyncQueueName =
+  process.env.ASYNC_JOBS_QUEUE ||
+  process.env.QUEUE_NAME ||
+  'postback-events';
 const queuePrefix = process.env.BULLMQ_PREFIX || 'affilate';
 const defaultJobAttempts = parseOptionalNumber(
   process.env.ASYNC_JOB_ATTEMPTS,

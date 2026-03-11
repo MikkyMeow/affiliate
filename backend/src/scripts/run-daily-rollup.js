@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/load-env.js';
 import pool from '../db.js';
 import { runDailyStatsRollup } from '../services/stats/rollup.service.js';
 

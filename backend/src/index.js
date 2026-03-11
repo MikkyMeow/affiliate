@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/load-env.js';
 import express from 'express';
 import cors from 'cors';
 import { ensureDatabaseSetup, verifyDatabaseConnection } from './db.js';
