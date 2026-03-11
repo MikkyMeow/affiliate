@@ -67,6 +67,18 @@ const trackingCacheMissesCounter = new client.Counter({
   labelNames: ['entity'],
 });
 
+const trackingCacheInvalidationsCounter = new client.Counter({
+  name: 'tracking_cache_invalidations_total',
+  help: 'Number of cache invalidations performed',
+  labelNames: ['entity'],
+});
+
+const trackingCacheInvalidationFailuresCounter = new client.Counter({
+  name: 'tracking_cache_invalidation_failures_total',
+  help: 'Number of cache invalidation attempts that failed',
+  labelNames: ['entity'],
+});
+
 const queueJobsProcessedCounter = new client.Counter({
   name: 'queue_jobs_processed_total',
   help: 'Number of async queue jobs processed successfully',
@@ -113,6 +125,8 @@ register.registerMetric(trackingPostbackErrorsCounter);
 register.registerMetric(trackingPostbackDuplicatesCounter);
 register.registerMetric(trackingCacheHitsCounter);
 register.registerMetric(trackingCacheMissesCounter);
+register.registerMetric(trackingCacheInvalidationsCounter);
+register.registerMetric(trackingCacheInvalidationFailuresCounter);
 register.registerMetric(queueJobsProcessedCounter);
 register.registerMetric(queueJobsFailedCounter);
 register.registerMetric(queueJobEnqueueFailedCounter);
@@ -132,6 +146,8 @@ export {
   trackingPostbackDuplicatesCounter,
   trackingCacheHitsCounter,
   trackingCacheMissesCounter,
+  trackingCacheInvalidationsCounter,
+  trackingCacheInvalidationFailuresCounter,
   queueJobsProcessedCounter,
   queueJobsFailedCounter,
   queueJobEnqueueFailedCounter,

@@ -8,6 +8,7 @@ import { findAdvertiserById } from '../models/advertiserModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { generatePostbackToken } from '../lib/generatePostbackToken.js';
+import { invalidateOfferCache } from './tracking/cache-invalidation.service.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -128,6 +129,8 @@ export async function updateOffer(id, dto) {
       offerId: id,
     });
   }
+
+  await invalidateOfferCache(id);
 
   return offer;
 }

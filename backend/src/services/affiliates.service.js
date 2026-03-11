@@ -8,6 +8,7 @@ import {
 } from '../models/affiliateModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
+import { invalidateAffiliateCache } from './tracking/cache-invalidation.service.js';
 
 function handleAffiliateDbConflict(error) {
   if (error?.code === '23505') {
@@ -55,6 +56,8 @@ export async function updateAffiliate(id, dto) {
         affiliateId: id,
       });
     }
+
+    await invalidateAffiliateCache(id);
 
     return affiliate;
   } catch (error) {
