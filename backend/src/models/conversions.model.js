@@ -57,6 +57,19 @@ export async function findByClickId(clickId) {
   return result.rows[0] ?? null;
 }
 
+export async function findConversionById(id) {
+  const result = await pool.query(
+    `
+      SELECT ${conversionFields}
+      FROM conversions
+      WHERE id = $1;
+    `,
+    [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function listConversions(
   { offerId, affiliateId, status } = {},
   { limit = 20, offset = 0 } = {},

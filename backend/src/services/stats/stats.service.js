@@ -1,8 +1,6 @@
-import { listClicks as listClicksModel, getClickTotals } from '../../models/clicks.model.js';
-import {
-  listConversions as listConversionsModel,
-  getConversionTotals,
-} from '../../models/conversions.model.js';
+import { listClicks as listClicksModel } from '../../models/clicks.model.js';
+import { listConversions as listConversionsModel } from '../../models/conversions.model.js';
+import { getAggregatedSummary } from './rollup.service.js';
 
 export async function listClicks(filter, pagination) {
   return listClicksModel(filter, pagination);
@@ -13,16 +11,23 @@ export async function listConversions(filter, pagination) {
 }
 
 export async function getSummary(filter = {}) {
-  const [clicks, conversions] = await Promise.all([
-    getClickTotals(filter),
-    getConversionTotals(filter),
-  ]);
+  const {
+    clicksTotal = 0,
+    conversionsTotal = 0,
+    approvedConversionsTotal = 0,
+    rejectedConversionsTotal = 0,
+    payoutTotalRub = 0,
+  } = await getAggregatedSummary(filter);
 
   return {
-    clicksTotal: clicks.total ?? 0,
-    conversionsTotal: conversions.total ?? 0,
-    approvedConversionsTotal: conversions.approved ?? 0,
-    rejectedConversionsTotal: conversions.rejected ?? 0,
-    payoutTotal: conversions.totalPayoutRub ?? 0,
+    clicksTotal,
+    conversionsTotal,
+    approvedConversionsTotal,
+    rejectedConversionsTotal,
+    payoutTotal: payoutTotalRub,
   };
+}
+
+export async function getDailyRollupSummary(filter = {}) {
+  return getAggregatedSummary(filter);
 }

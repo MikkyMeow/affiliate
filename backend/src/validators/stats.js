@@ -4,6 +4,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 const conversionStatuses = new Set(['approved', 'rejected']);
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 function buildError(field, message) {
   return { field, message };
@@ -53,6 +54,29 @@ function validateUuid(value, field) {
     return {
       value: undefined,
       errors: [buildError(field, 'Некорректный UUID')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateDate(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Дата должна быть строкой')],
+    };
+  }
+
+  const normalized = value.trim();
+  if (!dateRegex.test(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Дата должна быть в формате YYYY-MM-DD')],
     };
   }
 
@@ -201,6 +225,70 @@ export function validateStatsSummaryFilters(payload = {}) {
   const { filter, errors } = buildListValidation(payload, {
     includePagination: false,
   });
+
+  return { filter, errors };
+}
+
+function resolveDateRange(dateFrom, dateTo) {
+  const todayUtc = new Date().toISOString().slice(0, 10);
+
+  if (!dateFrom && !dateTo) {
+    return { dateFrom: todayUtc, dateTo: todayUtc };
+  }
+
+  if (dateFrom && !dateTo) {
+    return { dateFrom, dateTo: dateFrom };
+  }
+
+  if (!dateFrom && dateTo) {
+    return { dateFrom: dateTo, dateTo };
+  }
+
+  return { dateFrom, dateTo };
+}
+
+export function validateDailySummaryFilters(payload = {}) {
+  const errors = [];
+  const filter = {};
+
+  const { value: offerId, errors: offerErrors } = validateUuid(
+    payload.offerId,
+    'offerId',
+  );
+  errors.push(...offerErrors);
+  if (offerId) {
+    filter.offerId = offerId;
+  }
+
+  const { value: affiliateId, errors: affiliateErrors } = validateUuid(
+    payload.affiliateId,
+    'affiliateId',
+  );
+  errors.push(...affiliateErrors);
+  if (affiliateId) {
+    filter.affiliateId = affiliateId;
+  }
+
+  const { value: dateFromValue, errors: dateFromErrors } = validateDate(
+    payload.dateFrom,
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+
+  const { value: dateToValue, errors: dateToErrors } = validateDate(
+    payload.dateTo,
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+
+  const { dateFrom, dateTo } = resolveDateRange(dateFromValue, dateToValue);
+
+  if (dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+
+  filter.dateFrom = dateFrom;
+  filter.dateTo = dateTo;
 
   return { filter, errors };
 }
