@@ -75,6 +75,18 @@ services:
       - postgres
       - redis
 
+  web:
+    build:
+      context: ./frontend
+    container_name: affilate-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE: https://staging.mikilead.ru
+    depends_on:
+      - api
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:alpine
     container_name: affilate-nginx
