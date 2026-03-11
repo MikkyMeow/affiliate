@@ -213,12 +213,53 @@ function buildListValidation(
   return { filter, pagination: includePagination ? pagination : undefined, errors };
 }
 
+function validatePaginationOnly(payload = {}) {
+  const errors = [];
+  const pagination = {};
+
+  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
+  errors.push(...limitErrors);
+  if (typeof limit === 'number') {
+    pagination.limit = limit;
+  }
+
+  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
+  errors.push(...offsetErrors);
+  if (typeof offset === 'number') {
+    pagination.offset = offset;
+  }
+
+  return { pagination, errors };
+}
+
 export function validateClicksListFilters(payload = {}) {
   return buildListValidation(payload);
 }
 
 export function validateConversionsListFilters(payload = {}) {
   return buildListValidation(payload, { allowStatus: true });
+}
+
+export function validatePartnerClicksQuery(payload = {}) {
+  return validatePaginationOnly(payload);
+}
+
+export function validatePartnerConversionsQuery(payload = {}) {
+  const errors = [];
+  const filter = {};
+
+  const { pagination, errors: paginationErrors } = validatePaginationOnly(payload);
+  errors.push(...paginationErrors);
+
+  if (Object.hasOwn(payload, 'status')) {
+    const { value: status, errors: statusErrors } = validateStatus(payload.status);
+    errors.push(...statusErrors);
+    if (status) {
+      filter.status = status;
+    }
+  }
+
+  return { filter, pagination, errors };
 }
 
 export function validateStatsSummaryFilters(payload = {}) {

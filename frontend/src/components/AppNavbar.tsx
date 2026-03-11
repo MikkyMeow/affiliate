@@ -18,6 +18,9 @@ const ADMIN_LINKS = [
 const AFFILIATE_LINKS = [
   { href: '/', label: 'Главная' },
   { href: '/partner', label: 'Кабинет партнера' },
+  { href: '/partner/stats', label: 'Статистика' },
+  { href: '/partner/clicks', label: 'Клики' },
+  { href: '/partner/conversions', label: 'Конверсии' },
 ];
 
 const LINK_STYLES =

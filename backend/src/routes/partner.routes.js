@@ -8,7 +8,13 @@ import {
   getPartnerProfile,
   getPartnerStatsSummary,
   listPartnerOffers,
+  listPartnerClicks,
+  listPartnerConversions,
 } from '../services/partner.service.js';
+import {
+  validatePartnerClicksQuery,
+  validatePartnerConversionsQuery,
+} from '../validators/stats.js';
 
 const router = express.Router();
 
@@ -41,6 +47,71 @@ router.get(
   asyncHandler(async (req, res) => {
     const stats = await getPartnerStatsSummary(req.user.userId);
     return sendSuccess(res, stats);
+  }),
+);
+
+router.get(
+  '/clicks',
+  asyncHandler(async (req, res) => {
+    const { pagination, errors } = validatePartnerClicksQuery(req.query ?? {});
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const limit = pagination.limit ?? 20;
+    const offset = pagination.offset ?? 0;
+    const { items, total } = await listPartnerClicks(req.user.userId, {
+      limit,
+      offset,
+    });
+
+    return sendSuccess(res, items, {
+      meta: {
+        total,
+        limit,
+        offset,
+      },
+    });
+  }),
+);
+
+router.get(
+  '/conversions',
+  asyncHandler(async (req, res) => {
+    const { filter, pagination, errors } = validatePartnerConversionsQuery(
+      req.query ?? {},
+    );
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const limit = pagination.limit ?? 20;
+    const offset = pagination.offset ?? 0;
+    const { items, total } = await listPartnerConversions(
+      req.user.userId,
+      filter,
+      { limit, offset },
+    );
+
+    return sendSuccess(res, items, {
+      meta: {
+        total,
+        limit,
+        offset,
+      },
+    });
   }),
 );
 

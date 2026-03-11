@@ -2,7 +2,11 @@ import { findUserById } from '../models/userModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { requireAffiliateForUser } from './affiliates.service.js';
-import { getSummary } from './stats/stats.service.js';
+import {
+  getSummary,
+  listClicks,
+  listConversions,
+} from './stats/stats.service.js';
 import { listOffers } from './offers.service.js';
 
 export async function getPartnerProfile(userId) {
@@ -48,4 +52,16 @@ export async function listPartnerOffers() {
   );
 
   return items;
+}
+
+export async function listPartnerClicks(userId, pagination) {
+  const affiliate = await requireAffiliateForUser(userId);
+
+  return listClicks({ affiliateId: affiliate.id }, pagination);
+}
+
+export async function listPartnerConversions(userId, filter, pagination) {
+  const affiliate = await requireAffiliateForUser(userId);
+
+  return listConversions({ affiliateId: affiliate.id, ...filter }, pagination);
 }

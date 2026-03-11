@@ -6,6 +6,17 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { TRACKING_BASE_URL } from '@/lib/tracking';
+import {
+  PARTNER_STATS_CARDS,
+  type PartnerStatsSummary,
+} from './stats-config';
+
+const PARTNER_NAV_LINKS = [
+  { href: '/partner', label: 'Офферы' },
+  { href: '/partner/stats', label: 'Статистика' },
+  { href: '/partner/clicks', label: 'Клики' },
+  { href: '/partner/conversions', label: 'Конверсии' },
+];
 
 type PartnerProfile = {
   user: {
@@ -26,14 +37,6 @@ type PartnerProfile = {
   };
 };
 
-type StatsSummary = {
-  clicksTotal: number;
-  conversionsTotal: number;
-  approvedConversionsTotal: number;
-  rejectedConversionsTotal: number;
-  payoutTotal: number;
-};
-
 type PartnerOffer = {
   id: string;
   title: string;
@@ -43,52 +46,11 @@ type PartnerOffer = {
   status: 'active' | 'inactive';
 };
 
-const STATS_CARDS: Array<{
-  key: keyof StatsSummary;
-  label: string;
-  hint: string;
-  accent: string;
-  currency?: boolean;
-}> = [
-  {
-    key: 'clicksTotal',
-    label: 'Клики',
-    hint: 'Все переходы по вашим ссылкам',
-    accent: 'from-blue-500/10 to-blue-500/5 text-blue-900 dark:text-blue-100',
-  },
-  {
-    key: 'conversionsTotal',
-    label: 'Конверсии',
-    hint: 'Все заявки и заказы',
-    accent: 'from-indigo-500/10 to-indigo-500/5 text-indigo-900 dark:text-indigo-100',
-  },
-  {
-    key: 'approvedConversionsTotal',
-    label: 'Одобренные',
-    hint: 'Статус Approved',
-    accent:
-      'from-emerald-500/10 to-emerald-500/5 text-emerald-900 dark:text-emerald-100',
-  },
-  {
-    key: 'rejectedConversionsTotal',
-    label: 'Отклонённые',
-    hint: 'Статус Rejected',
-    accent: 'from-rose-500/10 to-rose-500/5 text-rose-900 dark:text-rose-100',
-  },
-  {
-    key: 'payoutTotal',
-    label: 'Выплаты, ₽',
-    hint: 'Сумма ожидаемой выплаты',
-    accent: 'from-amber-500/10 to-amber-500/5 text-amber-900 dark:text-amber-100',
-    currency: true,
-  },
-];
-
 export default function PartnerDashboardPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
-  const [stats, setStats] = useState<StatsSummary | null>(null);
+  const [stats, setStats] = useState<PartnerStatsSummary | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -314,6 +276,18 @@ export default function PartnerDashboardPage() {
         </div>
       </div>
 
+      <div className="mb-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        {PARTNER_NAV_LINKS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-700"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
       {profileError && (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
           Не удалось загрузить профиль: {profileError}
@@ -401,7 +375,7 @@ export default function PartnerDashboardPage() {
           )}
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {STATS_CARDS.map((card) => {
+          {PARTNER_STATS_CARDS.map((card) => {
             const value = stats ? stats[card.key] : 0;
             const displayValue = card.currency
               ? currencyFormatter.format(value)
