@@ -17,6 +17,13 @@ import {
   clickRateLimiter,
   postbackRateLimiter,
 } from '../middleware/rateLimit.js';
+import {
+  trackingClickRequestsCounter,
+  trackingClickErrorsCounter,
+  trackingPostbackRequestsCounter,
+  trackingPostbackErrorsCounter,
+  trackingPostbackDuplicatesCounter,
+} from '../lib/metrics.js';
 
 const router = express.Router();
 
@@ -61,6 +68,7 @@ function extractPostbackClickId(payload) {
 
 router.get('/click', clickRateLimiter, async (req, res, next) => {
   const startedAt = Date.now();
+  trackingClickRequestsCounter.inc();
   const clickPayload = {
     offerId: extractQueryParam(req.query.offerId),
     affiliateId: extractQueryParam(req.query.affiliateId),
@@ -90,6 +98,7 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
   const validationResult = validateTrackingQuery(clickPayload);
 
   if (!validationResult.ok) {
+    trackingClickErrorsCounter.inc({ type: 'validation_error' });
     logClickEvent('validation_error');
     return res.status(400).json({
       error: validationResult.message,
@@ -104,6 +113,7 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
     return res.redirect(302, redirectUrl);
   } catch (error) {
     if (error instanceof ApiError) {
+      trackingClickErrorsCounter.inc({ type: 'api_error' });
       logClickEvent('api_error');
       return res.status(error.status ?? 500).json({
         error: error.message,
@@ -112,6 +122,7 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       });
     }
 
+    trackingClickErrorsCounter.inc({ type: 'unexpected_error' });
     logClickEvent('error');
     return next(error);
   }
@@ -121,6 +132,7 @@ router.post(
   '/postback',
   postbackRateLimiter,
   asyncHandler(async (req, res) => {
+    trackingPostbackRequestsCounter.inc();
     const payload = resolvePostbackPayload(req.body);
     const rawClickId = extractPostbackClickId(payload);
     const { dto, errors } = validatePostbackParams(payload);
@@ -131,21 +143,41 @@ router.post(
         payload,
         clickId: rawClickId,
       });
+      trackingPostbackErrorsCounter.inc({ type: 'validation_error' });
 
       throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
         errors,
       });
     }
 
-    const conversion = await registerConversion(dto, {
-      requestId: req.id ?? null,
-      payload,
-    });
+    try {
+      const conversion = await registerConversion(dto, {
+        requestId: req.id ?? null,
+        payload,
+      });
 
-    return sendSuccess(res, {
-      clickId: conversion.clickId,
-      status: conversion.status,
-    });
+      return sendSuccess(res, {
+        clickId: conversion.clickId,
+        status: conversion.status,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const errorType =
+          error.code === ERROR_CODES.DUPLICATE_CONVERSION
+            ? 'duplicate'
+            : 'api_error';
+
+        trackingPostbackErrorsCounter.inc({ type: errorType });
+
+        if (errorType === 'duplicate') {
+          trackingPostbackDuplicatesCounter.inc();
+        }
+      } else {
+        trackingPostbackErrorsCounter.inc({ type: 'unexpected_error' });
+      }
+
+      throw error;
+    }
   }),
 );
 

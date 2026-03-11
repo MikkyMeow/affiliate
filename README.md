@@ -14,9 +14,9 @@
    cd backend && npm install
    cd ../frontend && npm install
    ```
-2. **Поднять PostgreSQL**
+2. **Поднять PostgreSQL и Redis**
    ```bash
-   docker compose up -d postgres
+   docker compose up -d postgres redis
    ```
 3. **Настроить переменные окружения**
    ```bash
@@ -36,7 +36,13 @@
    Сервер стартует на `http://localhost:4000`. Проверка БД: `GET http://localhost:4000/api/v1/health`.
    При запуске backend автоматически применяет все новые миграции БД через `node-pg-migrate`.
 
-2. **Frontend**
+2. **Async worker**
+   ```bash
+   npm run worker --workspace backend
+   ```
+   Воркер слушает очередь BullMQ в Redis и выполняет любые тяжёлые задачи вне HTTP-запросов. Запускай его в отдельном терминале, чтобы фоновые задания обрабатывались параллельно с HTTP-сервером.
+
+3. **Frontend**
    ```bash
    cd frontend
    npm run dev

@@ -3,6 +3,38 @@ import { createConversion, findByClickId } from '../../models/conversions.model.
 import { findOfferForPostback } from '../../models/offers.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
+import { dispatchAsyncJob } from '../async-jobs.service.js';
+import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
+import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
+
+async function publishConversionCreatedJob(conversion) {
+  const jobType = 'conversion_created';
+  const payload = {
+    type: jobType,
+    conversionId: conversion.id,
+    clickId: conversion.clickId,
+    offerId: conversion.offerId,
+    affiliateId: conversion.affiliateId,
+  };
+
+  try {
+    await dispatchAsyncJob(ASYNC_JOB_NAMES.POSTBACK_EVENT, payload);
+  } catch (error) {
+    queueJobEnqueueFailedCounter.inc({
+      queue_name: queueConfig.name,
+      job_type: jobType,
+    });
+    console.error(
+      JSON.stringify({
+        event: 'queue_enqueue_failed',
+        queue: queueConfig.name,
+        job_type: jobType,
+        conversion_id: conversion.id,
+        reason: error.message,
+      }),
+    );
+  }
+}
 import { getClickByClickId } from '../tracking/clicks.service.js';
 import {
   createPostbackLog,
@@ -356,6 +388,8 @@ export async function registerConversion(
         affiliateId: conversion.affiliateId,
         clickId: conversion.clickId,
       });
+
+      await publishConversionCreatedJob(conversion);
 
       return conversion;
     } catch (error) {

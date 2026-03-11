@@ -1,6 +1,10 @@
 import { redisClient } from '../../lib/redis.js';
 import { findOfferById } from '../../models/offers.model.js';
 import { findAffiliateById } from '../../models/affiliateModel.js';
+import {
+  trackingCacheHitsCounter,
+  trackingCacheMissesCounter,
+} from '../../lib/metrics.js';
 
 const DEFAULT_CACHE_TTL_SECONDS = 120;
 
@@ -70,9 +74,11 @@ async function readFromCache(entityType, id) {
   try {
     const raw = await redisClient.get(getCacheKey(entityType, id));
     if (!raw) {
+      trackingCacheMissesCounter.inc({ entity: entityType });
       return null;
     }
 
+    trackingCacheHitsCounter.inc({ entity: entityType });
     return JSON.parse(raw);
   } catch (error) {
     logCacheIssue(entityType, error);

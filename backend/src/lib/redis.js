@@ -1,11 +1,8 @@
 import { createClient } from 'redis';
-
-const redisHost = process.env.REDIS_HOST || '127.0.0.1';
-const redisPort = Number(process.env.REDIS_PORT) || 6379;
-const redisUrl = process.env.REDIS_URL || `redis://${redisHost}:${redisPort}`;
+import { redisConfig } from './redis.config.js';
 
 const redisOptions = {
-  url: redisUrl,
+  url: redisConfig.url,
 };
 
 // if (process.env.REDIS_USERNAME) {
@@ -54,6 +51,22 @@ export async function initRedis() {
   }
 
   return redisClient;
+}
+
+export async function verifyRedisConnection() {
+  if (!redisClient.isOpen) {
+    throw new Error('Redis connection is not open');
+  }
+
+  try {
+    await redisClient.ping();
+  } catch (error) {
+    throw new Error(`Redis ping failed: ${error.message}`);
+  }
+}
+
+export function isRedisRequired() {
+  return redisConfig.required;
 }
 
 export { redisClient };

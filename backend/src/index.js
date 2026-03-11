@@ -21,13 +21,16 @@ import adminStatsRouter from './routes/admin-stats.routes.js';
 import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
 import usersRouter from './routes/users.routes.js';
-import { initRedis } from './lib/redis.js';
+import { initRedis, verifyRedisConnection, isRedisRequired } from './lib/redis.js';
+import { register as metricsRegister } from './lib/metrics.js';
+import { requestMetrics } from './middleware/requestMetrics.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 const API_PREFIX = '/api/v1';
 
 app.use(requestId);
+app.use(requestMetrics);
 app.use(requestLogger);
 app.use(
   cors({
@@ -35,6 +38,44 @@ app.use(
   }),
 );
 app.use(express.json());
+
+app.get(
+  '/metrics',
+  asyncHandler(async (req, res) => {
+    res.set('Content-Type', metricsRegister.contentType);
+    res.send(await metricsRegister.metrics());
+  }),
+);
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    await verifyDatabaseConnection();
+  } catch (error) {
+    return res.status(503).json({
+      status: 'unavailable',
+      dependency: 'postgres',
+      reason: error.message,
+    });
+  }
+
+  if (isRedisRequired()) {
+    try {
+      await verifyRedisConnection();
+    } catch (error) {
+      return res.status(503).json({
+        status: 'unavailable',
+        dependency: 'redis',
+        reason: error.message,
+      });
+    }
+  }
+
+  return res.json({ status: 'ready' });
+});
 
 app.get(`${API_PREFIX}/message`, (req, res) =>
   sendSuccess(res, { message: 'Привет из backend!' }),
@@ -51,20 +92,6 @@ app.use(`${API_PREFIX}/stats`, statsRouter);
 app.use(`${API_PREFIX}/partner`, partnerRouter);
 app.use(`${API_PREFIX}/users`, usersRouter);
 app.use('/track', trackingRouter);
-
-app.get(
-  `${API_PREFIX}/health`,
-  asyncHandler(async (req, res) => {
-    try {
-      await verifyDatabaseConnection();
-      sendSuccess(res, { status: 'ok' });
-    } catch (error) {
-      throw new ApiError(ERROR_CODES.DB_UNAVAILABLE, 500, 'DB unavailable', {
-        reason: error.message,
-      });
-    }
-  }),
-);
 
 app.get(
   `${API_PREFIX}/profile`,
