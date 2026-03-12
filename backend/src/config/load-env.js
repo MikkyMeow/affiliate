@@ -5,11 +5,8 @@ import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..', '..');
-
-const envFileName =
-  process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-const envPath = path.resolve(projectRoot, envFileName);
+const repoRoot = path.resolve(__dirname, '..', '..', '..');
+const envPath = path.resolve(repoRoot, '.env');
 
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });

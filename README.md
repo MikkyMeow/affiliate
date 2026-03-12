@@ -20,14 +20,11 @@
    ```
 3. **Настроить переменные окружения**
    ```bash
-   cp backend/.env.local.example backend/.env.local
-   cp backend/.env.production.example backend/.env.production
-   # при необходимости скорректируй креды/порт и JWT секрет
-   cp frontend/.env.local.example frontend/.env.local
-   # можно поменять NEXT_PUBLIC_API_BASE (указывает полный URL до /api/v1)
+   cp .env.example .env
    ```
-   Backend и связанные CLI-скрипты автоматически загружают `backend/.env.local`
-   (или `backend/.env.production`, если запускать с `NODE_ENV=production`).
+   Отредактируй `.env`: блоки `DB_*`, Redis и JWT используются backend/воркером,
+   а `NEXT_PUBLIC_*` нужны Next.js (client-side). Backend, CLI-скрипты и фронтенд
+   автоматически загружают один и тот же файл из корня репозитория.
 
 ## Запуск сервисов
 
@@ -69,9 +66,9 @@ Backend использует `node-pg-migrate` и хранит миграции 
 - Создать новую миграцию:  
   `npm run migrate:create --workspace backend -- add_new_table`
 
-CLI подхватывает параметры подключения из `backend/.env.local` (или `DATABASE_URL`).
-Запускай с `NODE_ENV=production`, чтобы считывать `backend/.env.production`. После
-создания миграции не забудь заполнить `up`/`down` функции в файле.
+CLI подхватывает параметры подключения из `.env` (или использует `DATABASE_URL`).
+При необходимости укажи `NODE_ENV=production`, чтобы загружать боевые креды.
+После создания миграции не забудь заполнить `up`/`down` функции в файле.
 
 ## Следующие шаги
 
