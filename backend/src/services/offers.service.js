@@ -93,8 +93,8 @@ export async function createOffer(dto) {
   });
 }
 
-export async function listOffers(filter, pagination) {
-  return listOffersModel(filter, pagination);
+export async function listOffers(filter, pagination, options = {}) {
+  return listOffersModel(filter, pagination, options);
 }
 
 export async function getOfferById(id) {

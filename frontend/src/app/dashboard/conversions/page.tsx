@@ -27,6 +27,12 @@ type ConversionsMeta = {
   offset?: number | null;
 } | null;
 
+type OfferSecret = {
+  id: string;
+  title: string;
+  postbackToken?: string | null;
+};
+
 const PAGE_SIZE = 20;
 
 const STATUS_STYLES: Record<string, string> = {
@@ -56,6 +62,10 @@ export default function ConversionsPage() {
   const [postbackMessage, setPostbackMessage] = useState<string | null>(null);
   const [postbackError, setPostbackError] = useState<string | null>(null);
   const [postbackSignature, setPostbackSignature] = useState<string | null>(null);
+  const [offerTokens, setOfferTokens] = useState<OfferSecret[]>([]);
+  const [offerTokensLoading, setOfferTokensLoading] = useState(false);
+  const [offerTokensError, setOfferTokensError] = useState<string | null>(null);
+  const [copiedTokenOfferId, setCopiedTokenOfferId] = useState<string | null>(null);
 
   const pageParam = searchParams?.get('page') ?? '1';
   const parsed = Number.parseInt(pageParam, 10);
@@ -150,6 +160,52 @@ export default function ConversionsPage() {
       cancelled = true;
     };
   }, [accessToken, authLoading, offset]);
+
+  useEffect(() => {
+    if (authLoading || !accessToken || user?.role !== 'admin') {
+      return;
+    }
+
+    let cancelled = false;
+    setOfferTokensLoading(true);
+    setOfferTokensError(null);
+
+    const params = new URLSearchParams({
+      limit: '100',
+      offset: '0',
+      includePostbackToken: 'true',
+    });
+
+    apiFetch<OfferSecret[]>(`/offers?${params.toString()}`, {
+      token: accessToken,
+    })
+      .then((items) => {
+        if (cancelled) {
+          return;
+        }
+        setOfferTokens(items);
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+        const apiError = fetchError as ApiError;
+        setOfferTokens([]);
+        setOfferTokensError(
+          apiError.message ?? 'Не удалось загрузить токены офферов',
+        );
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+        setOfferTokensLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, user?.role]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
@@ -321,6 +377,43 @@ export default function ConversionsPage() {
       postbackToken,
     ],
   );
+
+  const handleUseOfferToken = useCallback((token?: string | null) => {
+    if (!token) {
+      return;
+    }
+    setPostbackToken(token);
+  }, []);
+
+  const handleCopyOfferToken = useCallback(async (token: string | null | undefined, offerId: string) => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(token);
+      } else if (typeof document !== 'undefined') {
+        const temp = document.createElement('textarea');
+        temp.value = token;
+        temp.style.position = 'fixed';
+        temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.focus();
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+      }
+
+      setCopiedTokenOfferId(offerId);
+      setTimeout(() => {
+        setCopiedTokenOfferId((current) => (current === offerId ? null : current));
+      }, 2000);
+    } catch (copyError) {
+      console.warn('Не удалось скопировать токен оффера', copyError);
+      setCopiedTokenOfferId(null);
+    }
+  }, []);
 
   if (authLoading) {
     return (
@@ -517,6 +610,69 @@ export default function ConversionsPage() {
             </p>
           </div>
         </form>
+
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Секреты офферов
+          </p>
+          <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+            Эти токены нужны, чтобы эмулировать постбэки. Используйте кнопки ниже, чтобы
+            подставить или скопировать нужный секрет.
+          </p>
+          {offerTokensLoading ? (
+            <p className="mt-4 text-xs text-zinc-500">Загружаем токены…</p>
+          ) : offerTokensError ? (
+            <div className="mt-4">
+              <InlineAlert variant="error" title="Ошибка загрузки">
+                <p>{offerTokensError}</p>
+              </InlineAlert>
+            </div>
+          ) : offerTokens.length === 0 ? (
+            <p className="mt-4 text-xs text-zinc-500">Нет доступных офферов для отображения токенов.</p>
+          ) : (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {offerTokens.map((offer) => {
+                const hasToken = Boolean(offer.postbackToken);
+                return (
+                  <div
+                    key={offer.id}
+                    className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      {offer.title}
+                    </p>
+                    <p className="mt-2 text-xs uppercase tracking-wide text-zinc-500">
+                      Token
+                    </p>
+                    <code className="mt-1 block break-all rounded-lg bg-zinc-100 px-2 py-1 text-xs text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                      {offer.postbackToken ?? '—'}
+                    </code>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleUseOfferToken(offer.postbackToken)}
+                        disabled={!hasToken}
+                        className="rounded-full border border-zinc-300 px-3 py-1 font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        Подставить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopyOfferToken(offer.postbackToken, offer.id)
+                        }
+                        disabled={!hasToken}
+                        className="rounded-full border border-zinc-300 px-3 py-1 font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        {copiedTokenOfferId === offer.id ? 'Скопировано' : 'Копировать'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

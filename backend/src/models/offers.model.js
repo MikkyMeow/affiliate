@@ -11,6 +11,18 @@ const offerFields = `
   updated_at AS "updatedAt"
 `;
 
+const offerFieldsWithPostbackToken = `
+  id,
+  title,
+  advertiser_id AS "advertiserId",
+  target_url AS "targetUrl",
+  payout_rub AS "payoutRub",
+  status,
+  created_at AS "createdAt",
+  updated_at AS "updatedAt",
+  postback_token AS "postbackToken"
+`;
+
 const offerPostbackFields = `
   id,
   payout_rub AS "payoutRub",
@@ -49,9 +61,11 @@ export async function createOffer({
 export async function listOffers(
   { status, advertiserId } = {},
   { limit = 20, offset = 0 } = {},
+  { includePostbackToken = false } = {},
 ) {
   const params = [];
   const conditions = [];
+  const fields = includePostbackToken ? offerFieldsWithPostbackToken : offerFields;
 
   if (status) {
     params.push(status);
@@ -76,7 +90,7 @@ export async function listOffers(
 
   const result = await pool.query(
     `
-      SELECT ${offerFields}
+      SELECT ${fields}
       FROM offers
       ${whereClause}
       ORDER BY created_at DESC

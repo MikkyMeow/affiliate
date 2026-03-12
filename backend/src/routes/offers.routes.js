@@ -18,6 +18,30 @@ import {
 
 const router = express.Router();
 
+function parseBooleanQuery(value) {
+  if (Array.isArray(value)) {
+    return value.some((entry) => parseBooleanQuery(entry));
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return false;
+}
+
 router.use(authenticate);
 router.use(authorizeRole('admin'));
 
@@ -54,7 +78,13 @@ router.get(
       );
     }
 
-    const { items, total } = await listOffers(filter, pagination);
+    const includePostbackToken = parseBooleanQuery(
+      req.query?.includePostbackToken,
+    );
+
+    const { items, total } = await listOffers(filter, pagination, {
+      includePostbackToken,
+    });
     return sendSuccess(res, items, {
       meta: {
         total,
