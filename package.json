@@ -1,5 +1,5 @@
 {
-  "name": "affilate",
+  "name": "affiliate",
   "private": true,
   "workspaces": [
     "backend",

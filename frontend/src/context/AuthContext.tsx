@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -7,15 +7,15 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { apiFetch, type ApiError } from '@/lib/api';
+} from "react";
+import { apiFetch, type ApiError } from "@/lib/api";
 
 export type AuthUser = {
   id: string;
   email: string;
   displayName?: string | null;
   createdAt?: string;
-  role: 'admin' | 'affiliate';
+  role: "admin" | "affiliate";
   affiliateId?: string | null;
 };
 
@@ -34,8 +34,8 @@ type AuthContextValue = {
   refreshProfile(): Promise<void>;
 };
 
-const ACCESS_TOKEN_KEY = 'affilate_access_token';
-const REFRESH_TOKEN_KEY = 'affilate_refresh_token';
+const ACCESS_TOKEN_KEY = "affiliate_access_token";
+const REFRESH_TOKEN_KEY = "affiliate_refresh_token";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(access);
       setRefreshToken(refresh);
 
-      if (typeof window === 'undefined') {
+      if (typeof window === "undefined") {
         return;
       }
 
@@ -74,15 +74,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (tokenOverride?: string | null) => {
       const tokenToUse = tokenOverride ?? refreshToken;
       if (!tokenToUse) {
-        throw new Error('Нет refresh токена');
+        throw new Error("Нет refresh токена");
       }
 
       const data = await apiFetch<{
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/auth/refresh', {
-        method: 'POST',
+      }>("/auth/refresh", {
+        method: "POST",
         body: JSON.stringify({ refreshToken: tokenToUse }),
       });
 
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const attemptFetch = async (token: string, allowRetry: boolean) => {
         try {
-          const data = await apiFetch<{ user: AuthUser }>('/auth/me', {
+          const data = await apiFetch<{ user: AuthUser }>("/auth/me", {
             token,
           });
           setUser(data.user);
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await attemptFetch(newToken, false);
               return;
             } catch (refreshError) {
-              console.warn('Refresh token invalid', refreshError);
+              console.warn("Refresh token invalid", refreshError);
             }
           }
 
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initialize = async () => {
       await Promise.resolve();
 
-      if (typeof window === 'undefined') {
+      if (typeof window === "undefined") {
         settleLoading();
         return;
       }
@@ -195,8 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/auth/login', {
-        method: 'POST',
+      }>("/auth/login", {
+        method: "POST",
         body: JSON.stringify(credentials),
       });
 
@@ -212,8 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: string;
         refreshToken: string;
         user: AuthUser;
-      }>('/auth/register', {
-        method: 'POST',
+      }>("/auth/register", {
+        method: "POST",
         body: JSON.stringify(payload),
       });
 
@@ -229,11 +229,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
 
     if (currentRefresh) {
-      void apiFetch('/auth/logout', {
-        method: 'POST',
+      void apiFetch("/auth/logout", {
+        method: "POST",
         body: JSON.stringify({ refreshToken: currentRefresh }),
       }).catch((error) => {
-        console.warn('Failed to revoke refresh token', error);
+        console.warn("Failed to revoke refresh token", error);
       });
     }
   }, [persistTokens, refreshToken]);
@@ -253,7 +253,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       refreshProfile,
     }),
-    [user, accessToken, refreshToken, loading, login, register, logout, refreshProfile],
+    [
+      user,
+      accessToken,
+      refreshToken,
+      loading,
+      login,
+      register,
+      logout,
+      refreshProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -262,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 }

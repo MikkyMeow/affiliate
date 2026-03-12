@@ -1,4 +1,4 @@
-# affilate monorepo
+# affiliate monorepo
 
 Монорепа с Node/Express backend и Next.js frontend. Бэкенд работает с PostgreSQL (локально поднимается в Docker)
 

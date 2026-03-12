@@ -21,9 +21,9 @@ function getDatabaseConfig() {
   return {
     host: process.env.DB_HOST ?? 'localhost',
     port: Number.parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME ?? 'affilate',
-    user: process.env.DB_USER ?? 'affilate',
-    password: process.env.DB_PASSWORD ?? 'affilate',
+    database: process.env.DB_NAME ?? 'affiliate',
+    user: process.env.DB_USER ?? 'affiliate',
+    password: process.env.DB_PASSWORD ?? 'affiliate',
   };
 }
 

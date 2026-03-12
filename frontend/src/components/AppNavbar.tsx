@@ -1,33 +1,33 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const ADMIN_LINKS = [
-  { href: '/', label: 'Главная' },
-  { href: '/dashboard/stats', label: 'Статистика' },
-  { href: '/dashboard/clicks', label: 'Клики' },
-  { href: '/dashboard/conversions', label: 'Конверсии' },
-  { href: '/dashboard/advertisers', label: 'Рекламодатели' },
-  { href: '/dashboard/affiliates', label: 'Аффилиаты' },
-  { href: '/dashboard/offers', label: 'Офферы' },
+  { href: "/", label: "Главная" },
+  { href: "/dashboard/stats", label: "Статистика" },
+  { href: "/dashboard/clicks", label: "Клики" },
+  { href: "/dashboard/conversions", label: "Конверсии" },
+  { href: "/dashboard/advertisers", label: "Рекламодатели" },
+  { href: "/dashboard/affiliates", label: "Аффилиаты" },
+  { href: "/dashboard/offers", label: "Офферы" },
 ];
 
 const AFFILIATE_LINKS = [
-  { href: '/', label: 'Главная' },
-  { href: '/partner', label: 'Кабинет партнера' },
-  { href: '/partner/stats', label: 'Статистика' },
-  { href: '/partner/clicks', label: 'Клики' },
-  { href: '/partner/conversions', label: 'Конверсии' },
+  { href: "/", label: "Главная" },
+  { href: "/partner", label: "Кабинет партнера" },
+  { href: "/partner/stats", label: "Статистика" },
+  { href: "/partner/clicks", label: "Клики" },
+  { href: "/partner/conversions", label: "Конверсии" },
 ];
 
 const LINK_STYLES =
-  'rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white';
+  "rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white";
 
 export function AppNavbar() {
-  const pathname = usePathname() ?? '/';
+  const pathname = usePathname() ?? "/";
   const { user, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -58,7 +58,7 @@ export function AppNavbar() {
           href="/"
           className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
         >
-          affilate
+          affiliate
         </Link>
 
         {loading ? (
@@ -68,24 +68,26 @@ export function AppNavbar() {
         ) : user ? (
           <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
             <nav className="flex flex-wrap items-center gap-2">
-              {(user.role === 'admin' ? ADMIN_LINKS : AFFILIATE_LINKS).map((link) => {
-                const isActive =
-                  pathname === link.href ||
-                  (link.href !== '/' && pathname.startsWith(link.href));
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`${LINK_STYLES} ${
-                      isActive
-                        ? 'bg-black text-white dark:bg-white dark:text-black'
-                        : 'bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+              {(user.role === "admin" ? ADMIN_LINKS : AFFILIATE_LINKS).map(
+                (link) => {
+                  const isActive =
+                    pathname === link.href ||
+                    (link.href !== "/" && pathname.startsWith(link.href));
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`${LINK_STYLES} ${
+                        isActive
+                          ? "bg-black text-white dark:bg-white dark:text-black"
+                          : "bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                },
+              )}
             </nav>
             <div className="flex items-center gap-3">
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -97,7 +99,7 @@ export function AppNavbar() {
                 disabled={isLoggingOut}
                 className={`${LINK_STYLES} border border-zinc-300 bg-transparent text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900`}
               >
-                {isLoggingOut ? 'Выходим…' : 'Выйти'}
+                {isLoggingOut ? "Выходим…" : "Выйти"}
               </button>
             </div>
           </div>

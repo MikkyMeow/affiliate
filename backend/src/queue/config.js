@@ -9,7 +9,7 @@ const asyncQueueName =
   process.env.ASYNC_JOBS_QUEUE ||
   process.env.QUEUE_NAME ||
   'postback-events';
-const queuePrefix = process.env.BULLMQ_PREFIX || 'affilate';
+const queuePrefix = process.env.BULLMQ_PREFIX || 'affiliate';
 const defaultJobAttempts = parseOptionalNumber(
   process.env.ASYNC_JOB_ATTEMPTS,
   3,

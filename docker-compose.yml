@@ -3,25 +3,25 @@ version: "3.9"
 services:
   postgres:
     image: postgres:16
-    container_name: affilate-postgres
+    container_name: affiliate-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: affilate
-      POSTGRES_PASSWORD: affilate
-      POSTGRES_DB: affilate
+      POSTGRES_USER: affiliate
+      POSTGRES_PASSWORD: affiliate
+      POSTGRES_DB: affiliate
     ports:
       - "6543:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U affilate -d affilate']
+      test: ['CMD-SHELL', 'pg_isready -U affiliate -d affiliate']
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: affilate-redis
+    container_name: affiliate-redis
     restart: unless-stopped
     ports:
       - "7379:6379"
@@ -34,7 +34,7 @@ services:
   api:
     build:
       context: ./backend
-    container_name: affilate-api
+    container_name: affiliate-api
     restart: unless-stopped
     env_file:
       - backend/.env.production
@@ -42,7 +42,7 @@ services:
       NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
-      DATABASE_URL: postgres://affilate:affilate@postgres:5432/affilate
+      DATABASE_URL: postgres://affiliate:affiliate@postgres:5432/affiliate
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
@@ -59,7 +59,7 @@ services:
   worker:
     build:
       context: ./backend
-    container_name: affilate-worker
+    container_name: affiliate-worker
     restart: unless-stopped
     command: ["node", "src/worker.js"]
     env_file:
@@ -68,7 +68,7 @@ services:
       NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
-      DATABASE_URL: postgres://affilate:affilate@postgres:5432/affilate
+      DATABASE_URL: postgres://affiliate:affiliate@postgres:5432/affiliate
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
@@ -78,7 +78,7 @@ services:
   web:
     build:
       context: ./frontend
-    container_name: affilate-web
+    container_name: affiliate-web
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE: https://staging.mikilead.ru/api/v1
@@ -89,7 +89,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: affilate-nginx
+    container_name: affiliate-nginx
     restart: unless-stopped
     depends_on:
       - api

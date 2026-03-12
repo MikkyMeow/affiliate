@@ -17,7 +17,7 @@ export default function Home() {
             priority
           />
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            Монорепо affilate
+            Монорепо affiliate
           </span>
         </div>
         <div className="space-y-4">
@@ -26,7 +26,11 @@ export default function Home() {
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400">
             Ниже выводится сообщение, которое приходит из Express-сервера.
-            Сейчас запрос идёт на <code className="rounded bg-zinc-100 px-1 text-sm dark:bg-zinc-900">/message</code>.
+            Сейчас запрос идёт на{" "}
+            <code className="rounded bg-zinc-100 px-1 text-sm dark:bg-zinc-900">
+              /message
+            </code>
+            .
           </p>
         </div>
         <BackendMessage />
@@ -35,7 +39,8 @@ export default function Home() {
             Авторизация
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            После входа статус обновится автоматически, а кнопка «Выйти» сразу очистит токен.
+            После входа статус обновится автоматически, а кнопка «Выйти» сразу
+            очистит токен.
           </p>
           <AuthStatus />
           <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">

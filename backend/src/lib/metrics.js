@@ -3,7 +3,7 @@ import client from 'prom-client';
 const register = new client.Registry();
 
 register.setDefaultLabels({
-  app: 'affilate_backend',
+  app: 'affiliate_backend',
   node_env: process.env.NODE_ENV ?? 'development',
 });
 
@@ -23,7 +23,7 @@ const httpRequestDurationHistogram = new client.Histogram({
 });
 
 const httpRequestErrorsCounter = new client.Counter({
-  name: 'affilate_http_request_errors_total',
+  name: 'affiliate_http_request_errors_total',
   help: 'Number of HTTP requests that resulted in a server error',
   labelNames: ['method', 'route', 'status_code'],
 });
