@@ -1,8 +1,7 @@
-const DEFAULT_API_BASE = 'https://staging.mikilead.ru/api/v1';
-const rawApiBase = process.env.NEXT_PUBLIC_API_BASE ?? DEFAULT_API_BASE;
-export const API_BASE_URL = rawApiBase.endsWith('/')
-  ? rawApiBase.slice(0, -1)
-  : rawApiBase;
+import { API_BASE_URL } from './env';
+
+const resolveApiPath = (path: string): string =>
+  `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
 type RequestOptions = RequestInit & {
   token?: string;
@@ -46,7 +45,7 @@ export async function apiFetch<TResponse, TMeta = unknown>(
 ): Promise<TResponse | { data: TResponse; meta: TMeta }> {
   const { token, headers, withMeta = false, ...rest } = options;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(resolveApiPath(path), {
     ...rest,
     headers: {
       "Content-Type": "application/json",

@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
-import { TRACKING_BASE_URL } from '@/lib/tracking';
+import { buildTrackingUrl } from '@/lib/tracking';
 
 type Offer = {
   id: string;
@@ -172,7 +172,7 @@ export default function OffersPage() {
       return '';
     }
 
-    const url = new URL('/track/click', TRACKING_BASE_URL);
+    const url = new URL(buildTrackingUrl('/click'));
     url.searchParams.set('offerId', linkOffer.id);
     url.searchParams.set('affiliateId', selectedAffiliateId);
     const trimmedSub = sub1.trim();
@@ -494,7 +494,7 @@ export default function OffersPage() {
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   Укажите аффилиата и (опционально) sub1. Ссылка собирается на фронте из{' '}
-                  {TRACKING_BASE_URL}/track/click.
+                  {buildTrackingUrl('/click')}.
                 </p>
               </div>
               <button
@@ -579,7 +579,7 @@ export default function OffersPage() {
               ) : (
                 <p className="text-zinc-600 dark:text-zinc-400">
                   Выберите аффилиата, чтобы получить ссылку вида{' '}
-                  {TRACKING_BASE_URL}/track/click?offerId=...&affiliateId=...
+                  {buildTrackingUrl('/click')}?offerId=...&affiliateId=...
                 </p>
               )}
             </div>

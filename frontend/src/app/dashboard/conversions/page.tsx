@@ -10,6 +10,7 @@ import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
+import { trackingFetch } from '@/lib/tracking';
 
 type Conversion = {
   clickId: string;
@@ -275,8 +276,8 @@ export default function ConversionsPage() {
           payload.payoutRub = payoutValue;
         }
 
-        const response = await apiFetch<{ clickId: string; status: string }>(
-          '/track/postback',
+        const response = await trackingFetch<{ clickId: string; status: string }>(
+          '/postback',
           {
             method: 'POST',
             body: JSON.stringify(payload),

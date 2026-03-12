@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
-import { TRACKING_BASE_URL } from '@/lib/tracking';
+import { buildTrackingUrl } from '@/lib/tracking';
 import {
   PARTNER_STATS_CARDS,
   type PartnerStatsSummary,
@@ -184,7 +184,7 @@ export default function PartnerDashboardPage() {
 
   const affiliateId = profile?.affiliate.id ?? user?.affiliateId ?? null;
   const trackingHint = affiliateId
-    ? `${TRACKING_BASE_URL}/track/click?offerId=OFFER_ID&affiliateId=${affiliateId}`
+    ? `${buildTrackingUrl('/click')}?offerId=OFFER_ID&affiliateId=${affiliateId}`
     : null;
 
   if (authLoading) {
@@ -341,7 +341,7 @@ export default function PartnerDashboardPage() {
             <p>
               Используйте базовый URL:{' '}
               <code className="rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
-                {TRACKING_BASE_URL}/track/click
+                {buildTrackingUrl('/click')}
               </code>
             </p>
             {trackingHint ? (
@@ -424,7 +424,7 @@ export default function PartnerDashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {offers.map((offer) => {
               const trackingLink = affiliateId
-                ? `${TRACKING_BASE_URL}/track/click?offerId=${offer.id}&affiliateId=${affiliateId}`
+                ? `${buildTrackingUrl('/click')}?offerId=${offer.id}&affiliateId=${affiliateId}`
                 : null;
               return (
                 <div
