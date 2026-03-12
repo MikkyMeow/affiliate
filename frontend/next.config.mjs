@@ -1,5 +1,4 @@
-import { loadEnvConfig } from '@next/env';
-import type { NextConfig } from 'next';
+import env from '@next/env';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,13 +7,14 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const isDev = process.env.NODE_ENV !== 'production';
 
+const { loadEnvConfig } = env;
 loadEnvConfig(repoRoot, isDev);
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   experimental: {
     /**
-     * Позволяет импортировать зависимости из корневого node_modules
-     * (мы используем npm workspaces, поэтому пакеты физически лежат выше).
+     * Allow importing dependencies from the workspace root node_modules.
      */
     externalDir: true,
   },
