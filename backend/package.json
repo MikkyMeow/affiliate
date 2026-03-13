@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "worker": "node src/worker.js",
     "rollup:daily": "node src/scripts/run-daily-rollup.js",
-    "migrate": "node-pg-migrate",
+    "migrate": "node-pg-migrate up",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create"
