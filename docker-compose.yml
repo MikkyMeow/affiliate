@@ -107,9 +107,6 @@ services:
   web:
     build:
       context: ./frontend
-      args:
-        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE}
-        NEXT_PUBLIC_TRACKING_BASE: ${NEXT_PUBLIC_TRACKING_BASE}
     container_name: affiliate-web
     restart: unless-stopped
     logging:
