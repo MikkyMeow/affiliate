@@ -4,6 +4,11 @@ set -Eeuo pipefail
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BRANCH="staging"
 COMPOSE_FILE="docker-compose.yml"
+SMOKE_SCRIPT="$APP_DIR/scripts/smoke-check.sh"
+SMOKE_BASE_URL="${SMOKE_BASE_URL:-https://staging.mikilead.ru}"
+SMOKE_HEALTH_URL="${SMOKE_HEALTH_URL:-${SMOKE_BASE_URL}/health}"
+MIGRATION_SERVICE="${MIGRATION_SERVICE:-api}"
+MIGRATION_COMMAND="${MIGRATION_COMMAND:-npm run migrate}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -28,6 +33,15 @@ git checkout "$BRANCH"
 git reset --hard "origin/${BRANCH}"
 
 test -f .env || { echo ".env file not found"; exit 1; }
+
+log "Ensuring database dependencies are up"
+docker compose -f "$COMPOSE_FILE" up -d postgres redis
+
+log "Building ${MIGRATION_SERVICE} image for migrations"
+docker compose -f "$COMPOSE_FILE" build "$MIGRATION_SERVICE"
+
+log "Running database migrations via ${MIGRATION_SERVICE}"
+docker compose -f "$COMPOSE_FILE" run --rm "$MIGRATION_SERVICE" $MIGRATION_COMMAND
 
 log "Build and start containers"
 docker compose -f "$COMPOSE_FILE" up -d --build
@@ -55,11 +69,14 @@ for i in {1..30}; do
   sleep 2
 done
 
-log "External health check"
+log "External health check against ${SMOKE_HEALTH_URL}"
 for i in {1..20}; do
-  HTTP_CODE="$(curl -k -s -o /dev/null -w "%{http_code}" https://staging.mikilead.ru/health || true)"
+  HTTP_CODE="$(curl -k -s -o /dev/null -w "%{http_code}" "${SMOKE_HEALTH_URL}" || true)"
   if [ "$HTTP_CODE" = "200" ]; then
     log "Health check passed"
+    log "Running smoke suite"
+    SMOKE_BASE_URL="$SMOKE_BASE_URL" "$SMOKE_SCRIPT"
+    log "Smoke suite finished successfully"
     docker image prune -f
     exit 0
   fi
