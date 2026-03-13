@@ -30,6 +30,6 @@ jobs:
 
       - name: Run staging deploy
         run: |
-          ssh -vvv -i ~/.ssh/staging_key -p "${{ secrets.STAGING_PORT }}" \
+          ssh -vvv -p "${{ secrets.STAGING_PORT }}" \
             "${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}" \
-            "cd /home/deploy/affiliate && /home/deploy/affiliate/scripts/deploy-staging.sh"
+            "cd /home/deploy/affiliate && bash /home/deploy/affiliate/scripts/deploy-staging.sh"

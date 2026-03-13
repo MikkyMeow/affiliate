@@ -27,6 +27,7 @@ import { requestMetrics } from './middleware/requestMetrics.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const HOST = '0.0.0.0';
 const API_PREFIX = '/api/v1';
 
 app.use(requestId);
@@ -123,8 +124,8 @@ async function bootstrap() {
 
   await initRedis();
 
-  app.listen(PORT, () => {
-    console.log(`Backend listening on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Backend listening on ${HOST}:${PORT}`);
   });
 }
 
