@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   return (
@@ -17,17 +17,17 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, user, loading: authLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const redirectTo = useMemo(() => {
-    const next = searchParams.get('next');
-    if (next && next.startsWith('/')) {
+    const next = searchParams.get("next");
+    if (next && next.startsWith("/")) {
       return next;
     }
-    return '/';
+    return "/";
   }, [searchParams]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -38,7 +38,7 @@ function LoginPageContent() {
       await login({ email, password });
       router.push(redirectTo);
     } catch (err) {
-      setError((err as Error).message ?? 'Не удалось войти');
+      setError((err as Error).message ?? "Не удалось войти");
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/');
+      router.replace("/");
     }
   }, [authLoading, router, user]);
 
@@ -59,7 +59,7 @@ function LoginPageContent() {
       <main className="flex w-full max-w-xl flex-col gap-6 rounded-2xl bg-white p-10 shadow-xl dark:bg-black">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Вход
+            Входа нет, пошёл нахуй!
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400">
             Используй email и пароль, чтобы авторизоваться.
@@ -96,11 +96,11 @@ function LoginPageContent() {
             disabled={loading}
             className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
           >
-            {loading ? 'Входим…' : 'Войти'}
+            {loading ? "Входим…" : "Войти"}
           </button>
         </form>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Нет аккаунта?{' '}
+          Нет аккаунта?{" "}
           <Link
             href={`/auth/register?next=${encodeURIComponent(redirectTo)}`}
             className="font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
@@ -117,7 +117,9 @@ function AuthPageFallback({ title }: { title: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
       <main className="flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-10 text-center shadow-xl dark:bg-black">
-        <p className="text-sm uppercase tracking-wide text-zinc-400">Загрузка</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-400">
+          Загрузка
+        </p>
         <p className="text-base text-zinc-800 dark:text-zinc-100">
           Открываем страницу «{title}»...
         </p>
