@@ -22,9 +22,16 @@ function logRedisFallback(reason) {
 function createRedisBackedStore(name) {
   const memoryStore = new MemoryStore();
   let redisStore = null;
+  let initOptions = null;
 
   function shouldUseRedis() {
     return Boolean(redisClient?.isOpen && redisClient?.isReady);
+  }
+
+  function initStore(store) {
+    if (store && typeof store.init === 'function' && initOptions) {
+      store.init(initOptions);
+    }
   }
 
   function getRedisStore() {
@@ -38,6 +45,7 @@ function createRedisBackedStore(name) {
           prefix: `rl:${name}`,
           sendCommand: (...args) => redisClient.sendCommand(args),
         });
+        initStore(redisStore);
       } catch (error) {
         logRedisFallback(error);
         redisStore = null;
@@ -49,6 +57,13 @@ function createRedisBackedStore(name) {
   }
 
   return {
+    init(options) {
+      initOptions = options;
+      if (typeof memoryStore.init === 'function') {
+        memoryStore.init(options);
+      }
+      initStore(getRedisStore());
+    },
     async increment(key) {
       const store = getRedisStore();
       if (store) {
