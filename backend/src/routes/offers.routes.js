@@ -98,7 +98,7 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const offer = await getOfferById(req.params.id);
+    const offer = await getOfferById(req.params.id, { includeGoals: true });
     return sendSuccess(res, { offer });
   }),
 );

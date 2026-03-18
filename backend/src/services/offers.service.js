@@ -9,6 +9,7 @@ import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { generatePostbackToken } from '../lib/generatePostbackToken.js';
 import { invalidateOfferCache } from './tracking/cache-invalidation.service.js';
+import { listOfferGoals as listOfferGoalsService } from './offer-goals.service.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -97,7 +98,7 @@ export async function listOffers(filter, pagination, options = {}) {
   return listOffersModel(filter, pagination, options);
 }
 
-export async function getOfferById(id) {
+export async function getOfferById(id, { includeGoals = false } = {}) {
   const offer = await findOfferByIdModel(id);
 
   if (!offer) {
@@ -106,7 +107,12 @@ export async function getOfferById(id) {
     });
   }
 
-  return offer;
+  if (!includeGoals) {
+    return offer;
+  }
+
+  const goals = await listOfferGoalsService(id, { skipOfferValidation: true });
+  return { ...offer, goals };
 }
 
 export async function updateOffer(id, dto) {
