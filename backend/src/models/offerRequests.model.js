@@ -24,12 +24,19 @@ function buildLockClause(options) {
   return '';
 }
 
-export async function findPendingOfferRequest(offerId, affiliateId) {
+export async function findPendingOfferRequest(
+  offerId,
+  affiliateId,
+  { client, forUpdate = false } = {},
+) {
   if (!offerId || !affiliateId) {
     throw new Error('offerId and affiliateId are required to fetch request');
   }
 
-  const result = await pool.query(
+  const queryable = getQueryable(client);
+  const lockClause = buildLockClause({ forUpdate });
+
+  const result = await queryable.query(
     `
       SELECT ${offerRequestFields}
       FROM offer_requests
@@ -37,6 +44,7 @@ export async function findPendingOfferRequest(offerId, affiliateId) {
         AND affiliate_id = $2
         AND status = 'pending'
       LIMIT 1
+      ${lockClause}
     `,
     [offerId, affiliateId],
   );

@@ -116,3 +116,47 @@ export async function upsertOfferAffiliateAccess(
 
   return result.rows[0] ?? null;
 }
+
+export async function listOfferAffiliateAccess(offerId, { client } = {}) {
+  if (!offerId) {
+    throw new Error('offerId is required to list access records');
+  }
+
+  const queryable = getQueryable(client);
+
+  const result = await queryable.query(
+    `
+      SELECT ${accessFields}
+      FROM offer_affiliate_access
+      WHERE offer_id = $1
+      ORDER BY updated_at DESC, created_at DESC
+    `,
+    [offerId],
+  );
+
+  return result.rows;
+}
+
+export async function deleteOfferAffiliateAccess(
+  offerId,
+  affiliateId,
+  { client } = {},
+) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to delete access');
+  }
+
+  const queryable = getQueryable(client);
+
+  const result = await queryable.query(
+    `
+      DELETE FROM offer_affiliate_access
+      WHERE offer_id = $1
+        AND affiliate_id = $2
+      RETURNING ${accessFields}
+    `,
+    [offerId, affiliateId],
+  );
+
+  return result.rows[0] ?? null;
+}
