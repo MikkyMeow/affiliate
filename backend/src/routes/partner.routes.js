@@ -12,11 +12,13 @@ import {
   listPartnerConversions,
   getPartnerOfferDetails,
 } from '../services/partner.service.js';
+import { requestOfferAccess } from '../services/offer-requests.service.js';
 import {
   validatePartnerClicksQuery,
   validatePartnerConversionsQuery,
 } from '../validators/stats.js';
 import { validateUuid } from '../validators/offers.js';
+import { validateOfferRequestPayload } from '../validators/offerRequests.js';
 
 const router = express.Router();
 
@@ -144,6 +146,41 @@ router.get(
 
     const offer = await getPartnerOfferDetails(req.user.userId, offerId);
     return sendSuccess(res, { offer });
+  }),
+);
+
+router.post(
+  '/offers/:id/request',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'offerId',
+    });
+    const { dto, errors: bodyErrors } = validateOfferRequestPayload(req.body);
+    const allErrors = [...errors, ...bodyErrors];
+
+    if (allErrors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors: allErrors },
+      );
+    }
+
+    const request = await requestOfferAccess({
+      affiliateId: req.user.affiliateId,
+      offerId,
+      message: dto.message ?? null,
+    });
+
+    return sendSuccess(
+      res,
+      {
+        request,
+      },
+      { status: 201 },
+    );
   }),
 );
 
