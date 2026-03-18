@@ -1,6 +1,20 @@
-const allowedStatuses = new Set(['active', 'inactive']);
+import {
+  LEGACY_OFFER_STATUS_INACTIVE,
+  OFFER_GOAL_TYPES,
+  OFFER_STATUSES,
+  OFFER_VISIBILITY_MODES,
+} from '../constants/offers.js';
+
+const allowedStatuses = new Set([
+  OFFER_STATUSES.ACTIVE,
+  LEGACY_OFFER_STATUS_INACTIVE, // TODO: заменить на paused/archived после миграций.
+]);
+const allowedVisibilityModes = new Set(Object.values(OFFER_VISIBILITY_MODES));
+const allowedGoalTypes = new Set(Object.values(OFFER_GOAL_TYPES));
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const countryCodeRegex = /^[A-Z]{2}$/;
+const currencyCodeRegex = /^[A-Z]{3}$/;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
@@ -67,6 +81,143 @@ function parseInteger(value) {
   }
 
   return null;
+}
+
+function validateBoolean(value, { allowMissing = true, field } = {}) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (typeof value === 'boolean') {
+    return { value, errors: [] };
+  }
+
+  return {
+    value: undefined,
+    errors: [buildError(field, 'Значение должно быть булевым')],
+  };
+}
+
+function validateVisibilityMode(
+  value,
+  { allowMissing = true, field = 'visibilityMode' } = {},
+) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: OFFER_VISIBILITY_MODES.PUBLIC, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Значение должно быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!allowedVisibilityModes.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(field, 'Недопустимый режим видимости'),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function normalizeGeoInput(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    return trimmed.split(',').map((entry) => entry.trim());
+  }
+
+  return null;
+}
+
+function validateGeoList(
+  value,
+  { allowMissing = true, field = 'geo' } = {},
+) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Список стран обязателен')],
+        };
+  }
+
+  const asArray = normalizeGeoInput(value);
+
+  if (!asArray) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Список стран должен быть массивом строк')],
+    };
+  }
+
+  const result = [];
+  const seen = new Set();
+  const errors = [];
+
+  asArray.forEach((entry, index) => {
+    if (typeof entry !== 'string') {
+      errors.push(
+        buildError(
+          `${field}[${index}]`,
+          'Код страны должен быть строкой',
+        ),
+      );
+      return;
+    }
+
+    const normalized = entry.trim().toUpperCase();
+    if (!normalized) {
+      return;
+    }
+
+    if (!countryCodeRegex.test(normalized)) {
+      errors.push(
+        buildError(
+          `${field}[${index}]`,
+          'Используйте двухбуквенный код ISO-3166',
+        ),
+      );
+      return;
+    }
+
+    if (seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    result.push(normalized);
+  });
+
+  return {
+    value: result,
+    errors,
+  };
 }
 
 export function validateStatus(status, { allowMissing = true } = {}) {
@@ -199,6 +350,151 @@ export function validatePayoutRub(value, { allowMissing = true } = {}) {
   return { value: normalized, errors: [] };
 }
 
+function validateGoalsPayload(value, { allowMissing = true } = {}) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError('goals', 'Нужно передать хотя бы одну цель')],
+        };
+  }
+
+  if (!Array.isArray(value)) {
+    return {
+      value: undefined,
+      errors: [buildError('goals', 'Цели должны быть массивом объектов')],
+    };
+  }
+
+  const goals = [];
+  const errors = [];
+  let defaultCount = 0;
+
+  value.forEach((rawGoal, index) => {
+    const path = `goals[${index}]`;
+
+    if (!rawGoal || typeof rawGoal !== 'object' || Array.isArray(rawGoal)) {
+      errors.push(buildError(path, 'Цель должна быть объектом'));
+      return;
+    }
+
+    const goal = {};
+    const errorsBefore = errors.length;
+
+    if (Object.hasOwn(rawGoal, 'id')) {
+      const { value: goalId, errors: idErrors } = validateUuid(rawGoal.id, {
+        allowMissing: false,
+        field: `${path}.id`,
+      });
+      errors.push(...idErrors);
+      if (goalId) {
+        goal.id = goalId;
+      }
+    }
+
+    const normalizedName = normalizeTitle(rawGoal.name);
+    if (!normalizedName) {
+      errors.push(
+        buildError(`${path}.name`, 'Название цели обязательно и не может быть пустым'),
+      );
+    } else {
+      goal.name = normalizedName;
+    }
+
+    const type =
+      typeof rawGoal.type === 'string' ? rawGoal.type.trim().toUpperCase() : null;
+    if (!type || !allowedGoalTypes.has(type)) {
+      errors.push(
+        buildError(
+          `${path}.type`,
+          `type должен быть одним из: ${Array.from(allowedGoalTypes).join(', ')}`,
+        ),
+      );
+    } else {
+      goal.type = type;
+    }
+
+    const revenue = normalizeMoney(rawGoal.revenue);
+    if (revenue === null || revenue <= 0) {
+      errors.push(
+        buildError(
+          `${path}.revenue`,
+          'revenue должен быть числом больше 0',
+        ),
+      );
+    } else {
+      goal.revenue = revenue;
+    }
+
+    const payout = normalizeMoney(rawGoal.payout);
+    if (payout === null || payout < 0) {
+      errors.push(
+        buildError(`${path}.payout`, 'payout должен быть неотрицательным числом'),
+      );
+    } else {
+      goal.payout = payout;
+    }
+
+    const currency =
+      typeof rawGoal.currency === 'string'
+        ? rawGoal.currency.trim().toUpperCase()
+        : null;
+    if (!currency || !currencyCodeRegex.test(currency)) {
+      errors.push(
+        buildError(
+          `${path}.currency`,
+          'currency должен быть трёхбуквенным кодом ISO-4217',
+        ),
+      );
+    } else {
+      goal.currency = currency;
+    }
+
+    let isDefault = false;
+    if (Object.hasOwn(rawGoal, 'isDefault')) {
+      if (typeof rawGoal.isDefault !== 'boolean') {
+        errors.push(
+          buildError(`${path}.isDefault`, 'isDefault должен быть булевым значением'),
+        );
+      } else {
+        isDefault = rawGoal.isDefault;
+      }
+    }
+    goal.isDefault = isDefault;
+
+    let isActive = true;
+    if (Object.hasOwn(rawGoal, 'isActive')) {
+      if (typeof rawGoal.isActive !== 'boolean') {
+        errors.push(
+          buildError(`${path}.isActive`, 'isActive должен быть булевым значением'),
+        );
+      } else {
+        isActive = rawGoal.isActive;
+      }
+    }
+    goal.isActive = isActive;
+
+    if (errors.length === errorsBefore) {
+      goals.push(goal);
+      if (goal.isDefault) {
+        defaultCount += 1;
+      }
+    }
+  });
+
+  if (defaultCount > 1) {
+    errors.push(
+      buildError('goals', 'Одновременно может быть только одна цель по умолчанию'),
+    );
+  }
+
+  return {
+    value: goals,
+    errors,
+  };
+}
+
 export function validateCreateOfferDto(payload) {
   const errors = [];
   const source = payload ?? {};
@@ -243,7 +539,11 @@ export function validateCreateOfferDto(payload) {
     dto.status = status;
   }
 
-  return { dto, errors };
+  // TODO: (offer-domain-v2) Подключить доменную часть DTO к createOffer.
+  const { draft: domainDraft, errors: domainDraftErrors } =
+    validateOfferDomainDraft(source);
+
+  return { dto, errors, domainDraft, domainDraftErrors };
 }
 
 export function validateUpdateOfferDto(payload) {
@@ -315,7 +615,11 @@ export function validateUpdateOfferDto(payload) {
     errors.push(buildError(null, 'Нужно указать поля для обновления'));
   }
 
-  return { dto, errors };
+  // TODO: (offer-domain-v2) Подключить доменную часть DTO к updateOffer.
+  const { draft: domainDraft, errors: domainDraftErrors } =
+    validateOfferDomainDraft(source);
+
+  return { dto, errors, domainDraft, domainDraftErrors };
 }
 
 export function validateOfferFilters(payload = {}) {
@@ -358,6 +662,103 @@ export function validateOfferFilters(payload = {}) {
 }
 
 export { allowedStatuses };
+
+export function validateOfferDomainDraft(payload) {
+  const source = payload ?? {};
+  const domainDraft = {
+    visibilityMode: OFFER_VISIBILITY_MODES.PUBLIC,
+    targetingStrict: false,
+  };
+  const domainErrors = [];
+
+  if (Object.hasOwn(source, 'description')) {
+    if (typeof source.description !== 'string') {
+      domainErrors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      domainDraft.description = source.description.trim();
+    }
+  }
+
+  if (Object.hasOwn(source, 'previewUrl')) {
+    const { value: previewUrl, errors: previewErrors } = validateUrl(
+      source.previewUrl,
+      { field: 'previewUrl' },
+    );
+    domainErrors.push(...previewErrors);
+    if (previewUrl) {
+      domainDraft.previewUrl = previewUrl;
+    }
+  }
+
+  if (Object.hasOwn(source, 'fallbackUrl')) {
+    const { value: fallbackUrl, errors: fallbackErrors } = validateUrl(
+      source.fallbackUrl,
+      { field: 'fallbackUrl' },
+    );
+    domainErrors.push(...fallbackErrors);
+    if (fallbackUrl) {
+      domainDraft.fallbackUrl = fallbackUrl;
+    }
+  }
+
+  const { value: visibilityMode, errors: visibilityErrors } =
+    validateVisibilityMode(source.visibilityMode);
+  domainErrors.push(...visibilityErrors);
+  if (visibilityMode) {
+    domainDraft.visibilityMode = visibilityMode;
+  }
+
+  const { value: targetingStrict, errors: targetingErrors } = validateBoolean(
+    source.targetingStrict,
+    { field: 'targetingStrict' },
+  );
+  domainErrors.push(...targetingErrors);
+  if (typeof targetingStrict === 'boolean') {
+    domainDraft.targetingStrict = targetingStrict;
+  }
+
+  const { value: allowedGeo, errors: allowedGeoErrors } = validateGeoList(
+    source.allowedGeo,
+    { field: 'allowedGeo' },
+  );
+  domainErrors.push(...allowedGeoErrors);
+  if (allowedGeo !== undefined) {
+    domainDraft.allowedGeo = allowedGeo;
+  }
+
+  const { value: deniedGeo, errors: deniedGeoErrors } = validateGeoList(
+    source.deniedGeo,
+    { field: 'deniedGeo' },
+  );
+  domainErrors.push(...deniedGeoErrors);
+  if (deniedGeo !== undefined) {
+    domainDraft.deniedGeo = deniedGeo;
+  }
+
+  const { value: goals, errors: goalErrors } = validateGoalsPayload(
+    source.goals,
+  );
+  domainErrors.push(...goalErrors);
+  if (goals !== undefined) {
+    domainDraft.goals = goals;
+  }
+
+  if (domainDraft.targetingStrict && !domainDraft.fallbackUrl) {
+    domainErrors.push(
+      buildError(
+        'fallbackUrl',
+        'fallbackUrl обязателен, когда targetingStrict включён',
+      ),
+    );
+  }
+
+  return {
+    draft: domainDraft,
+    errors: domainErrors,
+  };
+}
 
 function validateLimit(value) {
   if (value === undefined || value === null || value === '') {
