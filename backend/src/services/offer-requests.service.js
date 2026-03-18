@@ -1,15 +1,23 @@
+import pool from '../db.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { getOfferById } from './offers.service.js';
-import { findAffiliateAccessForOffer } from '../models/offerAffiliateAccess.model.js';
+import {
+  findAffiliateAccessForOffer,
+  upsertOfferAffiliateAccess,
+} from '../models/offerAffiliateAccess.model.js';
 import {
   OFFER_ACCESS_TYPES,
+  OFFER_ACCESS_SOURCES,
+  OFFER_REQUEST_STATUSES,
   OFFER_VISIBILITY_MODES,
 } from '../constants/offers.js';
 import { resolveAffiliateOfferAccess } from './offers/affiliate-visibility.js';
 import {
   createOfferRequest,
+  findOfferRequestById,
   findPendingOfferRequest,
+  updateOfferRequestReview,
 } from '../models/offerRequests.model.js';
 
 const PENDING_UNIQUE_CONSTRAINT = 'offer_requests_pending_unique';
@@ -134,5 +142,144 @@ export async function requestOfferAccess({ offerId, affiliateId, message }) {
     }
 
     throw error;
+  }
+}
+
+function assertDecisionAllowed(decision) {
+  const normalized =
+    typeof decision === 'string' ? decision.trim().toLowerCase() : '';
+
+  if (
+    normalized !== OFFER_REQUEST_STATUSES.APPROVED &&
+    normalized !== OFFER_REQUEST_STATUSES.REJECTED
+  ) {
+    throw new ApiError(
+      ERROR_CODES.VALIDATION_ERROR,
+      400,
+      'decision должен быть approved или rejected',
+      {
+        decision,
+      },
+    );
+  }
+
+  return normalized;
+}
+
+function assertPendingRequest(request) {
+  if (!request) {
+    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Заявка не найдена');
+  }
+
+  if (request.status !== OFFER_REQUEST_STATUSES.PENDING) {
+    throw new ApiError(
+      ERROR_CODES.CONFLICT,
+      409,
+      'Заявка уже обработана',
+      { requestId: request.id, status: request.status },
+    );
+  }
+}
+
+function assertNotExcluded(accessRecord, { requestId }) {
+  if (accessRecord?.accessType === OFFER_ACCESS_TYPES.EXCLUDED) {
+    throw new ApiError(
+      ERROR_CODES.CONFLICT,
+      409,
+      'Affiliate исключен из оффера, обработка заявки запрещена',
+      {
+        requestId,
+        accessType: accessRecord.accessType,
+      },
+    );
+  }
+}
+
+function resolveDecisionEffects(decision) {
+  if (decision === OFFER_REQUEST_STATUSES.APPROVED) {
+    return {
+      requestStatus: OFFER_REQUEST_STATUSES.APPROVED,
+      accessType: OFFER_ACCESS_TYPES.ALLOWED,
+      accessSource: OFFER_ACCESS_SOURCES.REQUEST_APPROVED,
+    };
+  }
+
+  return {
+    requestStatus: OFFER_REQUEST_STATUSES.REJECTED,
+    accessType: OFFER_ACCESS_TYPES.REJECTED,
+    accessSource: OFFER_ACCESS_SOURCES.REQUEST_REJECTED,
+  };
+}
+
+export async function reviewOfferRequest({
+  requestId,
+  reviewerId,
+  decision,
+}) {
+  if (!requestId) {
+    throw new Error('requestId is required to review offer request');
+  }
+
+  if (!reviewerId) {
+    throw new Error('reviewerId is required to review offer request');
+  }
+
+  const normalizedDecision = assertDecisionAllowed(decision);
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const request = await findOfferRequestById(requestId, {
+      client,
+      forUpdate: true,
+    });
+    assertPendingRequest(request);
+
+    const accessRecord = await findAffiliateAccessForOffer(
+      request.offerId,
+      request.affiliateId,
+      {
+        client,
+        forUpdate: true,
+      },
+    );
+    assertNotExcluded(accessRecord, { requestId: request.id });
+
+    // Разрешаем обработать pending-заявку даже если оффер успел
+    // сменить видимость, чтобы не застревали старые заявки.
+
+    const { requestStatus, accessType, accessSource } =
+      resolveDecisionEffects(normalizedDecision);
+    const reviewedAt = new Date();
+
+    const updatedRequest = await updateOfferRequestReview(
+      request.id,
+      {
+        status: requestStatus,
+        reviewedBy: reviewerId,
+        reviewedAt,
+      },
+      { client },
+    );
+
+    const access = await upsertOfferAffiliateAccess(
+      {
+        offerId: request.offerId,
+        affiliateId: request.affiliateId,
+        accessType,
+        source: accessSource,
+      },
+      { client },
+    );
+
+    await client.query('COMMIT');
+
+    return { request: updatedRequest, access };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }

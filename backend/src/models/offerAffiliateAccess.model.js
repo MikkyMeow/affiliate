@@ -10,7 +10,23 @@ const accessFields = `
   updated_at AS "updatedAt"
 `;
 
-export async function findAffiliateAccessForOffers(affiliateId, offerIds = []) {
+function getQueryable(client) {
+  return client ?? pool;
+}
+
+function buildLockClause(options) {
+  if (options?.forUpdate) {
+    return 'FOR UPDATE';
+  }
+
+  return '';
+}
+
+export async function findAffiliateAccessForOffers(
+  affiliateId,
+  offerIds = [],
+  { client } = {},
+) {
   if (!affiliateId) {
     throw new Error('affiliateId is required to fetch access records');
   }
@@ -19,7 +35,9 @@ export async function findAffiliateAccessForOffers(affiliateId, offerIds = []) {
     return [];
   }
 
-  const result = await pool.query(
+  const queryable = getQueryable(client);
+
+  const result = await queryable.query(
     `
       SELECT ${accessFields}
       FROM offer_affiliate_access
@@ -32,20 +50,68 @@ export async function findAffiliateAccessForOffers(affiliateId, offerIds = []) {
   return result.rows;
 }
 
-export async function findAffiliateAccessForOffer(offerId, affiliateId) {
+export async function findAffiliateAccessForOffer(
+  offerId,
+  affiliateId,
+  { client, forUpdate = false } = {},
+) {
   if (!offerId || !affiliateId) {
     throw new Error('offerId and affiliateId are required to fetch access');
   }
 
-  const result = await pool.query(
+  const queryable = getQueryable(client);
+  const lockClause = buildLockClause({ forUpdate });
+
+  const result = await queryable.query(
     `
       SELECT ${accessFields}
       FROM offer_affiliate_access
       WHERE offer_id = $1
         AND affiliate_id = $2
       LIMIT 1
+      ${lockClause}
     `,
     [offerId, affiliateId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function upsertOfferAffiliateAccess(
+  { offerId, affiliateId, accessType, source },
+  { client } = {},
+) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to upsert access');
+  }
+
+  if (!accessType) {
+    throw new Error('accessType is required to upsert access');
+  }
+
+  if (!source) {
+    throw new Error('source is required to upsert access');
+  }
+
+  const queryable = getQueryable(client);
+
+  const result = await queryable.query(
+    `
+      INSERT INTO offer_affiliate_access (
+        offer_id,
+        affiliate_id,
+        access_type,
+        source
+      )
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (offer_id, affiliate_id)
+      DO UPDATE
+      SET access_type = EXCLUDED.access_type,
+          source = EXCLUDED.source,
+          updated_at = NOW()
+      RETURNING ${accessFields}
+    `,
+    [offerId, affiliateId, accessType, source],
   );
 
   return result.rows[0] ?? null;
