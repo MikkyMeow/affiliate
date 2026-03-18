@@ -10,11 +10,13 @@ import {
   listPartnerOffers,
   listPartnerClicks,
   listPartnerConversions,
+  getPartnerOfferDetails,
 } from '../services/partner.service.js';
 import {
   validatePartnerClicksQuery,
   validatePartnerConversionsQuery,
 } from '../validators/stats.js';
+import { validateUuid } from '../validators/offers.js';
 
 const router = express.Router();
 
@@ -118,8 +120,30 @@ router.get(
 router.get(
   '/offers',
   asyncHandler(async (req, res) => {
-    const offers = await listPartnerOffers();
+    const offers = await listPartnerOffers(req.user.userId);
     return sendSuccess(res, offers);
+  }),
+);
+
+router.get(
+  '/offers/:id',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'offerId',
+    });
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const offer = await getPartnerOfferDetails(req.user.userId, offerId);
+    return sendSuccess(res, { offer });
   }),
 );
 

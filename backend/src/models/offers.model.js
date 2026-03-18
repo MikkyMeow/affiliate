@@ -7,6 +7,10 @@ const offerFields = `
   target_url AS "targetUrl",
   payout_rub AS "payoutRub",
   status,
+  visibility_mode AS "visibilityMode",
+  targeting_strict AS "targetingStrict",
+  fallback_url AS "fallbackUrl",
+  preview_url AS "previewUrl",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `;
@@ -18,6 +22,10 @@ const offerFieldsWithPostbackToken = `
   target_url AS "targetUrl",
   payout_rub AS "payoutRub",
   status,
+  visibility_mode AS "visibilityMode",
+  targeting_strict AS "targetingStrict",
+  fallback_url AS "fallbackUrl",
+  preview_url AS "previewUrl",
   created_at AS "createdAt",
   updated_at AS "updatedAt",
   postback_token AS "postbackToken"
