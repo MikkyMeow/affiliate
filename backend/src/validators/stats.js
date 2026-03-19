@@ -168,9 +168,27 @@ function validateStatus(value) {
   return { value: normalized, errors: [] };
 }
 
+function applyOptionalDateFilters(payload, filter, errors) {
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(payload.dateFrom, 'dateFrom');
+  errors.push(...dateFromErrors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
+  }
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(payload.dateTo, 'dateTo');
+  errors.push(...dateToErrors);
+  if (dateTo) {
+    filter.dateTo = dateTo;
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+}
+
 function buildListValidation(
   payload = {},
-  { allowStatus = false, includePagination = true } = {},
+  { allowStatus = false, includePagination = true, allowDateRange = false } = {},
 ) {
   const errors = [];
   const filter = {};
@@ -201,6 +219,10 @@ function buildListValidation(
     if (status) {
       filter.status = status;
     }
+  }
+
+  if (allowDateRange) {
+    applyOptionalDateFilters(payload, filter, errors);
   }
 
   if (includePagination) {
@@ -272,6 +294,7 @@ export function validatePartnerConversionsQuery(payload = {}) {
 export function validateStatsSummaryFilters(payload = {}) {
   const { filter, errors } = buildListValidation(payload, {
     includePagination: false,
+    allowDateRange: true,
   });
 
   return { filter, errors };

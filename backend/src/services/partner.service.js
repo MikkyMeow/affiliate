@@ -3,7 +3,7 @@ import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { requireAffiliateForUser } from './affiliates.service.js';
 import {
-  getSummary,
+  getAffiliateStats,
   listClicks,
   listConversions,
 } from './stats/stats.service.js';
@@ -51,7 +51,7 @@ export async function getPartnerProfile(userId) {
 
 export async function getPartnerStatsSummary(userId) {
   const { affiliate } = await getPartnerProfile(userId);
-  return getSummary({ affiliateId: affiliate.id });
+  return getAffiliateStats(affiliate.id);
 }
 
 function buildAccessMap(records = []) {
