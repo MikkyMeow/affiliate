@@ -1,6 +1,7 @@
 import './config/load-env.js';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import advertisersRouter from './routes/advertisers.js';
 import affiliatesRouter from './routes/affiliates.js';
 import offersRouter from './routes/offers.routes.js';
@@ -37,12 +38,32 @@ export function createApp() {
   app.use(requestId);
   app.use(requestMetrics);
   app.use(requestLogger);
+  const rawAllowedOrigins =
+    process.env.CORS_ALLOWED_ORIGINS ??
+    process.env.FRONTEND_URL ??
+    process.env.APP_ORIGIN ??
+    '';
+
+  const allowedOrigins = rawAllowedOrigins
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!allowedOrigins.length) {
+    console.warn(
+      'CORS allowed origins are not configured; falling back to dynamically reflecting the request origin.',
+    );
+  }
+
   app.use(
     cors({
       exposedHeaders: ['X-Request-ID'],
+      credentials: true,
+      origin: allowedOrigins.length ? allowedOrigins : true,
     }),
   );
   app.use(express.json());
+  app.use(cookieParser());
 
   app.get(
     '/metrics',

@@ -25,6 +25,8 @@
    Отредактируй `.env`: блоки `DB_*`, Redis и JWT используются backend/воркером,
    а `NEXT_PUBLIC_*` нужны Next.js (client-side). Backend, CLI-скрипты и фронтенд
    автоматически загружают один и тот же файл из корня репозитория.
+   `APP_ORIGIN` укажи на origin фронтенда (например, `http://localhost:3000`), чтобы
+   backend корректно настраивал CORS и httpOnly cookie для refresh токена.
 
 ## Запуск сервисов
 

@@ -27,6 +27,11 @@ import {
   requireAffiliateForUser,
 } from '../services/affiliates.service.js';
 import { validateRegisterDto } from '../validators/users.js';
+import {
+  clearRefreshTokenCookie,
+  getRefreshTokenFromRequest,
+  setRefreshTokenCookie,
+} from '../lib/refreshTokenCookie.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -56,7 +61,7 @@ function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-async function issueAuthPackage(user) {
+async function issueAuthPackage(user, res) {
   let affiliateId = user.affiliateId ?? null;
 
   if (user.role === 'affiliate' && !affiliateId) {
@@ -66,10 +71,10 @@ async function issueAuthPackage(user) {
 
   const token = signToken(buildTokenPayload({ ...user, affiliateId }));
   const refreshToken = await createRefreshTokenForUser(user.id);
+  setRefreshTokenCookie(res, refreshToken.token, refreshToken.expiresAt);
 
   return {
     token,
-    refreshToken: refreshToken.token,
     user: {
       id: user.id,
       email: user.email,
@@ -140,7 +145,7 @@ router.post(
       throw error;
     }
 
-    const response = await issueAuthPackage(user);
+    const response = await issueAuthPackage(user, res);
     return sendSuccess(res, response, { status: 201 });
   }),
 );
@@ -180,7 +185,7 @@ router.post(
     }
 
     const { passwordHash: _, ...sanitizedUser } = user;
-    const response = await issueAuthPackage(sanitizedUser);
+    const response = await issueAuthPackage(sanitizedUser, res);
 
     return sendSuccess(res, response);
   }),
@@ -189,19 +194,20 @@ router.post(
 router.post(
   '/refresh',
   asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body ?? {};
+    const refreshToken = getRefreshTokenFromRequest(req);
 
     if (!refreshToken) {
       throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        'Refresh token обязателен',
+        ERROR_CODES.TOKEN_INVALID,
+        401,
+        'Refresh token отсутствует или недействителен',
       );
     }
 
     const stored = await findRefreshToken(refreshToken);
 
     if (!stored) {
+      clearRefreshTokenCookie(res);
       throw new ApiError(
         ERROR_CODES.TOKEN_INVALID,
         401,
@@ -211,6 +217,7 @@ router.post(
 
     if (new Date(stored.expiresAt).getTime() < Date.now()) {
       await deleteRefreshTokenById(stored.id);
+      clearRefreshTokenCookie(res);
       throw new ApiError(
         ERROR_CODES.TOKEN_EXPIRED,
         401,
@@ -222,12 +229,13 @@ router.post(
     await deleteRefreshTokenById(stored.id);
 
     if (!user) {
+      clearRefreshTokenCookie(res);
       throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
         userId: stored.userId,
       });
     }
 
-    const response = await issueAuthPackage(user);
+    const response = await issueAuthPackage(user, res);
     return sendSuccess(res, response);
   }),
 );
@@ -235,10 +243,11 @@ router.post(
 router.post(
   '/logout',
   asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body ?? {};
+    const refreshToken = getRefreshTokenFromRequest(req);
     if (refreshToken) {
       await deleteRefreshToken(refreshToken);
     }
+    clearRefreshTokenCookie(res);
 
     return sendSuccess(res, { message: 'Выход выполнен' });
   }),
