@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { OfferGoalsSection } from './OfferGoalsSection';
+import { OfferStatsSection } from './OfferStatsSection';
 import { OfferGeoTargetingSection } from './OfferGeoTargetingSection';
 
 type Offer = {
@@ -396,6 +397,7 @@ export default function EditOfferPage() {
 
       {offerId && (
         <div className="mt-10 space-y-8">
+          <OfferStatsSection offerId={offerId} token={accessToken} />
           <OfferGeoTargetingSection
             offerId={offerId}
             token={accessToken}

@@ -5,8 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
+import { formatCount, formatMoney } from "@/lib/format";
+import { fetchPartnerStats, type PartnerStats } from "@/lib/stats";
 import { buildTrackingUrl } from "@/lib/tracking";
-import { PARTNER_STATS_CARDS, type PartnerStatsSummary } from "./stats-config";
+import { PARTNER_STATS_CARDS } from "./stats-config";
+import { PartnerOfferBreakdownTable } from "./PartnerOfferBreakdownTable";
 
 const PARTNER_NAV_LINKS = [
   { href: "/partner", label: "Офферы" },
@@ -66,7 +69,7 @@ export default function PartnerDashboardPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
-  const [stats, setStats] = useState<PartnerStatsSummary | null>(null);
+  const [stats, setStats] = useState<PartnerStats | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -83,25 +86,6 @@ export default function PartnerDashboardPage() {
       register: `/auth/register?next=${next}`,
     };
   }, [pathname]);
-
-  const numberFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat("ru-RU", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }),
-    [],
-  );
-
-  const currencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat("ru-RU", {
-        style: "currency",
-        currency: "RUB",
-        maximumFractionDigits: 2,
-      }),
-    [],
-  );
 
   const loadProfile = useCallback(async () => {
     if (!accessToken) {
@@ -132,9 +116,7 @@ export default function PartnerDashboardPage() {
     setLoadingStats(true);
     setStatsError(null);
     try {
-      const summary = await apiFetch<PartnerStatsSummary>("/partner/stats", {
-        token: accessToken,
-      });
+      const summary = await fetchPartnerStats(accessToken);
       setStats(summary);
     } catch (error) {
       const apiError = error as ApiError;
@@ -213,6 +195,24 @@ export default function PartnerDashboardPage() {
   const trackingHint = affiliateId
     ? `${buildTrackingUrl("/click")}?offerId=OFFER_ID&affiliateId=${affiliateId}`
     : null;
+
+  const offerNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    offers.forEach((offer) => {
+      map.set(offer.id, offer.title);
+    });
+    return map;
+  }, [offers]);
+
+  const resolveOfferName = useCallback(
+    (offerId: string | null) => {
+      if (!offerId) {
+        return "—";
+      }
+      return offerNameById.get(offerId) ?? `Offer ${offerId}`;
+    },
+    [offerNameById],
+  );
 
   if (authLoading) {
     return (
@@ -413,8 +413,8 @@ export default function PartnerDashboardPage() {
           {PARTNER_STATS_CARDS.map((card) => {
             const value = stats ? stats[card.key] : 0;
             const displayValue = card.currency
-              ? currencyFormatter.format(value)
-              : numberFormatter.format(value);
+              ? formatMoney(value)
+              : formatCount(value);
             return (
               <div
                 key={card.key}
@@ -432,6 +432,26 @@ export default function PartnerDashboardPage() {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-8">
+          <div className="mb-4">
+            <p className="text-sm uppercase tracking-wide text-zinc-500">
+              Breakdown
+            </p>
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+              По офферам
+            </h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Approved/Pending/Rej отдельно для каждой кампании.
+            </p>
+          </div>
+          <PartnerOfferBreakdownTable
+            rows={stats?.breakdowns?.offers ?? []}
+            loading={loadingStats}
+            resolveOfferName={resolveOfferName}
+            emptyMessage="Статистика пока пуста — нет конверсий."
+          />
         </div>
       </div>
 
@@ -466,7 +486,7 @@ export default function PartnerDashboardPage() {
                   ? offer.view.targetUrl
                   : offer.view.previewUrl;
               const payoutText = hasFullAccess
-                ? currencyFormatter.format(offer.view.payoutRub)
+                ? formatMoney(offer.view.payoutRub)
                 : null;
               const trackingLink = affiliateId
                 ? `${buildTrackingUrl("/click")}?offerId=${offer.id}&affiliateId=${affiliateId}`
