@@ -140,10 +140,17 @@ export async function findOfferForPostback(id) {
   return result.rows[0] ?? null;
 }
 
-export async function updateOffer(
-  id,
-  { title, advertiserId, targetUrl, payoutRub, status },
-) {
+export async function updateOffer(id, attrs = {}) {
+  const {
+    title,
+    advertiserId,
+    targetUrl,
+    payoutRub,
+    status,
+    targetingStrict,
+    fallbackUrl,
+  } = attrs;
+
   const assignments = [];
   const params = [];
 
@@ -170,6 +177,25 @@ export async function updateOffer(
   if (typeof status === 'string') {
     params.push(status);
     assignments.push(`status = $${params.length}`);
+  }
+
+  if (typeof targetingStrict === 'boolean') {
+    params.push(targetingStrict);
+    assignments.push(`targeting_strict = $${params.length}`);
+  }
+
+  if (Object.hasOwn(attrs, 'fallbackUrl')) {
+    if (typeof fallbackUrl === 'string') {
+      params.push(fallbackUrl);
+    } else if (fallbackUrl === null) {
+      params.push(null);
+    } else {
+      // Skip invalid fallback values silently, validation happens upstream.
+    }
+
+    if (params.length > assignments.length) {
+      assignments.push(`fallback_url = $${params.length}`);
+    }
   }
 
   if (assignments.length === 0) {

@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { OfferGoalsSection } from './OfferGoalsSection';
+import { OfferGeoTargetingSection } from './OfferGeoTargetingSection';
 
 type Offer = {
   id: string;
@@ -15,6 +16,8 @@ type Offer = {
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
+  targetingStrict: boolean;
+  fallbackUrl: string | null;
 };
 
 type FormState = {
@@ -44,6 +47,13 @@ export default function EditOfferPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [offerTargeting, setOfferTargeting] = useState<{
+    targetingStrict: boolean;
+    fallbackUrl: string | null;
+  }>({
+    targetingStrict: false,
+    fallbackUrl: null,
+  });
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? `/dashboard/offers/${offerId ?? ''}/edit`);
@@ -85,6 +95,10 @@ export default function EditOfferPage() {
           targetUrl: offer.targetUrl,
           payoutRub: offer.payoutRub.toString(),
           status: offer.status,
+        });
+        setOfferTargeting({
+          targetingStrict: Boolean(offer.targetingStrict),
+          fallbackUrl: offer.fallbackUrl ?? null,
         });
       })
       .catch((error) => {
@@ -381,7 +395,16 @@ export default function EditOfferPage() {
       </form>
 
       {offerId && (
-        <div className="mt-10">
+        <div className="mt-10 space-y-8">
+          <OfferGeoTargetingSection
+            offerId={offerId}
+            token={accessToken}
+            targetingStrict={offerTargeting.targetingStrict}
+            fallbackUrl={offerTargeting.fallbackUrl}
+            onTargetingStrictChange={(value) =>
+              setOfferTargeting((prev) => ({ ...prev, targetingStrict: value }))
+            }
+          />
           <OfferGoalsSection offerId={offerId} token={accessToken} />
         </div>
       )}

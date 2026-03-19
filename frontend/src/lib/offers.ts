@@ -125,3 +125,113 @@ export async function updateOfferGoal(
 
   return mapGoalResponse(response.goal);
 }
+
+export type OfferGeoRuleType = 'allow' | 'deny';
+
+export type OfferGeoRule = {
+  id: string;
+  offerId: string;
+  ruleType: OfferGeoRuleType;
+  countryCode: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type OfferGeoRuleResponse = {
+  id: string;
+  offerId: string;
+  ruleType: string;
+  countryCode: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function normalizeRuleType(value: string): OfferGeoRuleType {
+  return value === 'deny' ? 'deny' : 'allow';
+}
+
+function mapGeoRuleResponse(rule: OfferGeoRuleResponse): OfferGeoRule {
+  return {
+    id: rule.id,
+    offerId: rule.offerId,
+    ruleType: normalizeRuleType(rule.ruleType),
+    countryCode: rule.countryCode.toUpperCase(),
+    createdAt: rule.createdAt,
+    updatedAt: rule.updatedAt,
+  };
+}
+
+export async function fetchOfferGeoRules(token: string, offerId: string) {
+  const { data } = await apiFetch<OfferGeoRuleResponse[], { total?: number }>(
+    `/admin/offers/${offerId}/geo-rules`,
+    {
+      token,
+      withMeta: true,
+    },
+  );
+
+  return data.map(mapGeoRuleResponse);
+}
+
+type OfferGeoRulePayload = {
+  ruleType: OfferGeoRuleType;
+  countryCode: string;
+};
+
+export async function createOfferGeoRule(
+  token: string,
+  offerId: string,
+  payload: OfferGeoRulePayload,
+) {
+  const response = await apiFetch<{ rule: OfferGeoRuleResponse }>(
+    `/admin/offers/${offerId}/geo-rules`,
+    {
+      method: 'POST',
+      token,
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return mapGeoRuleResponse(response.rule);
+}
+
+export async function deleteOfferGeoRule(
+  token: string,
+  offerId: string,
+  ruleId: string,
+) {
+  const response = await apiFetch<{ rule: OfferGeoRuleResponse }>(
+    `/admin/offers/${offerId}/geo-rules/${ruleId}`,
+    {
+      method: 'DELETE',
+      token,
+    },
+  );
+
+  return mapGeoRuleResponse(response.rule);
+}
+
+type TargetingResponse = {
+  offer: {
+    id: string;
+    targetingStrict: boolean;
+    fallbackUrl: string | null;
+  };
+};
+
+export async function updateOfferTargetingStrict(
+  token: string,
+  offerId: string,
+  targetingStrict: boolean,
+) {
+  const response = await apiFetch<TargetingResponse>(
+    `/admin/offers/${offerId}/targeting`,
+    {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ targetingStrict }),
+    },
+  );
+
+  return response.offer;
+}
