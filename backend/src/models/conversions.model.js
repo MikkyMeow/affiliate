@@ -6,6 +6,11 @@ const conversionFields = `
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
   status,
+  goal_id AS "goalId",
+  goal_name AS "goalName",
+  goal_type AS "goalType",
+  revenue_amount AS "revenueAmount",
+  payout_amount AS "payoutAmount",
   payout_rub AS "payoutRub",
   created_at AS "createdAt"
 `;
@@ -15,6 +20,11 @@ const conversionListFields = `
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
   status,
+  goal_id AS "goalId",
+  goal_name AS "goalName",
+  goal_type AS "goalType",
+  revenue_amount AS "revenueAmount",
+  payout_amount AS "payoutAmount",
   payout_rub AS "payoutRub",
   created_at AS "createdAt"
 `;
@@ -25,6 +35,11 @@ export async function createConversion({
   affiliateId,
   status,
   payoutRub,
+  goalId = null,
+  goalName = null,
+  goalType = null,
+  revenueAmount = null,
+  payoutAmount = null,
 }) {
   const result = await pool.query(
     `
@@ -33,12 +48,28 @@ export async function createConversion({
         offer_id,
         affiliate_id,
         status,
-        payout_rub
+        payout_rub,
+        goal_id,
+        goal_name,
+        goal_type,
+        revenue_amount,
+        payout_amount
       )
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING ${conversionFields};
     `,
-    [clickId, offerId, affiliateId, status, payoutRub],
+    [
+      clickId,
+      offerId,
+      affiliateId,
+      status,
+      payoutRub,
+      goalId,
+      goalName,
+      goalType,
+      revenueAmount,
+      payoutAmount,
+    ],
   );
 
   return result.rows[0] ?? null;

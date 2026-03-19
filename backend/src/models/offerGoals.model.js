@@ -167,6 +167,34 @@ export async function findOfferGoalById(
   return result.rows[0] ?? null;
 }
 
+export async function findDefaultActiveGoalByOfferId(
+  offerId,
+  { client, forUpdate = false } = {},
+) {
+  if (!offerId) {
+    throw new Error('offerId is required to fetch default goal');
+  }
+
+  const queryable = getQueryable(client);
+  const lockClause = buildLockClause({ forUpdate });
+
+  const result = await queryable.query(
+    `
+      SELECT ${goalFields}
+      FROM offer_goals
+      WHERE offer_id = $1
+        AND is_default = true
+        AND is_active = true
+      ORDER BY updated_at DESC, created_at DESC, id DESC
+      LIMIT 1
+      ${lockClause}
+    `,
+    [offerId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function unsetDefaultOfferGoals(
   offerId,
   { client, excludeGoalId = null } = {},

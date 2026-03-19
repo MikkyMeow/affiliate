@@ -2,6 +2,8 @@ import { CONVERSION_STATUSES } from '../services/postback/conversions.service.js
 
 const MAX_CLICK_ID_LENGTH = 255;
 const MAX_TOKEN_LENGTH = 255;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function buildError(field, message) {
   return { field, message };
@@ -75,6 +77,24 @@ export function validatePostbackParams(source = {}) {
       );
     } else {
       dto.clickId = clickId;
+    }
+  }
+
+  const rawGoalId = source.goalId ?? source.goal_id ?? undefined;
+
+  if (rawGoalId !== undefined && rawGoalId !== null && rawGoalId !== '') {
+    if (typeof rawGoalId !== 'string') {
+      errors.push(buildError('goalId', 'goalId должен быть строкой'));
+    } else {
+      const goalId = rawGoalId.trim();
+
+      if (!goalId) {
+        errors.push(buildError('goalId', 'goalId не может быть пустым'));
+      } else if (!UUID_REGEX.test(goalId)) {
+        errors.push(buildError('goalId', 'goalId должен быть UUID'));
+      } else {
+        dto.goalId = goalId.toLowerCase();
+      }
     }
   }
 

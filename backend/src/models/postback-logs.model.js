@@ -9,6 +9,9 @@ const postbackLogFields = `
   status,
   error_code AS "errorCode",
   payload_json AS "payloadJson",
+  resolved_goal_id AS "resolvedGoalId",
+  resolved_goal_name AS "resolvedGoalName",
+  goal_error AS "goalError",
   created_at AS "createdAt"
 `;
 
@@ -49,6 +52,9 @@ export async function updatePostbackLogResult({
   affiliateId,
   status,
   errorCode,
+  resolvedGoalId,
+  resolvedGoalName,
+  goalError,
 }) {
   const fields = [];
   const values = [];
@@ -82,6 +88,21 @@ export async function updatePostbackLogResult({
   if (errorCode !== undefined) {
     fields.push(`error_code = $${index++}`);
     values.push(errorCode);
+  }
+
+  if (resolvedGoalId !== undefined) {
+    fields.push(`resolved_goal_id = $${index++}`);
+    values.push(resolvedGoalId);
+  }
+
+  if (resolvedGoalName !== undefined) {
+    fields.push(`resolved_goal_name = $${index++}`);
+    values.push(resolvedGoalName);
+  }
+
+  if (goalError !== undefined) {
+    fields.push(`goal_error = $${index++}`);
+    values.push(goalError);
   }
 
   if (!fields.length) {

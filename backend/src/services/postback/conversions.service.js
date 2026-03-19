@@ -6,6 +6,7 @@ import { ERROR_CODES } from '../../utils/response.js';
 import { dispatchAsyncJob } from '../async-jobs.service.js';
 import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
 import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
+import { resolveOfferGoalForPostback } from './offer-goals.service.js';
 
 async function publishConversionCreatedJob(conversion) {
   const jobType = 'conversion_created';
@@ -15,6 +16,7 @@ async function publishConversionCreatedJob(conversion) {
     clickId: conversion.clickId,
     offerId: conversion.offerId,
     affiliateId: conversion.affiliateId,
+    goalId: conversion.goalId ?? null,
   };
 
   try {
@@ -69,6 +71,8 @@ function sanitizePayload(payload) {
     'payout',
     'signature',
     'sig',
+    'goalId',
+    'goal_id',
   ];
 
   const sanitized = {};
@@ -104,19 +108,6 @@ function assertToken(token) {
   if (!token || typeof token !== 'string') {
     throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'token обязателен');
   }
-}
-
-function parsePayout(value) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
 }
 
 function ensureOfferExists(offer, { offerId, clickId }) {
@@ -187,26 +178,6 @@ function verifySignature({ signature, secret, clickId, status, payoutRub }) {
   ) {
     throw new ApiError(ERROR_CODES.UNAUTHORIZED, 401, 'Подпись не прошла проверку');
   }
-}
-
-function resolvePayout({ offer, override, status }) {
-  if (typeof override === 'number') {
-    return override;
-  }
-
-  if (status === 'rejected') {
-    return 0;
-  }
-
-  const offerPayout = parsePayout(offer.payoutRub);
-
-  if (offerPayout === null) {
-    throw new ApiError(ERROR_CODES.INTERNAL_ERROR, 500, 'Некорректный payout оффера', {
-      offerId: offer.id,
-    });
-  }
-
-  return offerPayout;
 }
 
 async function createPostbackLifecycleLog({ requestId, clickId, payload }) {
@@ -292,7 +263,7 @@ export async function logPostbackValidationFailure({
 }
 
 export async function registerConversion(
-  { token, clickId, signature, status = 'approved', payoutRub },
+  { token, clickId, signature, status = 'approved', payoutRub, goalId = null },
   { requestId = null, payload = null } = {},
 ) {
   const postbackLog = await createPostbackLifecycleLog({
@@ -303,6 +274,7 @@ export async function registerConversion(
   const logContext = {
     offerId: null,
     affiliateId: null,
+    resolvedGoalId: null,
   };
 
   try {
@@ -342,6 +314,7 @@ export async function registerConversion(
     if (existing) {
       logContext.offerId = existing.offerId ?? logContext.offerId;
       logContext.affiliateId = existing.affiliateId ?? logContext.affiliateId;
+      logContext.resolvedGoalId = existing.goalId ?? logContext.resolvedGoalId;
 
       await updatePostbackLifecycleLog(postbackLog, {
         status: 'duplicate',
@@ -349,6 +322,9 @@ export async function registerConversion(
         offerId: logContext.offerId,
         affiliateId: logContext.affiliateId,
         clickId,
+        resolvedGoalId: existing.goalId ?? null,
+        resolvedGoalName: existing.goalName ?? null,
+        goalError: null,
       });
 
       throw new ApiError(
@@ -364,13 +340,23 @@ export async function registerConversion(
       );
     }
 
-    const resolvedPayout = resolvePayout({ offer, override: payoutRub, status });
+    const goalSnapshot = await resolveOfferGoalForPostback({
+      offerId: click.offerId,
+      goalId,
+    });
+    logContext.resolvedGoalId = goalSnapshot.id ?? logContext.resolvedGoalId;
 
-    if (!Number.isFinite(resolvedPayout) || resolvedPayout < 0) {
-      throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Некорректный payout', {
-        payoutRub: payoutRub ?? offer.payoutRub,
-      });
-    }
+    await updatePostbackLifecycleLog(postbackLog, {
+      offerId: logContext.offerId,
+      affiliateId: logContext.affiliateId,
+      resolvedGoalId: goalSnapshot.id ?? null,
+      resolvedGoalName: goalSnapshot.name ?? null,
+      goalError: null,
+    });
+
+    const payoutAmount = goalSnapshot.payout ?? 0;
+    const revenueAmount = goalSnapshot.revenue ?? 0;
+    const resolvedPayout = status === 'rejected' ? 0 : payoutAmount;
 
     try {
       const conversion = await createConversion({
@@ -379,6 +365,11 @@ export async function registerConversion(
         affiliateId: click.affiliateId,
         status,
         payoutRub: resolvedPayout,
+        goalId: goalSnapshot.id ?? null,
+        goalName: goalSnapshot.name ?? null,
+        goalType: goalSnapshot.type ?? null,
+        revenueAmount,
+        payoutAmount,
       });
 
       await updatePostbackLifecycleLog(postbackLog, {
@@ -387,6 +378,9 @@ export async function registerConversion(
         offerId: conversion.offerId,
         affiliateId: conversion.affiliateId,
         clickId: conversion.clickId,
+        resolvedGoalId: conversion.goalId ?? null,
+        resolvedGoalName: conversion.goalName ?? null,
+        goalError: null,
       });
 
       await publishConversionCreatedJob(conversion);
@@ -400,6 +394,9 @@ export async function registerConversion(
           offerId: logContext.offerId,
           affiliateId: logContext.affiliateId,
           clickId,
+          resolvedGoalId: logContext.resolvedGoalId ?? null,
+          resolvedGoalName: goalSnapshot?.name ?? null,
+          goalError: null,
         });
 
         throw new ApiError(
@@ -434,6 +431,14 @@ export async function registerConversion(
         patch.affiliateId = logContext.affiliateId;
       }
 
+      if (logContext.resolvedGoalId) {
+        patch.resolvedGoalId = logContext.resolvedGoalId;
+      }
+
+      if (error.details?.goalError) {
+        patch.goalError = error.details.goalError;
+      }
+
       await updatePostbackLifecycleLog(postbackLog, patch);
     } else {
       const patch = {
@@ -448,6 +453,10 @@ export async function registerConversion(
 
       if (logContext.affiliateId) {
         patch.affiliateId = logContext.affiliateId;
+      }
+
+      if (logContext.resolvedGoalId) {
+        patch.resolvedGoalId = logContext.resolvedGoalId;
       }
 
       await updatePostbackLifecycleLog(postbackLog, patch);
