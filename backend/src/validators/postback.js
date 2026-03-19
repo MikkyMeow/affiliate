@@ -1,4 +1,4 @@
-import { CONVERSION_STATUSES } from '../services/postback/conversions.service.js';
+import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
 
 const MAX_CLICK_ID_LENGTH = 255;
 const MAX_TOKEN_LENGTH = 255;
@@ -38,7 +38,7 @@ function parsePayout(value) {
 
 export function validatePostbackParams(source = {}) {
   const errors = [];
-  const dto = { status: 'approved' };
+  const dto = { status: 'pending' };
 
   const rawToken = source.token;
 
@@ -106,11 +106,11 @@ export function validatePostbackParams(source = {}) {
     } else {
       const normalized = status.toLowerCase();
 
-      if (!CONVERSION_STATUSES.includes(normalized)) {
+      if (!CONVERSION_STATUS_VALUES.includes(normalized)) {
         errors.push(
           buildError(
             'status',
-            `status должен быть одним из: ${CONVERSION_STATUSES.join(', ')}`,
+            `status должен быть одним из: ${CONVERSION_STATUS_VALUES.join(', ')}`,
           ),
         );
       } else {

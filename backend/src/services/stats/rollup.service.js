@@ -103,6 +103,7 @@ export async function updateConversionRollup(conversionId) {
     affiliateId: conversion.affiliateId,
     status: conversion.status,
     payoutRub: conversion.payoutRub,
+    revenueAmount: conversion.revenueAmount,
   });
 
   return {

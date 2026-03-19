@@ -9,9 +9,15 @@ import { apiFetch } from '@/lib/api';
 type StatsSummary = {
   clicksTotal: number;
   conversionsTotal: number;
-  approvedConversionsTotal: number;
-  rejectedConversionsTotal: number;
-  payoutTotal: number;
+  conversionsPending: number;
+  conversionsApproved: number;
+  conversionsRejected: number;
+  pendingPayout: number;
+  approvedPayout: number;
+  rejectedPayout: number;
+  pendingRevenue: number;
+  approvedRevenue: number;
+  rejectedRevenue: number;
 };
 
 const CARD_LAYOUT: Array<{
@@ -37,25 +43,56 @@ const CARD_LAYOUT: Array<{
     valueColor: 'text-indigo-900 dark:text-indigo-100',
   },
   {
-    key: 'approvedConversionsTotal',
+    key: 'conversionsPending',
+    label: 'Ожидают',
+    description: 'Конверсии в статусе Pending',
+    gradient: 'from-amber-500/10 to-amber-500/5',
+    valueColor: 'text-amber-900 dark:text-amber-100',
+  },
+  {
+    key: 'conversionsApproved',
     label: 'Одобренные',
     description: 'Конверсии в статусе Approved',
     gradient: 'from-emerald-500/10 to-emerald-500/5',
     valueColor: 'text-emerald-900 dark:text-emerald-100',
   },
   {
-    key: 'rejectedConversionsTotal',
+    key: 'conversionsRejected',
     label: 'Отклонённые',
     description: 'Конверсии в статусе Rejected',
     gradient: 'from-rose-500/10 to-rose-500/5',
     valueColor: 'text-rose-900 dark:text-rose-100',
   },
   {
-    key: 'payoutTotal',
-    label: 'Выплаты, ₽',
-    description: 'Общая сумма выплат',
+    key: 'approvedPayout',
+    label: 'Подтв. выплаты, ₽',
+    description: 'Сумма готова к выплате',
+    gradient: 'from-emerald-500/10 to-emerald-500/5',
+    valueColor: 'text-emerald-900 dark:text-emerald-100',
+    isCurrency: true,
+  },
+  {
+    key: 'pendingPayout',
+    label: 'Ожидают выплату, ₽',
+    description: 'Pending выплаты для партнёров',
     gradient: 'from-amber-500/10 to-amber-500/5',
     valueColor: 'text-amber-900 dark:text-amber-100',
+    isCurrency: true,
+  },
+  {
+    key: 'approvedRevenue',
+    label: 'Подтв. revenue, ₽',
+    description: 'Revenue из approved конверсий',
+    gradient: 'from-indigo-500/10 to-indigo-500/5',
+    valueColor: 'text-indigo-900 dark:text-indigo-100',
+    isCurrency: true,
+  },
+  {
+    key: 'pendingRevenue',
+    label: 'Ожидаемая revenue, ₽',
+    description: 'Revenue из pending конверсий',
+    gradient: 'from-blue-500/10 to-blue-500/5',
+    valueColor: 'text-blue-900 dark:text-blue-100',
     isCurrency: true,
   },
 ];

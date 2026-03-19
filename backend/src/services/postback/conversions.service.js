@@ -42,8 +42,10 @@ import {
   createPostbackLog,
   updatePostbackLogResult,
 } from '../../models/postback-logs.model.js';
-
-export const CONVERSION_STATUSES = ['approved', 'rejected'];
+import {
+  CONVERSION_STATUS_VALUES,
+  CONVERSION_STATUSES,
+} from '../../constants/conversions.js';
 
 function maskSensitiveValue(value) {
   if (typeof value === 'string' && value.length <= 3) {
@@ -223,6 +225,17 @@ async function updatePostbackLifecycleLog(logEntry, patch) {
   }
 }
 
+function ensureValidStatus(status) {
+  if (!CONVERSION_STATUS_VALUES.includes(status)) {
+    throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Недопустимый статус', {
+      status,
+      allowed: CONVERSION_STATUS_VALUES,
+    });
+  }
+
+  return status;
+}
+
 function resolveStatusForError(code) {
   if (code === ERROR_CODES.DUPLICATE_CONVERSION) {
     return 'duplicate';
@@ -263,7 +276,7 @@ export async function logPostbackValidationFailure({
 }
 
 export async function registerConversion(
-  { token, clickId, signature, status = 'approved', payoutRub, goalId = null },
+  { token, clickId, signature, status = CONVERSION_STATUSES.PENDING, payoutRub, goalId = null },
   { requestId = null, payload = null } = {},
 ) {
   const postbackLog = await createPostbackLifecycleLog({
@@ -301,11 +314,13 @@ export async function registerConversion(
       clickId,
     });
 
+    const normalizedStatus = ensureValidStatus(status);
+
     verifySignature({
       signature,
       secret: offer.postbackToken,
       clickId,
-      status,
+      status: normalizedStatus,
       payoutRub,
     });
 
@@ -356,15 +371,14 @@ export async function registerConversion(
 
     const payoutAmount = goalSnapshot.payout ?? 0;
     const revenueAmount = goalSnapshot.revenue ?? 0;
-    const resolvedPayout = status === 'rejected' ? 0 : payoutAmount;
 
     try {
       const conversion = await createConversion({
         clickId,
         offerId: click.offerId,
         affiliateId: click.affiliateId,
-        status,
-        payoutRub: resolvedPayout,
+        status: normalizedStatus,
+        payoutRub: payoutAmount,
         goalId: goalSnapshot.id ?? null,
         goalName: goalSnapshot.name ?? null,
         goalType: goalSnapshot.type ?? null,

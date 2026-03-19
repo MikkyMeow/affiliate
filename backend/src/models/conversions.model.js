@@ -101,6 +101,20 @@ export async function findConversionById(id) {
   return result.rows[0] ?? null;
 }
 
+export async function updateConversionStatus({ id, status }) {
+  const result = await pool.query(
+    `
+      UPDATE conversions
+      SET status = $2
+      WHERE id = $1
+      RETURNING ${conversionFields};
+    `,
+    [id, status],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function listConversions(
   { offerId, affiliateId, status } = {},
   { limit = 20, offset = 0 } = {},

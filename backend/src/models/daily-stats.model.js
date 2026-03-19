@@ -57,7 +57,7 @@ function toUtcDateString(value) {
   return date.toISOString().slice(0, 10);
 }
 
-function normalizePayoutValue(value) {
+function normalizeAmountValue(value) {
   if (value === null || value === undefined) {
     return '0';
   }
@@ -152,9 +152,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
           c.offer_id,
           c.affiliate_id,
           COUNT(*)::int AS conversions_count,
+          COUNT(*) FILTER (WHERE c.status = 'pending')::int AS pending_conversions_count,
           COUNT(*) FILTER (WHERE c.status = 'approved')::int AS approved_conversions_count,
           COUNT(*) FILTER (WHERE c.status = 'rejected')::int AS rejected_conversions_count,
-          COALESCE(SUM(c.payout_rub), 0)::numeric(14, 2) AS payout_total_rub
+          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'pending'), 0)::numeric(14, 2) AS pending_payout_total_rub,
+          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'approved'), 0)::numeric(14, 2) AS approved_payout_total_rub,
+          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'rejected'), 0)::numeric(14, 2) AS rejected_payout_total_rub,
+          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'pending'), 0)::numeric(14, 2) AS pending_revenue_total_rub,
+          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'approved'), 0)::numeric(14, 2) AS approved_revenue_total_rub,
+          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'rejected'), 0)::numeric(14, 2) AS rejected_revenue_total_rub
         FROM conversions c
         CROSS JOIN params p
         WHERE c.created_at >= p.start_date
@@ -166,9 +172,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         offer_id,
         affiliate_id,
         conversions_count,
+        pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
-        payout_total_rub,
+        pending_payout_total_rub,
+        approved_payout_total_rub,
+        rejected_payout_total_rub,
+        pending_revenue_total_rub,
+        approved_revenue_total_rub,
+        rejected_revenue_total_rub,
         created_at,
         updated_at
       )
@@ -177,9 +189,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         offer_id,
         affiliate_id,
         conversions_count,
+        pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
-        payout_total_rub,
+        pending_payout_total_rub,
+        approved_payout_total_rub,
+        rejected_payout_total_rub,
+        pending_revenue_total_rub,
+        approved_revenue_total_rub,
+        rejected_revenue_total_rub,
         NOW(),
         NOW()
       FROM rollup
@@ -187,9 +205,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
       DO UPDATE
       SET
         conversions_count = EXCLUDED.conversions_count,
+        pending_conversions_count = EXCLUDED.pending_conversions_count,
         approved_conversions_count = EXCLUDED.approved_conversions_count,
         rejected_conversions_count = EXCLUDED.rejected_conversions_count,
-        payout_total_rub = EXCLUDED.payout_total_rub,
+        pending_payout_total_rub = EXCLUDED.pending_payout_total_rub,
+        approved_payout_total_rub = EXCLUDED.approved_payout_total_rub,
+        rejected_payout_total_rub = EXCLUDED.rejected_payout_total_rub,
+        pending_revenue_total_rub = EXCLUDED.pending_revenue_total_rub,
+        approved_revenue_total_rub = EXCLUDED.approved_revenue_total_rub,
+        rejected_revenue_total_rub = EXCLUDED.rejected_revenue_total_rub,
         updated_at = NOW();
     `,
     [startDate, endDate],
@@ -220,9 +244,15 @@ export async function getDailyStatsTotals({
       SELECT
         COALESCE(SUM(clicks_count), 0)::bigint AS clicks_total,
         COALESCE(SUM(conversions_count), 0)::bigint AS conversions_total,
+        COALESCE(SUM(pending_conversions_count), 0)::bigint AS pending_total,
         COALESCE(SUM(approved_conversions_count), 0)::bigint AS approved_total,
         COALESCE(SUM(rejected_conversions_count), 0)::bigint AS rejected_total,
-        COALESCE(SUM(payout_total_rub), 0)::numeric(14, 2) AS payout_total_rub
+        COALESCE(SUM(pending_payout_total_rub), 0)::numeric(14, 2) AS pending_payout_total_rub,
+        COALESCE(SUM(approved_payout_total_rub), 0)::numeric(14, 2) AS approved_payout_total_rub,
+        COALESCE(SUM(rejected_payout_total_rub), 0)::numeric(14, 2) AS rejected_payout_total_rub,
+        COALESCE(SUM(pending_revenue_total_rub), 0)::numeric(14, 2) AS pending_revenue_total_rub,
+        COALESCE(SUM(approved_revenue_total_rub), 0)::numeric(14, 2) AS approved_revenue_total_rub,
+        COALESCE(SUM(rejected_revenue_total_rub), 0)::numeric(14, 2) AS rejected_revenue_total_rub
       FROM daily_stats
       ${whereClause};
     `,
@@ -232,17 +262,29 @@ export async function getDailyStatsTotals({
   const row = result.rows[0] ?? {
     clicks_total: 0,
     conversions_total: 0,
+    pending_total: 0,
     approved_total: 0,
     rejected_total: 0,
-    payout_total_rub: 0,
+    pending_payout_total_rub: 0,
+    approved_payout_total_rub: 0,
+    rejected_payout_total_rub: 0,
+    pending_revenue_total_rub: 0,
+    approved_revenue_total_rub: 0,
+    rejected_revenue_total_rub: 0,
   };
 
   return {
     clicksTotal: Number(row.clicks_total ?? 0),
     conversionsTotal: Number(row.conversions_total ?? 0),
+    pendingConversionsTotal: Number(row.pending_total ?? 0),
     approvedConversionsTotal: Number(row.approved_total ?? 0),
     rejectedConversionsTotal: Number(row.rejected_total ?? 0),
-    payoutTotalRub: Number(row.payout_total_rub ?? 0),
+    pendingPayoutTotalRub: Number(row.pending_payout_total_rub ?? 0),
+    approvedPayoutTotalRub: Number(row.approved_payout_total_rub ?? 0),
+    rejectedPayoutTotalRub: Number(row.rejected_payout_total_rub ?? 0),
+    pendingRevenueTotalRub: Number(row.pending_revenue_total_rub ?? 0),
+    approvedRevenueTotalRub: Number(row.approved_revenue_total_rub ?? 0),
+    rejectedRevenueTotalRub: Number(row.rejected_revenue_total_rub ?? 0),
   };
 }
 
@@ -252,6 +294,7 @@ export async function incrementConversionRollup({
   affiliateId,
   status,
   payoutRub,
+  revenueAmount,
 }) {
   if (!offerId) {
     throw new Error('offerId is required for conversion rollup');
@@ -267,8 +310,16 @@ export async function incrementConversionRollup({
 
   const normalizedDate = toUtcDateString(date);
   const approvedIncrement = status === 'approved' ? 1 : 0;
+  const pendingIncrement = status === 'pending' ? 1 : 0;
   const rejectedIncrement = status === 'rejected' ? 1 : 0;
-  const payoutIncrement = normalizePayoutValue(payoutRub);
+  const payoutIncrement = normalizeAmountValue(payoutRub);
+  const revenueIncrement = normalizeAmountValue(revenueAmount);
+  const pendingPayoutIncrement = status === 'pending' ? payoutIncrement : '0';
+  const approvedPayoutIncrement = status === 'approved' ? payoutIncrement : '0';
+  const rejectedPayoutIncrement = status === 'rejected' ? payoutIncrement : '0';
+  const pendingRevenueIncrement = status === 'pending' ? revenueIncrement : '0';
+  const approvedRevenueIncrement = status === 'approved' ? revenueIncrement : '0';
+  const rejectedRevenueIncrement = status === 'rejected' ? revenueIncrement : '0';
 
   await pool.query(
     `
@@ -277,9 +328,15 @@ export async function incrementConversionRollup({
         offer_id,
         affiliate_id,
         conversions_count,
+        pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
-        payout_total_rub,
+        pending_payout_total_rub,
+        approved_payout_total_rub,
+        rejected_payout_total_rub,
+        pending_revenue_total_rub,
+        approved_revenue_total_rub,
+        rejected_revenue_total_rub,
         created_at,
         updated_at
       )
@@ -290,7 +347,13 @@ export async function incrementConversionRollup({
         1,
         $4,
         $5,
-        $6::numeric(14, 2),
+        $6,
+        $7::numeric(14, 2),
+        $8::numeric(14, 2),
+        $9::numeric(14, 2),
+        $10::numeric(14, 2),
+        $11::numeric(14, 2),
+        $12::numeric(14, 2),
         NOW(),
         NOW()
       )
@@ -298,14 +361,40 @@ export async function incrementConversionRollup({
       DO UPDATE
       SET
         conversions_count = daily_stats.conversions_count + EXCLUDED.conversions_count,
+        pending_conversions_count =
+          daily_stats.pending_conversions_count + EXCLUDED.pending_conversions_count,
         approved_conversions_count =
           daily_stats.approved_conversions_count + EXCLUDED.approved_conversions_count,
         rejected_conversions_count =
           daily_stats.rejected_conversions_count + EXCLUDED.rejected_conversions_count,
-        payout_total_rub = daily_stats.payout_total_rub + EXCLUDED.payout_total_rub,
+        pending_payout_total_rub =
+          daily_stats.pending_payout_total_rub + EXCLUDED.pending_payout_total_rub,
+        approved_payout_total_rub =
+          daily_stats.approved_payout_total_rub + EXCLUDED.approved_payout_total_rub,
+        rejected_payout_total_rub =
+          daily_stats.rejected_payout_total_rub + EXCLUDED.rejected_payout_total_rub,
+        pending_revenue_total_rub =
+          daily_stats.pending_revenue_total_rub + EXCLUDED.pending_revenue_total_rub,
+        approved_revenue_total_rub =
+          daily_stats.approved_revenue_total_rub + EXCLUDED.approved_revenue_total_rub,
+        rejected_revenue_total_rub =
+          daily_stats.rejected_revenue_total_rub + EXCLUDED.rejected_revenue_total_rub,
         updated_at = NOW();
     `,
-    [normalizedDate, offerId, affiliateId, approvedIncrement, rejectedIncrement, payoutIncrement],
+    [
+      normalizedDate,
+      offerId,
+      affiliateId,
+      pendingIncrement,
+      approvedIncrement,
+      rejectedIncrement,
+      pendingPayoutIncrement,
+      approvedPayoutIncrement,
+      rejectedPayoutIncrement,
+      pendingRevenueIncrement,
+      approvedRevenueIncrement,
+      rejectedRevenueIncrement,
+    ],
   );
 }
 

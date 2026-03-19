@@ -14,17 +14,29 @@ export async function getSummary(filter = {}) {
   const {
     clicksTotal = 0,
     conversionsTotal = 0,
+    pendingConversionsTotal = 0,
     approvedConversionsTotal = 0,
     rejectedConversionsTotal = 0,
-    payoutTotalRub = 0,
+    pendingPayoutTotalRub = 0,
+    approvedPayoutTotalRub = 0,
+    rejectedPayoutTotalRub = 0,
+    pendingRevenueTotalRub = 0,
+    approvedRevenueTotalRub = 0,
+    rejectedRevenueTotalRub = 0,
   } = await getAggregatedSummary(filter);
 
   return {
     clicksTotal,
     conversionsTotal,
-    approvedConversionsTotal,
-    rejectedConversionsTotal,
-    payoutTotal: payoutTotalRub,
+    conversionsPending: pendingConversionsTotal,
+    conversionsApproved: approvedConversionsTotal,
+    conversionsRejected: rejectedConversionsTotal,
+    pendingPayout: pendingPayoutTotalRub,
+    approvedPayout: approvedPayoutTotalRub,
+    rejectedPayout: rejectedPayoutTotalRub,
+    pendingRevenue: pendingRevenueTotalRub,
+    approvedRevenue: approvedRevenueTotalRub,
+    rejectedRevenue: rejectedRevenueTotalRub,
   };
 }
 

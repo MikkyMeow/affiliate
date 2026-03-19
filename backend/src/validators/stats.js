@@ -1,9 +1,11 @@
+import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
+
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
-const conversionStatuses = new Set(['approved', 'rejected']);
+const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 function buildError(field, message) {
@@ -154,7 +156,12 @@ function validateStatus(value) {
   if (!conversionStatuses.has(normalized)) {
     return {
       value: undefined,
-      errors: [buildError('status', 'Недопустимое значение статуса')],
+      errors: [
+        buildError(
+          'status',
+          `Недопустимое значение статуса: ${CONVERSION_STATUS_VALUES.join(', ')}`,
+        ),
+      ],
     };
   }
 

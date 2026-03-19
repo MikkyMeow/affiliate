@@ -1,9 +1,11 @@
 export type PartnerStatsSummary = {
   clicksTotal: number;
   conversionsTotal: number;
-  approvedConversionsTotal: number;
-  rejectedConversionsTotal: number;
-  payoutTotal: number;
+  conversionsPending: number;
+  conversionsApproved: number;
+  conversionsRejected: number;
+  pendingPayout: number;
+  approvedPayout: number;
 };
 
 export const PARTNER_STATS_CARDS: Array<{
@@ -26,22 +28,36 @@ export const PARTNER_STATS_CARDS: Array<{
     accent: 'from-indigo-500/10 to-indigo-500/5 text-indigo-900 dark:text-indigo-100',
   },
   {
-    key: 'approvedConversionsTotal',
+    key: 'conversionsPending',
+    label: 'Ожидают',
+    hint: 'Статус Pending',
+    accent: 'from-amber-500/10 to-amber-500/5 text-amber-900 dark:text-amber-100',
+  },
+  {
+    key: 'conversionsApproved',
     label: 'Одобренные',
     hint: 'Статус Approved',
     accent:
       'from-emerald-500/10 to-emerald-500/5 text-emerald-900 dark:text-emerald-100',
   },
   {
-    key: 'rejectedConversionsTotal',
+    key: 'conversionsRejected',
     label: 'Отклонённые',
     hint: 'Статус Rejected',
     accent: 'from-rose-500/10 to-rose-500/5 text-rose-900 dark:text-rose-100',
   },
   {
-    key: 'payoutTotal',
-    label: 'Выплаты, ₽',
-    hint: 'Сумма ожидаемой выплаты',
+    key: 'approvedPayout',
+    label: 'Подтв. выплаты, ₽',
+    hint: 'Сумма к выплате',
+    accent:
+      'from-emerald-500/10 to-emerald-500/5 text-emerald-900 dark:text-emerald-100',
+    currency: true,
+  },
+  {
+    key: 'pendingPayout',
+    label: 'Ожидают выплату, ₽',
+    hint: 'Pending выплаты',
     accent: 'from-amber-500/10 to-amber-500/5 text-amber-900 dark:text-amber-100',
     currency: true,
   },
