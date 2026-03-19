@@ -1,21 +1,18 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { apiFetch, type ApiError } from '@/lib/api';
-import { buildTrackingUrl } from '@/lib/tracking';
-import {
-  PARTNER_STATS_CARDS,
-  type PartnerStatsSummary,
-} from './stats-config';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { apiFetch, type ApiError } from "@/lib/api";
+import { buildTrackingUrl } from "@/lib/tracking";
+import { PARTNER_STATS_CARDS, type PartnerStatsSummary } from "./stats-config";
 
 const PARTNER_NAV_LINKS = [
-  { href: '/partner', label: 'Офферы' },
-  { href: '/partner/stats', label: 'Статистика' },
-  { href: '/partner/clicks', label: 'Клики' },
-  { href: '/partner/conversions', label: 'Конверсии' },
+  { href: "/partner", label: "Офферы" },
+  { href: "/partner/stats", label: "Статистика" },
+  { href: "/partner/clicks", label: "Клики" },
+  { href: "/partner/conversions", label: "Конверсии" },
 ];
 
 type PartnerProfile = {
@@ -25,25 +22,44 @@ type PartnerProfile = {
     displayName?: string | null;
     affiliateId?: string | null;
     createdAt?: string;
-    role: 'affiliate';
+    role: "affiliate";
   };
   affiliate: {
     id: string;
     name: string;
     email: string;
-    status: 'active' | 'inactive';
+    status: "active" | "inactive";
     createdAt: string;
     updatedAt: string;
   };
+};
+
+type PartnerOfferViewRestricted = {
+  type: "restricted";
+  previewUrl: string | null;
+};
+
+type PartnerOfferViewFull = {
+  type: "full";
+  advertiserId: string;
+  targetUrl: string;
+  fallbackUrl: string | null;
+  previewUrl: string | null;
+  payoutRub: number;
 };
 
 type PartnerOffer = {
   id: string;
   title: string;
   advertiserId: string;
-  targetUrl: string;
-  payoutRub: number;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
+  visibilityMode: string;
+  targetingStrict: boolean;
+  accessLevel: string;
+  canRequestAccess: boolean;
+  denyReason: string | null;
+  requestStatus: string | null;
+  view: PartnerOfferViewRestricted | PartnerOfferViewFull;
 };
 
 export default function PartnerDashboardPage() {
@@ -61,7 +77,7 @@ export default function PartnerDashboardPage() {
   const [copiedOfferId, setCopiedOfferId] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
-    const next = encodeURIComponent(pathname ?? '/partner');
+    const next = encodeURIComponent(pathname ?? "/partner");
     return {
       login: `/auth/login?next=${next}`,
       register: `/auth/register?next=${next}`,
@@ -70,7 +86,7 @@ export default function PartnerDashboardPage() {
 
   const numberFormatter = useMemo(
     () =>
-      new Intl.NumberFormat('ru-RU', {
+      new Intl.NumberFormat("ru-RU", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }),
@@ -79,9 +95,9 @@ export default function PartnerDashboardPage() {
 
   const currencyFormatter = useMemo(
     () =>
-      new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
+      new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency: "RUB",
         maximumFractionDigits: 2,
       }),
     [],
@@ -95,13 +111,13 @@ export default function PartnerDashboardPage() {
     setLoadingProfile(true);
     setProfileError(null);
     try {
-      const fetched = await apiFetch<PartnerProfile>('/partner/profile', {
+      const fetched = await apiFetch<PartnerProfile>("/partner/profile", {
         token: accessToken,
       });
       setProfile(fetched);
     } catch (error) {
       const apiError = error as ApiError;
-      setProfileError(apiError.message ?? 'Не удалось загрузить профиль');
+      setProfileError(apiError.message ?? "Не удалось загрузить профиль");
       setProfile(null);
     } finally {
       setLoadingProfile(false);
@@ -116,13 +132,13 @@ export default function PartnerDashboardPage() {
     setLoadingStats(true);
     setStatsError(null);
     try {
-      const summary = await apiFetch<PartnerStatsSummary>('/partner/stats', {
+      const summary = await apiFetch<PartnerStatsSummary>("/partner/stats", {
         token: accessToken,
       });
       setStats(summary);
     } catch (error) {
       const apiError = error as ApiError;
-      setStatsError(apiError.message ?? 'Не удалось загрузить статистику');
+      setStatsError(apiError.message ?? "Не удалось загрузить статистику");
       setStats(null);
     } finally {
       setLoadingStats(false);
@@ -137,13 +153,13 @@ export default function PartnerDashboardPage() {
     setLoadingOffers(true);
     setOffersError(null);
     try {
-      const list = await apiFetch<PartnerOffer[]>('/partner/offers', {
+      const list = await apiFetch<PartnerOffer[]>("/partner/offers", {
         token: accessToken,
       });
       setOffers(list);
     } catch (error) {
       const apiError = error as ApiError;
-      setOffersError(apiError.message ?? 'Не удалось загрузить офферы');
+      setOffersError(apiError.message ?? "Не удалось загрузить офферы");
       setOffers([]);
     } finally {
       setLoadingOffers(false);
@@ -151,40 +167,51 @@ export default function PartnerDashboardPage() {
   }, [accessToken]);
 
   useEffect(() => {
-    if (authLoading || !accessToken || user?.role !== 'affiliate') {
+    if (authLoading || !accessToken || user?.role !== "affiliate") {
       return;
     }
 
     void loadProfile();
     void loadStats();
     void loadOffers();
-  }, [accessToken, authLoading, loadOffers, loadProfile, loadStats, user?.role]);
+  }, [
+    accessToken,
+    authLoading,
+    loadOffers,
+    loadProfile,
+    loadStats,
+    user?.role,
+  ]);
 
   const handleCopyLink = useCallback(async (link: string, offerId: string) => {
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);
       } else {
-        const temp = document.createElement('textarea');
+        const temp = document.createElement("textarea");
         temp.value = link;
-        temp.style.position = 'fixed';
-        temp.style.opacity = '0';
+        temp.style.position = "fixed";
+        temp.style.opacity = "0";
         document.body.appendChild(temp);
         temp.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         document.body.removeChild(temp);
       }
       setCopiedOfferId(offerId);
-      setTimeout(() => setCopiedOfferId((current) => (current === offerId ? null : current)), 2000);
+      setTimeout(
+        () =>
+          setCopiedOfferId((current) => (current === offerId ? null : current)),
+        2000,
+      );
     } catch (error) {
-      console.warn('Не удалось скопировать ссылку', error);
+      console.warn("Не удалось скопировать ссылку", error);
       setCopiedOfferId(null);
     }
   }, []);
 
   const affiliateId = profile?.affiliate.id ?? user?.affiliateId ?? null;
   const trackingHint = affiliateId
-    ? `${buildTrackingUrl('/click')}?offerId=OFFER_ID&affiliateId=${affiliateId}`
+    ? `${buildTrackingUrl("/click")}?offerId=OFFER_ID&affiliateId=${affiliateId}`
     : null;
 
   if (authLoading) {
@@ -222,7 +249,7 @@ export default function PartnerDashboardPage() {
     );
   }
 
-  if (user.role !== 'affiliate') {
+  if (user.role !== "affiliate") {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
@@ -245,7 +272,9 @@ export default function PartnerDashboardPage() {
     <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Partner</p>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">
+            Partner
+          </p>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
             Кабинет аффилиата
           </h1>
@@ -260,7 +289,7 @@ export default function PartnerDashboardPage() {
             disabled={loadingStats}
             className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
-            {loadingStats ? 'Обновляем…' : 'Обновить статистику'}
+            {loadingStats ? "Обновляем…" : "Обновить статистику"}
           </button>
           <button
             type="button"
@@ -271,7 +300,7 @@ export default function PartnerDashboardPage() {
             disabled={loadingProfile || loadingOffers}
             className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
           >
-            {(loadingProfile || loadingOffers) ? 'Загружаем…' : 'Обновить данные'}
+            {loadingProfile || loadingOffers ? "Загружаем…" : "Обновить данные"}
           </button>
         </div>
       </div>
@@ -304,28 +333,31 @@ export default function PartnerDashboardPage() {
           ) : profile ? (
             <div className="mt-4 space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
               <p>
-                <span className="text-zinc-500">Название:</span>{' '}
+                <span className="text-zinc-500">Название:</span>{" "}
                 <span className="font-medium text-zinc-900 dark:text-zinc-50">
                   {profile.affiliate.name}
                 </span>
               </p>
               <p>
-                <span className="text-zinc-500">Email:</span> {profile.affiliate.email}
+                <span className="text-zinc-500">Email:</span>{" "}
+                {profile.affiliate.email}
               </p>
               <p>
-                <span className="text-zinc-500">Affiliate ID:</span>{' '}
+                <span className="text-zinc-500">Affiliate ID:</span>{" "}
                 {profile.affiliate.id}
               </p>
               <p>
-                <span className="text-zinc-500">Статус:</span>{' '}
+                <span className="text-zinc-500">Статус:</span>{" "}
                 <span
                   className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                    profile.affiliate.status === 'active'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
-                      : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                    profile.affiliate.status === "active"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   }`}
                 >
-                  {profile.affiliate.status === 'active' ? 'Активен' : 'Неактивен'}
+                  {profile.affiliate.status === "active"
+                    ? "Активен"
+                    : "Неактивен"}
                 </span>
               </p>
             </div>
@@ -339,20 +371,23 @@ export default function PartnerDashboardPage() {
           </p>
           <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
             <p>
-              Используйте базовый URL:{' '}
+              Используйте базовый URL:{" "}
               <code className="rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
-                {buildTrackingUrl('/click')}
+                {buildTrackingUrl("/click")}
               </code>
             </p>
             {trackingHint ? (
               <p>
-                Пример ссылки:{' '}
+                Пример ссылки:{" "}
                 <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
                   {trackingHint}
                 </code>
               </p>
             ) : (
-              <p>Идентификатор аффилиата ещё не готов. Попробуйте обновить профиль.</p>
+              <p>
+                Идентификатор аффилиата ещё не готов. Попробуйте обновить
+                профиль.
+              </p>
             )}
           </div>
         </div>
@@ -389,9 +424,11 @@ export default function PartnerDashboardPage() {
                   {card.label}
                 </p>
                 <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  {loadingStats && !stats ? '…' : displayValue}
+                  {loadingStats && !stats ? "…" : displayValue}
                 </p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{card.hint}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {card.hint}
+                </p>
               </div>
             );
           })}
@@ -423,8 +460,16 @@ export default function PartnerDashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {offers.map((offer) => {
+              const hasFullAccess = offer.view.type === "full";
+              const targetUrl =
+                offer.view.type === "full"
+                  ? offer.view.targetUrl
+                  : offer.view.previewUrl;
+              const payoutText = hasFullAccess
+                ? currencyFormatter.format(offer.view.payoutRub)
+                : null;
               const trackingLink = affiliateId
-                ? `${buildTrackingUrl('/click')}?offerId=${offer.id}&affiliateId=${affiliateId}`
+                ? `${buildTrackingUrl("/click")}?offerId=${offer.id}&affiliateId=${affiliateId}`
                 : null;
               return (
                 <div
@@ -437,25 +482,42 @@ export default function PartnerDashboardPage() {
                     </h3>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        offer.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
-                          : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                        offer.status === "active"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                       }`}
                     >
-                      {offer.status === 'active' ? 'Активен' : 'Пауза'}
+                      {offer.status === "active" ? "Активен" : "Пауза"}
                     </span>
                   </div>
                   <p className="text-zinc-600 dark:text-zinc-400">
-                    Целевая: <a href={offer.targetUrl} className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300" target="_blank" rel="noreferrer">
-                      {offer.targetUrl}
-                    </a>
+                    Целевая:{" "}
+                    {targetUrl ? (
+                      <a
+                        href={targetUrl}
+                        className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {targetUrl}
+                      </a>
+                    ) : (
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        Недоступно
+                      </span>
+                    )}
                   </p>
                   <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                    Выплата:{' '}
+                    Выплата:{" "}
                     <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      {currencyFormatter.format(offer.payoutRub)}
+                      {payoutText ?? "Недоступно"}
                     </span>
                   </p>
+                  {!hasFullAccess && (
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Запросите доступ к офферу, чтобы увидеть полные условия.
+                    </p>
+                  )}
                   {trackingLink ? (
                     <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
                       <p className="mb-1 text-zinc-500">Ваша ссылка:</p>
@@ -465,10 +527,14 @@ export default function PartnerDashboardPage() {
                       <div className="mt-2 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => void handleCopyLink(trackingLink, offer.id)}
+                          onClick={() =>
+                            void handleCopyLink(trackingLink, offer.id)
+                          }
                           className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
-                          {copiedOfferId === offer.id ? 'Скопировано' : 'Скопировать'}
+                          {copiedOfferId === offer.id
+                            ? "Скопировано"
+                            : "Скопировать"}
                         </button>
                         <a
                           href={trackingLink}

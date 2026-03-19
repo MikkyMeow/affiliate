@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
+import { OfferGoalsSection } from './OfferGoalsSection';
 
 type Offer = {
   id: string;
@@ -378,6 +379,12 @@ export default function EditOfferPage() {
           {submitting ? 'Сохраняем...' : 'Сохранить изменения'}
         </button>
       </form>
+
+      {offerId && (
+        <div className="mt-10">
+          <OfferGoalsSection offerId={offerId} token={accessToken} />
+        </div>
+      )}
     </section>
   );
 }
