@@ -13,7 +13,12 @@ const clickFields = `
   sub2,
   sub3,
   sub4,
-  sub5
+  sub5,
+  country_code AS "countryCode",
+  targeting_strict AS "targetingStrict",
+  redirect_outcome AS "redirectOutcome",
+  redirect_reason AS "redirectReason",
+  destination_type AS "destinationType"
 `;
 
 const clickListFields = `
@@ -23,7 +28,10 @@ const clickListFields = `
   created_at AS "createdAt",
   ip,
   referer,
-  sub1
+  sub1,
+  country_code AS "countryCode",
+  redirect_outcome AS "redirectOutcome",
+  destination_type AS "destinationType"
 `;
 
 export async function createClick({
@@ -38,6 +46,11 @@ export async function createClick({
   sub3 = null,
   sub4 = null,
   sub5 = null,
+  countryCode = null,
+  targetingStrict = false,
+  redirectOutcome = null,
+  redirectReason = null,
+  destinationType = null,
 }) {
   const result = await pool.query(
     `
@@ -52,9 +65,14 @@ export async function createClick({
         sub2,
         sub3,
         sub4,
-        sub5
+        sub5,
+        country_code,
+        targeting_strict,
+        redirect_outcome,
+        redirect_reason,
+        destination_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING ${clickFields};
     `,
     [
@@ -69,6 +87,11 @@ export async function createClick({
       sub3,
       sub4,
       sub5,
+      countryCode,
+      targetingStrict,
+      redirectOutcome,
+      redirectReason,
+      destinationType,
     ],
   );
 

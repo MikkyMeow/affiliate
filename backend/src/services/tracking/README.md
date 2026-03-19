@@ -7,8 +7,8 @@
 `clicks.service.js` предоставляет единую точку входа для sync операций с кликами:
 
 - `generateClickId()` — выдает UUIDv4 для будущего редиректа. Используется на краю (UI/ссылки) и внутри hot path, чтобы обеспечить идемпотентность.
-- `prepareClick(input)` — проверяет существование `offerId`/`affiliateId`, убеждается что оба в статусе `active`, генерирует `click_id`, собирает объект минимального клика и возвращает его вместе с `redirectUrl`.
-- `registerClick(input)` — вызывает `prepareClick`, записывает минимальную строку в таблицу `clicks` и возвращает `clickId` + `redirectUrl` (URL оффера с добавленным `click_id` query) для дальнейшего редиректа.
+- `prepareClick(input, options)` — проверяет существование `offerId`/`affiliateId`, убеждается что оба в статусе `active`, тянет geo rules оффера, генерирует `click_id`, определяет redirect (target/fallback/internal) и возвращает его вместе с собранным кликом.
+- `registerClick(input, options)` — вызывает `prepareClick`, записывает строку в таблицу `clicks` и возвращает `clickId`, `redirectUrl` + метаданные об исходе (outcome/reason/destination).
 - `getClickByClickId(clickId)` — лёгкий lookup для downstream сервисов (постбеки, отчёты). Запрос использует уникальный индекс и не требует сканов.
 
 ### Sync vs async
@@ -19,7 +19,9 @@
 ### Состав данных
 
 Таблица `clicks` хранит:
-`offer_id`, `affiliate_id`, `click_id`, `created_at`, request метаданные (`ip`, `user_agent`, `referer`) и пять произвольных `sub` полей. Индексы обеспечивают быстрый поиск по `click_id`, `offer_id`, `affiliate_id`, `created_at`.
+`offer_id`, `affiliate_id`, `click_id`, `created_at`, request метаданные (`ip`, `user_agent`, `referer`), пять произвольных `sub` полей, а также geo/redirect контекст (`country_code`, `targeting_strict`, `redirect_outcome`, `redirect_reason`, `destination_type`). Индексы обеспечивают быстрый поиск по `click_id`, `offer_id`, `affiliate_id`, `created_at`.
+
+`redirect_outcome` фиксирует итог решения (`allowed_target_redirect`, `fallback_redirect`, `internal_unavailable_redirect`), `destination_type` хранит тип назначения (`target`, `fallback`, `internal_unavailable`), а `redirect_reason` описывает причину деная (`country_denied`, `not_in_allow_list`, `unknown_country`).
 
 ### Ошибки
 

@@ -24,6 +24,7 @@ import {
   trackingPostbackErrorsCounter,
   trackingPostbackDuplicatesCounter,
 } from '../lib/metrics.js';
+import { detectRequestCountry } from '../lib/detectRequestCountry.js';
 
 const router = express.Router();
 
@@ -81,6 +82,8 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
     clickPayload[key] = extractQueryParam(req.query[key]);
   }
 
+  clickPayload.countryCode = detectRequestCountry(req);
+
   const logClickEvent = (status, extra = {}) => {
     const logEntry = {
       event: 'track_click',
@@ -90,6 +93,11 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       clickId: extra.clickId ?? null,
       status,
       duration_ms: Date.now() - startedAt,
+      country: extra.countryCode ?? clickPayload.countryCode ?? null,
+      targeting_strict: extra.targetingStrict ?? null,
+      redirect_outcome: extra.redirectOutcome ?? null,
+      redirect_reason: extra.redirectReason ?? null,
+      destination_type: extra.destinationType ?? null,
     };
 
     console.log(JSON.stringify(logEntry));
@@ -107,10 +115,56 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
   }
 
   try {
-    const { redirectUrl, clickId } = await registerClick(clickPayload);
-    logClickEvent('redirect', { clickId });
+    const internalFallbackUrl = `${req.baseUrl}/unavailable`;
+    const {
+      redirectUrl,
+      clickId,
+      redirectOutcome,
+      redirectReason,
+      destinationType,
+      countryCode,
+      targetingStrict,
+    } = await registerClick(clickPayload, {
+      internalFallbackUrl,
+    });
 
-    return res.redirect(302, redirectUrl);
+    let finalRedirectUrl = redirectUrl;
+
+    if (destinationType === 'internal_unavailable') {
+      const params = new URLSearchParams();
+
+      if (redirectReason) {
+        params.set('reason', redirectReason);
+      }
+
+      if (clickPayload.offerId) {
+        params.set('offerId', clickPayload.offerId);
+      }
+
+      if (clickId) {
+        params.set('clickId', clickId);
+      }
+
+      if (clickPayload.affiliateId) {
+        params.set('affiliateId', clickPayload.affiliateId);
+      }
+
+      const query = params.toString();
+      finalRedirectUrl = query
+        ? `${internalFallbackUrl}?${query}`
+        : internalFallbackUrl;
+    }
+
+    logClickEvent('redirect', {
+      clickId,
+      redirectOutcome,
+      redirectReason,
+      destinationType,
+      countryCode,
+      targetingStrict,
+    });
+
+    return res.redirect(302, finalRedirectUrl);
   } catch (error) {
     if (error instanceof ApiError) {
       trackingClickErrorsCounter.inc({ type: 'api_error' });
@@ -180,5 +234,49 @@ router.post(
     }
   }),
 );
+
+const FALLBACK_REASON_MESSAGES = {
+  country_denied: 'Offer is unavailable in your country.',
+  not_in_allow_list: 'This offer is limited to a different region.',
+  unknown_country: 'We could not determine your location for this offer.',
+};
+
+router.get('/unavailable', (req, res) => {
+  const rawReason =
+    typeof req.query.reason === 'string'
+      ? req.query.reason
+      : 'country_denied';
+  const reason = /^[a-z0-9_]+$/i.test(rawReason)
+    ? rawReason
+    : 'country_denied';
+  const message =
+    FALLBACK_REASON_MESSAGES[reason] ??
+    'This offer is not available for your location.';
+
+  res
+    .status(200)
+    .set('Content-Type', 'text/html; charset=utf-8')
+    .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Offer unavailable</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; background: #fafafa; color: #111; }
+      .container { max-width: 480px; margin: 0 auto; }
+      h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+      p { line-height: 1.4; }
+      small { color: #555; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Offer unavailable</h1>
+      <p>${message}</p>
+      <small>Reason code: ${reason}</small>
+    </div>
+  </body>
+</html>`);
+});
 
 export default router;

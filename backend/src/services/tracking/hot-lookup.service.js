@@ -24,6 +24,8 @@ const ENTITY_CONFIG = {
       id: offer.id,
       status: offer.status,
       targetUrl: offer.targetUrl,
+      targetingStrict: Boolean(offer.targetingStrict),
+      fallbackUrl: offer.fallbackUrl ?? null,
     }),
     warning:
       '⚠️ Offer lookup cache disabled because Redis is unavailable.',
