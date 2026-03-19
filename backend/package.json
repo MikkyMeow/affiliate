@@ -11,7 +11,10 @@
     "migrate": "node-pg-migrate up",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
-    "migrate:create": "node-pg-migrate create"
+    "migrate:create": "node-pg-migrate create",
+    "test": "NODE_ENV=test vitest run",
+    "test:watch": "NODE_ENV=test vitest",
+    "test:integration": "NODE_ENV=test vitest run --reporter=dot"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -29,6 +32,8 @@
     "redis": "^5.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.0"
   }
 }

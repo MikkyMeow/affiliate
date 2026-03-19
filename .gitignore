@@ -46,6 +46,7 @@ Thumbs.db
 .env.*
 **/.env
 **/.env.*
+!/.env.test
 .envrc
 **/.envrc
 .direnv/

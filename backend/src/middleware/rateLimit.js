@@ -5,6 +5,9 @@ import { getClientIp } from '../lib/getClientIp.js';
 import { redisClient } from '../lib/redis.js';
 
 let hasLoggedRedisFallback = false;
+const rateLimitDisabled =
+  (process.env.RATE_LIMIT_DISABLED ?? '').toLowerCase() === 'true' ||
+  process.env.NODE_ENV === 'test';
 
 function logRedisFallback(reason) {
   if (hasLoggedRedisFallback) {
@@ -147,6 +150,10 @@ function buildHandler(message) {
 }
 
 function createLimiter({ windowMs, limit, message, name }) {
+  if (rateLimitDisabled) {
+    return (_req, _res, next) => next();
+  }
+
   return rateLimit({
     windowMs,
     limit,
