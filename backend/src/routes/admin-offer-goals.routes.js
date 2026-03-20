@@ -65,7 +65,10 @@ router.post(
       );
     }
 
-    const goal = await createOfferGoal(offerId, dto);
+    const goal = await createOfferGoal(offerId, dto, {
+      actor: req.user,
+      requestId: req.id ?? null,
+    });
     return sendSuccess(res, { goal }, { status: 201 });
   }),
 );
@@ -103,7 +106,10 @@ router.patch(
       );
     }
 
-    const goal = await updateOfferGoal(offerId, goalId, dto);
+    const goal = await updateOfferGoal(offerId, goalId, dto, {
+      actor: req.user,
+      requestId: req.id ?? null,
+    });
     return sendSuccess(res, { goal });
   }),
 );

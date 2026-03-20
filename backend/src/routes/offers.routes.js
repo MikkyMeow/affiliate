@@ -59,7 +59,10 @@ router.post(
       );
     }
 
-    const offer = await createOffer(dto);
+    const offer = await createOffer(dto, {
+      actor: req.user,
+      requestId: req.id ?? null,
+    });
     return sendSuccess(res, { offer }, { status: 201 });
   }),
 );
@@ -117,7 +120,11 @@ router.patch(
       );
     }
 
-    const offer = await updateOffer(req.params.id, dto);
+    const offer = await updateOffer(
+      req.params.id,
+      dto,
+      { actor: req.user, requestId: req.id ?? null },
+    );
     return sendSuccess(res, { offer });
   }),
 );

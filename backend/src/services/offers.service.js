@@ -10,6 +10,7 @@ import { ERROR_CODES } from '../utils/response.js';
 import { generatePostbackToken } from '../lib/generatePostbackToken.js';
 import { invalidateOfferCache } from './tracking/cache-invalidation.service.js';
 import { listOfferGoals as listOfferGoalsService } from './offer-goals.service.js';
+import { writeAuditEvent } from './audit.service.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -83,15 +84,82 @@ async function ensureAdvertiserExists(advertiserId) {
   }
 }
 
-export async function createOffer(dto) {
+function buildOfferSnapshot(offer) {
+  if (!offer) {
+    return null;
+  }
+
+  return {
+    title: offer.title ?? null,
+    advertiserId: offer.advertiserId ?? null,
+    status: offer.status ?? null,
+    visibilityMode: offer.visibilityMode ?? null,
+    targetingStrict: offer.targetingStrict ?? null,
+    fallbackUrl: offer.fallbackUrl ?? null,
+    payoutRub: offer.payoutRub ?? null,
+    targetUrl: offer.targetUrl ?? null,
+  };
+}
+
+function getOfferActorMeta(actor) {
+  if (!actor) {
+    return { actorUserId: null, actorRole: null };
+  }
+
+  return {
+    actorUserId: actor.userId ?? null,
+    actorRole: actor.role ?? null,
+  };
+}
+
+function diffOfferSnapshots(previous, next) {
+  const trackedFields = [
+    'title',
+    'status',
+    'advertiserId',
+    'targetUrl',
+    'payoutRub',
+    'visibilityMode',
+    'targetingStrict',
+    'fallbackUrl',
+  ];
+
+  const changes = {};
+
+  for (const field of trackedFields) {
+    const before = previous?.[field] ?? null;
+    const after = next?.[field] ?? null;
+
+    if (before !== after) {
+      changes[field] = { old: before, new: after };
+    }
+  }
+
+  return changes;
+}
+
+export async function createOffer(dto, { actor = null, requestId = null } = {}) {
   await ensureAdvertiserExists(dto.advertiserId);
   assertValidTargetUrl(dto.targetUrl);
   assertValidPayout(dto.payoutRub);
 
-  return createOfferModel({
+  const offer = await createOfferModel({
     ...dto,
     postbackToken: generatePostbackToken(),
   });
+
+  const { actorUserId, actorRole } = getOfferActorMeta(actor);
+  await writeAuditEvent({
+    entityType: 'offer',
+    entityId: offer.id,
+    action: 'created',
+    actorUserId,
+    actorRole,
+    requestId,
+    context: buildOfferSnapshot(offer),
+  });
+
+  return offer;
 }
 
 export async function listOffers(filter, pagination, options = {}) {
@@ -115,7 +183,7 @@ export async function getOfferById(id, { includeGoals = false } = {}) {
   return { ...offer, goals };
 }
 
-export async function updateOffer(id, dto) {
+export async function updateOffer(id, dto, { actor = null, requestId = null } = {}) {
   if (dto.advertiserId) {
     await ensureAdvertiserExists(dto.advertiserId);
   }
@@ -128,6 +196,14 @@ export async function updateOffer(id, dto) {
     assertValidPayout(dto.payoutRub);
   }
 
+  const existing = await findOfferByIdModel(id);
+
+  if (!existing) {
+    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
+      offerId: id,
+    });
+  }
+
   const offer = await updateOfferModel(id, dto);
 
   if (!offer) {
@@ -137,6 +213,23 @@ export async function updateOffer(id, dto) {
   }
 
   await invalidateOfferCache(id);
+
+  const { actorUserId, actorRole } = getOfferActorMeta(actor);
+  const changes = diffOfferSnapshots(buildOfferSnapshot(existing), buildOfferSnapshot(offer));
+
+  if (Object.keys(changes).length > 0) {
+    await writeAuditEvent({
+      entityType: 'offer',
+      entityId: offer.id,
+      action: 'updated',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        changes,
+      },
+    });
+  }
 
   return offer;
 }

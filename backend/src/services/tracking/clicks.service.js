@@ -16,6 +16,7 @@ import {
   GEO_DENY_REASONS,
 } from '../../lib/resolveOfferGeoAccess.js';
 import { normalizeCountryCode } from '../../lib/detectRequestCountry.js';
+import { logError } from '../../lib/structuredLogger.js';
 
 const DESTINATION_TYPES = {
   TARGET: 'target',
@@ -220,15 +221,12 @@ async function publishClickCreatedJob(click) {
       queue_name: queueConfig.name,
       job_type: jobType,
     });
-    console.error(
-      JSON.stringify({
-        event: 'queue_enqueue_failed',
-        queue: queueConfig.name,
-        job_type: jobType,
-        click_id: click.clickId,
-        reason: error.message,
-      }),
-    );
+    logError('queue_enqueue_failed', {
+      queue: queueConfig.name,
+      jobType,
+      clickId: click.clickId,
+      reason: error.message,
+    });
   }
 }
 

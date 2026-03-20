@@ -7,6 +7,7 @@ import { dispatchAsyncJob } from '../async-jobs.service.js';
 import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
 import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
 import { resolveOfferGoalForPostback } from './offer-goals.service.js';
+import { logError, logInfo, logWarn } from '../../lib/structuredLogger.js';
 
 async function publishConversionCreatedJob(conversion) {
   const jobType = 'conversion_created';
@@ -26,15 +27,12 @@ async function publishConversionCreatedJob(conversion) {
       queue_name: queueConfig.name,
       job_type: jobType,
     });
-    console.error(
-      JSON.stringify({
-        event: 'queue_enqueue_failed',
-        queue: queueConfig.name,
-        job_type: jobType,
-        conversion_id: conversion.id,
-        reason: error.message,
-      }),
-    );
+    logError('queue_enqueue_failed', {
+      queue: queueConfig.name,
+      jobType,
+      conversionId: conversion.id,
+      reason: error.message,
+    });
   }
 }
 import { getClickByClickId } from '../tracking/clicks.service.js';
@@ -262,6 +260,12 @@ export async function logPostbackValidationFailure({
   clickId = null,
   payload = null,
 }) {
+  logWarn('postback_validation_failed', {
+    requestId,
+    clickId,
+    payload: buildLogPayload(payload).body,
+  });
+
   const logEntry = await createPostbackLifecycleLog({
     requestId,
     clickId,
@@ -289,6 +293,11 @@ export async function registerConversion(
     affiliateId: null,
     resolvedGoalId: null,
   };
+  logInfo('postback_received', {
+    requestId,
+    clickId,
+    payload: buildLogPayload(payload).body,
+  });
 
   try {
     assertToken(token);
@@ -342,6 +351,14 @@ export async function registerConversion(
         goalError: null,
       });
 
+      logWarn('postback_duplicate', {
+        requestId,
+        clickId,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        conversionId: existing.id,
+      });
+
       throw new ApiError(
         ERROR_CODES.DUPLICATE_CONVERSION,
         409,
@@ -367,6 +384,15 @@ export async function registerConversion(
       resolvedGoalId: goalSnapshot.id ?? null,
       resolvedGoalName: goalSnapshot.name ?? null,
       goalError: null,
+    });
+
+    logInfo('postback_goal_resolved', {
+      requestId,
+      clickId,
+      offerId: logContext.offerId,
+      affiliateId: logContext.affiliateId,
+      goalId: goalSnapshot.id ?? null,
+      goalName: goalSnapshot.name ?? null,
     });
 
     const payoutAmount = goalSnapshot.payout ?? 0;
@@ -398,6 +424,16 @@ export async function registerConversion(
       });
 
       await publishConversionCreatedJob(conversion);
+
+      logInfo('conversion_created', {
+        requestId,
+        clickId: conversion.clickId,
+        conversionId: conversion.id,
+        offerId: conversion.offerId,
+        affiliateId: conversion.affiliateId,
+        goalId: conversion.goalId ?? null,
+        status: conversion.status,
+      });
 
       return conversion;
     } catch (error) {
@@ -454,6 +490,16 @@ export async function registerConversion(
       }
 
       await updatePostbackLifecycleLog(postbackLog, patch);
+
+      logError('postback_failed', {
+        requestId,
+        clickId,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        status: patch.status,
+        errorCode: patch.errorCode,
+        reason: error.message,
+      });
     } else {
       const patch = {
         status: 'failed',
@@ -474,6 +520,15 @@ export async function registerConversion(
       }
 
       await updatePostbackLifecycleLog(postbackLog, patch);
+      logError('postback_failed', {
+        requestId,
+        clickId,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        status: patch.status,
+        errorCode: patch.errorCode,
+        reason: error.message,
+      });
     }
 
     throw error;

@@ -9,6 +9,7 @@ import {
   unsetDefaultOfferGoals,
   updateOfferGoal as updateOfferGoalModel,
 } from '../models/offerGoals.model.js';
+import { writeAuditEvent } from './audit.service.js';
 
 function throwOfferNotFound(offerId) {
   throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
@@ -83,7 +84,47 @@ export async function listOfferGoals(
   return goals.map(serializeGoal);
 }
 
-export async function createOfferGoal(offerId, dto) {
+function getActorMetadata(actor) {
+  if (!actor) {
+    return { actorUserId: null, actorRole: null };
+  }
+
+  return {
+    actorUserId: actor.userId ?? null,
+    actorRole: actor.role ?? null,
+  };
+}
+
+function diffGoalSnapshots(previous, next) {
+  if (!previous || !next) {
+    return null;
+  }
+
+  const tracked = [
+    'name',
+    'type',
+    'revenue',
+    'payout',
+    'currency',
+    'isDefault',
+    'isActive',
+  ];
+
+  const changes = {};
+
+  for (const field of tracked) {
+    const before = previous[field] ?? null;
+    const after = next[field] ?? null;
+
+    if (before !== after) {
+      changes[field] = { old: before, new: after };
+    }
+  }
+
+  return Object.keys(changes).length ? changes : null;
+}
+
+export async function createOfferGoal(offerId, dto, { actor = null, requestId = null } = {}) {
   if (!offerId) {
     throw new Error('offerId is required to create goal');
   }
@@ -118,7 +159,20 @@ export async function createOfferGoal(offerId, dto) {
     );
 
     await client.query('COMMIT');
-    return serializeGoal(goal);
+    const serialized = serializeGoal(goal);
+    const { actorUserId, actorRole } = getActorMetadata(actor);
+
+    await writeAuditEvent({
+      entityType: 'offer_goal',
+      entityId: serialized.id,
+      action: 'created',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: serialized,
+    });
+
+    return serialized;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -127,7 +181,12 @@ export async function createOfferGoal(offerId, dto) {
   }
 }
 
-export async function updateOfferGoal(offerId, goalId, dto) {
+export async function updateOfferGoal(
+  offerId,
+  goalId,
+  dto,
+  { actor = null, requestId = null } = {},
+) {
   if (!offerId || !goalId) {
     throw new Error('offerId and goalId are required to update goal');
   }
@@ -174,7 +233,27 @@ export async function updateOfferGoal(offerId, goalId, dto) {
     );
 
     await client.query('COMMIT');
-    return serializeGoal(goal);
+    const serialized = serializeGoal(goal);
+    const previous = serializeGoal(existingGoal);
+    const changes = diffGoalSnapshots(previous, serialized);
+
+    if (changes) {
+      const { actorUserId, actorRole } = getActorMetadata(actor);
+      await writeAuditEvent({
+        entityType: 'offer_goal',
+        entityId: serialized.id,
+        action: 'updated',
+        actorUserId,
+        actorRole,
+        requestId,
+        context: {
+          offerId: serialized.offerId,
+          changes,
+        },
+      });
+    }
+
+    return serialized;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

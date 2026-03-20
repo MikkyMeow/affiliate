@@ -46,6 +46,8 @@ router.put(
       affiliateId,
       accessType: dto.accessType,
       actorId: req.user.userId,
+      actorRole: req.user.role ?? null,
+      requestId: req.id ?? null,
     });
 
     return sendSuccess(res, { access });
@@ -75,7 +77,13 @@ router.delete(
       );
     }
 
-    await removeManualOfferAffiliateAccess({ offerId, affiliateId });
+    await removeManualOfferAffiliateAccess({
+      offerId,
+      affiliateId,
+      actorId: req.user.userId,
+      actorRole: req.user.role ?? null,
+      requestId: req.id ?? null,
+    });
 
     return res.status(204).send();
   }),

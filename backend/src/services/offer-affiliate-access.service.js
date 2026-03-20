@@ -7,6 +7,7 @@ import {
   deleteOfferAffiliateAccess,
   listOfferAffiliateAccess,
   upsertOfferAffiliateAccess,
+  findAffiliateAccessForOffer,
 } from '../models/offerAffiliateAccess.model.js';
 import {
   OFFER_ACCESS_SOURCES,
@@ -18,6 +19,7 @@ import {
   findPendingOfferRequest,
   updateOfferRequestReview,
 } from '../models/offerRequests.model.js';
+import { writeAuditEvent } from './audit.service.js';
 
 const supportedManualAccessTypes = new Set(Object.values(OFFER_ACCESS_TYPES));
 
@@ -83,11 +85,29 @@ function resolvePendingRequestStatus(accessType) {
   return null;
 }
 
+function buildAccessEntityId(offerId, affiliateId) {
+  return `${offerId}:${affiliateId}`;
+}
+
+function buildAccessSnapshot(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    accessType: record.accessType ?? null,
+    source: record.source ?? null,
+    updatedAt: record.updatedAt ?? null,
+  };
+}
+
 export async function setManualOfferAffiliateAccess({
   offerId,
   affiliateId,
   accessType,
   actorId,
+  actorRole = null,
+  requestId = null,
 }) {
   if (!offerId || !affiliateId) {
     throw new Error('offerId and affiliateId are required to set access');
@@ -114,6 +134,12 @@ export async function setManualOfferAffiliateAccess({
 
   try {
     await client.query('BEGIN');
+
+    const existingAccess = await findAffiliateAccessForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
 
     const access = await upsertOfferAffiliateAccess(
       {
@@ -148,6 +174,23 @@ export async function setManualOfferAffiliateAccess({
     }
 
     await client.query('COMMIT');
+
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'manual_access_set',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      context: {
+        offerId,
+        affiliateId,
+        visibilityMode,
+        previousAccess: buildAccessSnapshot(existingAccess),
+        newAccess: buildAccessSnapshot(access),
+      },
+    });
+
     return access;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -157,7 +200,13 @@ export async function setManualOfferAffiliateAccess({
   }
 }
 
-export async function removeManualOfferAffiliateAccess({ offerId, affiliateId }) {
+export async function removeManualOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId = null,
+  actorRole = null,
+  requestId = null,
+}) {
   if (!offerId || !affiliateId) {
     throw new Error('offerId and affiliateId are required to remove access');
   }
@@ -165,7 +214,23 @@ export async function removeManualOfferAffiliateAccess({ offerId, affiliateId })
   await getOfferById(offerId);
   await getAffiliateById(affiliateId);
 
-  await deleteOfferAffiliateAccess(offerId, affiliateId);
+  const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId);
+
+  if (deleted) {
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'manual_access_removed',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      context: {
+        offerId,
+        affiliateId,
+        previousAccess: buildAccessSnapshot(deleted),
+      },
+    });
+  }
 }
 
 export async function listOfferAffiliateAccessRecords(offerId) {

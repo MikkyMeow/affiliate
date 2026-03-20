@@ -23,8 +23,10 @@ import {
   trackingPostbackRequestsCounter,
   trackingPostbackErrorsCounter,
   trackingPostbackDuplicatesCounter,
+  geoRedirectFallbackCounter,
 } from '../lib/metrics.js';
 import { detectRequestCountry } from '../lib/detectRequestCountry.js';
+import { logInfo } from '../lib/structuredLogger.js';
 
 const router = express.Router();
 
@@ -87,20 +89,20 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
   const logClickEvent = (status, extra = {}) => {
     const logEntry = {
       event: 'track_click',
-      request_id: req.id ?? null,
+      requestId: req.id ?? null,
       offerId: clickPayload.offerId ?? null,
       affiliateId: clickPayload.affiliateId ?? null,
       clickId: extra.clickId ?? null,
       status,
-      duration_ms: Date.now() - startedAt,
+      durationMs: Date.now() - startedAt,
       country: extra.countryCode ?? clickPayload.countryCode ?? null,
-      targeting_strict: extra.targetingStrict ?? null,
-      redirect_outcome: extra.redirectOutcome ?? null,
-      redirect_reason: extra.redirectReason ?? null,
-      destination_type: extra.destinationType ?? null,
+      targetingStrict: extra.targetingStrict ?? null,
+      redirectOutcome: extra.redirectOutcome ?? null,
+      redirectReason: extra.redirectReason ?? null,
+      destinationType: extra.destinationType ?? null,
     };
 
-    console.log(JSON.stringify(logEntry));
+    logInfo('track_click', logEntry);
   };
 
   const validationResult = validateTrackingQuery(clickPayload);
@@ -163,6 +165,13 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       countryCode,
       targetingStrict,
     });
+
+    if (
+      destinationType === 'fallback' ||
+      destinationType === 'internal_unavailable'
+    ) {
+      geoRedirectFallbackCounter.inc({ destination: destinationType });
+    }
 
     return res.redirect(302, finalRedirectUrl);
   } catch (error) {

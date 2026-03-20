@@ -121,9 +121,13 @@ router.patch(
       );
     }
 
-    const offer = await updateOffer(offerId, {
-      targetingStrict: dto.targetingStrict,
-    });
+    const offer = await updateOffer(
+      offerId,
+      {
+        targetingStrict: dto.targetingStrict,
+      },
+      { actor: req.user, requestId: req.id ?? null },
+    );
 
     return sendSuccess(res, { offer });
   }),

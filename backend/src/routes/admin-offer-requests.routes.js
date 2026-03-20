@@ -41,7 +41,9 @@ router.post(
     const result = await reviewOfferRequest({
       requestId,
       reviewerId: req.user.userId,
+      reviewerRole: req.user.role ?? null,
       decision: dto.decision,
+      requestContext: { requestId: req.id ?? null },
     });
 
     return sendSuccess(res, result);

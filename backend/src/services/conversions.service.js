@@ -3,6 +3,7 @@ import { findConversionById, updateConversionStatus as updateModelStatus } from 
 import { upsertConversionRollup } from '../models/daily-stats.model.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
+import { writeAuditEvent } from './audit.service.js';
 
 function normalizeDateForRollup(value) {
   if (!value) {
@@ -18,7 +19,23 @@ function normalizeDateForRollup(value) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function updateConversionStatus({ conversionId, status }) {
+function resolveActorMeta(actor) {
+  if (!actor) {
+    return { actorUserId: null, actorRole: null };
+  }
+
+  return {
+    actorUserId: actor.userId ?? null,
+    actorRole: actor.role ?? null,
+  };
+}
+
+export async function updateConversionStatus({
+  conversionId,
+  status,
+  actor = null,
+  requestId = null,
+}) {
   if (!conversionId) {
     throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'conversionId обязателен');
   }
@@ -51,6 +68,27 @@ export async function updateConversionStatus({ conversionId, status }) {
 
   if (rollupDate) {
     await upsertConversionRollup({ startDate: rollupDate, endDate: rollupDate });
+  }
+
+  if (updated) {
+    const { actorUserId, actorRole } = resolveActorMeta(actor);
+    await writeAuditEvent({
+      entityType: 'conversion',
+      entityId: updated.id,
+      action: 'status_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldStatus: existing.status,
+        newStatus: updated.status,
+        offerId: updated.offerId,
+        affiliateId: updated.affiliateId,
+        goalId: updated.goalId ?? null,
+        payoutAmount: updated.payoutAmount ?? null,
+        revenueAmount: updated.revenueAmount ?? null,
+      },
+    });
   }
 
   return updated;

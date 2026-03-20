@@ -19,6 +19,8 @@ import {
   findPendingOfferRequest,
   updateOfferRequestReview,
 } from '../models/offerRequests.model.js';
+import { writeAuditEvent } from './audit.service.js';
+import { offerRequestDecisionCounter } from '../lib/metrics.js';
 
 const PENDING_UNIQUE_CONSTRAINT = 'offer_requests_pending_unique';
 
@@ -215,6 +217,8 @@ export async function reviewOfferRequest({
   requestId,
   reviewerId,
   decision,
+  reviewerRole = null,
+  requestContext = null,
 }) {
   if (!requestId) {
     throw new Error('requestId is required to review offer request');
@@ -263,6 +267,7 @@ export async function reviewOfferRequest({
       { client },
     );
 
+    const previousAccess = accessRecord ?? null;
     const access = await upsertOfferAffiliateAccess(
       {
         offerId: request.offerId,
@@ -274,6 +279,36 @@ export async function reviewOfferRequest({
     );
 
     await client.query('COMMIT');
+
+    const auditAction =
+      requestStatus === OFFER_REQUEST_STATUSES.APPROVED
+        ? 'approved'
+        : 'rejected';
+
+    offerRequestDecisionCounter.inc({
+      decision: auditAction,
+    });
+
+    await writeAuditEvent({
+      entityType: 'offer_request',
+      entityId: request.id,
+      action: auditAction,
+      actorUserId: reviewerId,
+      actorRole: reviewerRole,
+      requestId: requestContext?.requestId ?? null,
+      context: {
+        offerId: request.offerId,
+        affiliateId: request.affiliateId,
+        previousStatus: request.status,
+        newStatus: updatedRequest.status,
+        resultingAccess: {
+          accessType: access.accessType,
+          source: access.source,
+          previousType: previousAccess?.accessType ?? null,
+          previousSource: previousAccess?.source ?? null,
+        },
+      },
+    });
 
     return { request: updatedRequest, access };
   } catch (error) {

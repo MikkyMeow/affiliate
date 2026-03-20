@@ -85,6 +85,8 @@ router.post(
     const conversion = await updateConversionStatusService({
       conversionId,
       status: statusValue,
+      actor: req.user,
+      requestId: req.id ?? null,
     });
 
     return sendSuccess(res, conversion);
