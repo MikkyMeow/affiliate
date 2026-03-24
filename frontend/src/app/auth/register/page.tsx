@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getRoleHomeRoute } from "@/lib/auth/routes";
 
 export default function RegisterPage() {
   return (
@@ -39,13 +40,14 @@ function RegisterPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const redirectTo = useMemo(() => {
+  const redirectParam = useMemo(() => {
     const next = searchParams.get("next");
     if (next && next.startsWith("/")) {
       return next;
     }
-    return "/";
+    return null;
   }, [searchParams]);
+  const redirectParamOrRoot = redirectParam ?? "/";
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -66,8 +68,9 @@ function RegisterPageContent() {
     setError(null);
     setLoading(true);
     try {
-      await register(form);
-      router.push(redirectTo);
+      const registeredUser = await register(form);
+      const target = redirectParam ?? getRoleHomeRoute(registeredUser.role);
+      router.push(target);
     } catch (err) {
       setError((err as Error).message ?? "Не удалось создать аккаунт");
     } finally {
@@ -77,9 +80,9 @@ function RegisterPageContent() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/");
+      router.replace(redirectParam ?? getRoleHomeRoute(user.role));
     }
-  }, [authLoading, router, user]);
+  }, [authLoading, redirectParam, router, user]);
 
   if (!authLoading && user) {
     return null;
@@ -160,7 +163,7 @@ function RegisterPageContent() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Уже есть аккаунт?{" "}
           <Link
-            href={`/auth/login?next=${encodeURIComponent(redirectTo)}`}
+            href={`/auth/login?next=${encodeURIComponent(redirectParamOrRoot)}`}
             className="font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
           >
             Войдите

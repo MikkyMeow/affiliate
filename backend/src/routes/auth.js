@@ -25,6 +25,7 @@ import {
   getRefreshTokenFromRequest,
   setRefreshTokenCookie,
 } from '../lib/refreshTokenCookie.js';
+import { getAuthContext } from '../services/auth/auth-context.service.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -220,15 +221,8 @@ router.get(
   '/me',
   authenticate,
   asyncHandler(async (req, res) => {
-    const profile = await findUserById(req.user.userId);
-
-    if (!profile) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
-        userId: req.user.userId,
-      });
-    }
-
-    return sendSuccess(res, { user: profile });
+    const context = await getAuthContext(req.user.userId);
+    return sendSuccess(res, context);
   }),
 );
 

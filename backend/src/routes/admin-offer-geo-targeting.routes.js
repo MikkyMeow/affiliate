@@ -15,6 +15,7 @@ import {
   removeOfferGeoRule,
 } from '../services/offer-geo-rules.service.js';
 import { updateOffer } from '../services/offers.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 
@@ -126,7 +127,7 @@ router.patch(
       {
         targetingStrict: dto.targetingStrict,
       },
-      { actor: req.user, requestId: req.id ?? null },
+      { actor: getActorContext(req.user), requestId: req.id ?? null },
     );
 
     return sendSuccess(res, { offer });

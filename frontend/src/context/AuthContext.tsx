@@ -10,27 +10,49 @@ import {
 } from "react";
 import { apiFetch, type ApiError } from "@/lib/api";
 
+export type UserRole = "admin" | "affiliate" | "advertiser";
+
+export type AuthProfile =
+  | {
+      type: "affiliate";
+      id: string;
+      name: string | null;
+      status: string | null;
+      createdAt: string | null;
+      updatedAt: string | null;
+    }
+  | {
+      type: "advertiser";
+      id: string;
+      name: string | null;
+      status: string | null;
+      createdAt: string | null;
+      updatedAt: string | null;
+    }
+  | null;
+
 export type AuthUser = {
   id: string;
   email: string;
   displayName?: string | null;
   createdAt?: string;
-  role: "admin" | "affiliate" | "advertiser";
-  affiliateId?: string | null;
-  advertiserId?: string | null;
+  role: UserRole;
+  affiliateId: string | null;
+  advertiserId: string | null;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
+  profile: AuthProfile;
   accessToken: string | null;
   loading: boolean;
-  login(credentials: { email: string; password: string }): Promise<void>;
+  login(credentials: { email: string; password: string }): Promise<AuthUser>;
   register(payload: {
     email: string;
     password: string;
     name: string;
     accountType: "affiliate" | "advertiser";
-  }): Promise<void>;
+  }): Promise<AuthUser>;
   logout(): void;
   refreshProfile(): Promise<void>;
 };
@@ -41,6 +63,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<AuthProfile>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,15 +106,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokenToUse = tokenOverride ?? accessToken;
       if (!tokenToUse) {
         setUser(null);
+        setProfile(null);
         return;
       }
 
       const attemptFetch = async (token: string, allowRetry: boolean) => {
         try {
-          const data = await apiFetch<{ user: AuthUser }>("/auth/me", {
+          const data = await apiFetch<{
+            user: AuthUser;
+            profile: AuthProfile;
+          }>("/auth/me", {
             token,
           });
           setUser(data.user);
+          setProfile(data.profile ?? null);
         } catch (error) {
           const status = (error as ApiError).status;
 
@@ -108,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (status === 401) {
             persistAccessToken(null);
             setUser(null);
+            setProfile(null);
           }
 
           throw error;
@@ -155,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to refresh session on init", error);
         persistAccessToken(null);
         setUser(null);
+        setProfile(null);
       } finally {
         settleLoading();
       }
@@ -180,6 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       persistAccessToken(data.token);
       setUser(data.user);
+      setProfile(null);
+      return data.user;
     },
     [persistAccessToken],
   );
@@ -202,6 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       persistAccessToken(data.token);
       setUser(data.user);
+      setProfile(null);
+      return data.user;
     },
     [persistAccessToken],
   );
@@ -209,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     persistAccessToken(null);
     setUser(null);
+    setProfile(null);
 
     void apiFetch("/auth/logout", {
       method: "POST",
@@ -225,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      profile,
       accessToken,
       loading,
       login,
@@ -232,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       refreshProfile,
     }),
-    [user, accessToken, loading, login, register, logout, refreshProfile],
+    [user, profile, accessToken, loading, login, register, logout, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

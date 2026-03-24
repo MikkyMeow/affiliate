@@ -1,7 +1,10 @@
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { findUserByEmail, findUserById } from '../../src/models/userModel.js';
-import { createTestAdvertiserUser } from '../helpers/factories.js';
+import {
+  createTestAdvertiserUser,
+  createTestAffiliateUser,
+} from '../helpers/factories.js';
 
 const app = createApp();
 
@@ -33,12 +36,101 @@ describe('Advertiser role foundation', () => {
     const token = loginResponse.body.data.token;
     expect(typeof token).toBe('string');
 
-    const profileResponse = await request(app)
+    const meResponse = await request(app)
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${token}`);
 
-    expect(profileResponse.status).toBe(200);
-    expect(profileResponse.body.data.user.id).toBe(user.id);
-    expect(profileResponse.body.data.user.advertiserId).toBe(advertiser.id);
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.data.user.id).toBe(user.id);
+    expect(meResponse.body.data.user.advertiserId).toBe(advertiser.id);
+    expect(meResponse.body.data.profile).toEqual(
+      expect.objectContaining({
+        type: 'advertiser',
+        id: advertiser.id,
+        name: advertiser.name,
+      }),
+    );
+
+    const advertiserProfileResponse = await request(app)
+      .get('/api/v1/advertiser/profile')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(advertiserProfileResponse.status).toBe(200);
+    expect(advertiserProfileResponse.body.data).toMatchObject({
+      id: advertiser.id,
+      name: advertiser.name,
+      status: advertiser.status,
+    });
+  });
+
+  it('exposes advertiser profile endpoint only to advertisers', async () => {
+    const { user, advertiser, password } = await createTestAdvertiserUser();
+
+    const advertiserTokenResponse = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: user.email, password });
+
+    const advertiserToken = advertiserTokenResponse.body.data.token;
+
+    const advertiserProfileResponse = await request(app)
+      .get('/api/v1/advertiser/profile')
+      .set('Authorization', `Bearer ${advertiserToken}`);
+
+    expect(advertiserProfileResponse.status).toBe(200);
+    expect(advertiserProfileResponse.body.data.id).toBe(advertiser.id);
+
+    const { user: affiliateUser, password: affiliatePassword } =
+      await createTestAffiliateUser();
+
+    const affiliateTokenResponse = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: affiliateUser.email, password: affiliatePassword });
+
+    const affiliateToken = affiliateTokenResponse.body.data.token;
+
+    const forbiddenResponse = await request(app)
+      .get('/api/v1/advertiser/profile')
+      .set('Authorization', `Bearer ${affiliateToken}`);
+
+    expect(forbiddenResponse.status).toBe(403);
+  });
+
+  it('supports advertiser smoke flow from registration to profile', async () => {
+    const flowEmail = `flow-${Date.now()}@example.com`;
+
+    const registerResponse = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        email: flowEmail,
+        password: 'P@ssw0rd-123',
+        displayName: 'Flow Advertiser',
+        accountType: 'advertiser',
+      });
+
+    expect(registerResponse.status).toBe(201);
+
+    const token = registerResponse.body.data.token;
+    const advertiserId = registerResponse.body.data.user.advertiserId;
+
+    expect(token).toEqual(expect.any(String));
+    expect(advertiserId).toEqual(expect.any(String));
+
+    const meResponse = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.data.user.advertiserId).toBe(advertiserId);
+    expect(meResponse.body.data.profile).toMatchObject({
+      type: 'advertiser',
+      id: advertiserId,
+    });
+
+    const advertiserProfileResponse = await request(app)
+      .get('/api/v1/advertiser/profile')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(advertiserProfileResponse.status).toBe(200);
+    expect(advertiserProfileResponse.body.data.id).toBe(advertiserId);
   });
 });

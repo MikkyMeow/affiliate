@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getRoleHomeRoute } from "@/lib/auth/routes";
 
 const ADMIN_LINKS = [
   { href: "/dashboard/stats", label: "Статистика" },
@@ -21,6 +22,10 @@ const AFFILIATE_LINKS = [
   { href: "/partner/conversions", label: "Конверсии" },
 ];
 
+const ADVERTISER_LINKS = [
+  { href: "/advertiser", label: "Кабинет рекламодателя" },
+];
+
 const LINK_STYLES =
   "rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white";
 
@@ -34,7 +39,9 @@ export function AppNavbar() {
       ? ADMIN_LINKS
       : user?.role === "affiliate"
         ? AFFILIATE_LINKS
-        : [];
+        : user?.role === "advertiser"
+          ? ADVERTISER_LINKS
+          : [];
 
   const authLinks = useMemo(() => {
     const redirect = encodeURIComponent(pathname);
@@ -61,14 +68,9 @@ export function AppNavbar() {
       return;
     }
 
-    const target =
-      user.role === "admin"
-        ? "/dashboard/stats"
-        : user.role === "affiliate"
-          ? "/partner"
-          : null;
+    const target = getRoleHomeRoute(user.role);
 
-    if (target) {
+    if (target && target !== pathname) {
       router.replace(target);
     }
   }, [loading, pathname, router, user]);
@@ -89,32 +91,26 @@ export function AppNavbar() {
           </span>
         ) : user ? (
           <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
-            {navLinks.length === 0 ? (
-              <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                Кабинет рекламодателя появится позже.
-              </div>
-            ) : (
-              <nav className="flex flex-wrap items-center gap-2">
-                {navLinks.map((link) => {
-                  const isActive =
-                    pathname === link.href ||
-                    (link.href !== "/" && pathname.startsWith(link.href));
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`${LINK_STYLES} ${
-                        isActive
-                          ? "bg-black text-white dark:bg-white dark:text-black"
-                          : "bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            )}
+            <nav className="flex flex-wrap items-center gap-2">
+              {navLinks.map((link) => {
+                const isActive =
+                  pathname === link.href ||
+                  (link.href !== "/" && pathname.startsWith(link.href));
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`${LINK_STYLES} ${
+                      isActive
+                        ? "bg-black text-white dark:bg-white dark:text-black"
+                        : "bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
             <div className="flex items-center gap-3">
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
                 {user.displayName ?? user.email}

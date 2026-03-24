@@ -14,6 +14,7 @@ import {
   listOfferGoals,
   updateOfferGoal,
 } from '../services/offer-goals.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.post(
     }
 
     const goal = await createOfferGoal(offerId, dto, {
-      actor: req.user,
+      actor: getActorContext(req.user),
       requestId: req.id ?? null,
     });
     return sendSuccess(res, { goal }, { status: 201 });
@@ -107,7 +108,7 @@ router.patch(
     }
 
     const goal = await updateOfferGoal(offerId, goalId, dto, {
-      actor: req.user,
+      actor: getActorContext(req.user),
       requestId: req.id ?? null,
     });
     return sendSuccess(res, { goal });

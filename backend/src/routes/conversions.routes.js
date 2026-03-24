@@ -9,6 +9,7 @@ import { validateConversionsListFilters } from '../validators/stats.js';
 import { validateUuid } from '../validators/offers.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
 import { updateConversionStatus as updateConversionStatusService } from '../services/conversions.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 
@@ -85,7 +86,7 @@ router.post(
     const conversion = await updateConversionStatusService({
       conversionId,
       status: statusValue,
-      actor: req.user,
+      actor: getActorContext(req.user),
       requestId: req.id ?? null,
     });
 

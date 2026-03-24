@@ -5,11 +5,9 @@ import cookieParser from 'cookie-parser';
 import advertisersRouter from './routes/advertisers.js';
 import affiliatesRouter from './routes/affiliates.js';
 import offersRouter from './routes/offers.routes.js';
-import { sendSuccess, ERROR_CODES } from './utils/response.js';
+import { sendSuccess } from './utils/response.js';
 import authRouter from './routes/auth.js';
 import { authenticate } from './middleware/auth.js';
-import { findUserById } from './models/userModel.js';
-import { ApiError } from './utils/apiError.js';
 import { asyncHandler } from './utils/asyncHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId } from './middleware/requestId.js';
@@ -25,10 +23,12 @@ import adminOfferGeoTargetingRouter from './routes/admin-offer-geo-targeting.rou
 import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
 import usersRouter from './routes/users.routes.js';
+import advertiserSelfRouter from './routes/advertiser-self.routes.js';
 import { requestMetrics } from './middleware/requestMetrics.js';
 import { register as metricsRegister } from './lib/metrics.js';
 import { verifyDatabaseConnection } from './db.js';
 import { verifyRedisConnection, isRedisRequired } from './lib/redis.js';
+import { getAuthContext } from './services/auth/auth-context.service.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -121,21 +121,15 @@ export function createApp() {
   app.use(`${API_PREFIX}/stats`, statsRouter);
   app.use(`${API_PREFIX}/partner`, partnerRouter);
   app.use(`${API_PREFIX}/users`, usersRouter);
+  app.use(`${API_PREFIX}/advertiser`, advertiserSelfRouter);
   app.use('/track', trackingRouter);
 
   app.get(
     `${API_PREFIX}/profile`,
     authenticate,
     asyncHandler(async (req, res) => {
-      const user = await findUserById(req.user.userId);
-
-      if (!user) {
-        throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
-          userId: req.user.userId,
-        });
-      }
-
-      return sendSuccess(res, { user });
+      const context = await getAuthContext(req.user.userId);
+      return sendSuccess(res, context);
     }),
   );
 
