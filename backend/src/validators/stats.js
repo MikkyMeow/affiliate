@@ -8,6 +8,19 @@ const DEFAULT_OFFSET = 0;
 const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+function isValidDateString(value) {
+  if (!dateRegex.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.toISOString().slice(0, 10) === value;
+}
+
 function buildError(field, message) {
   return { field, message };
 }
@@ -75,7 +88,7 @@ function validateDate(value, field) {
   }
 
   const normalized = value.trim();
-  if (!dateRegex.test(normalized)) {
+  if (!dateRegex.test(normalized) || !isValidDateString(normalized)) {
     return {
       value: undefined,
       errors: [buildError(field, 'Дата должна быть в формате YYYY-MM-DD')],
@@ -362,4 +375,38 @@ export function validateDailySummaryFilters(payload = {}) {
   filter.dateTo = dateTo;
 
   return { filter, errors };
+}
+
+function sanitizeAdvertiserFilter(filter = {}, errors = []) {
+  const sanitized = {};
+
+  if (filter.dateFrom) {
+    sanitized.dateFrom = filter.dateFrom;
+  }
+
+  if (filter.dateTo) {
+    sanitized.dateTo = filter.dateTo;
+  }
+
+  if (filter.offerId) {
+    errors.push(buildError('offerId', 'offerId не поддерживается для этого запроса'));
+  }
+
+  if (filter.affiliateId) {
+    errors.push(buildError('affiliateId', 'affiliateId не поддерживается для этого запроса'));
+  }
+
+  return sanitized;
+}
+
+export function validateAdvertiserStatsFilters(payload = {}) {
+  const { filter, errors } = validateStatsSummaryFilters(payload);
+  const sanitizedFilter = sanitizeAdvertiserFilter(filter, errors);
+  return { filter: sanitizedFilter, errors };
+}
+
+export function validateAdvertiserOfferStatsFilters(payload = {}) {
+  const { filter, errors } = validateStatsSummaryFilters(payload);
+  const sanitizedFilter = sanitizeAdvertiserFilter(filter, errors);
+  return { filter: sanitizedFilter, errors };
 }

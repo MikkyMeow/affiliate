@@ -1,16 +1,16 @@
 import pool from '../db.js';
 
-const CONVERSION_METRIC_COLUMNS = `
+const CONVERSION_METRIC_COLUMNS = (alias = 'c') => `
   COUNT(*)::bigint AS conversions_total,
-  COUNT(*) FILTER (WHERE status = 'pending')::bigint AS conversions_pending,
-  COUNT(*) FILTER (WHERE status = 'approved')::bigint AS conversions_approved,
-  COUNT(*) FILTER (WHERE status = 'rejected')::bigint AS conversions_rejected,
-  COALESCE(SUM(payout_rub) FILTER (WHERE status = 'pending'), 0)::numeric AS pending_payout_total,
-  COALESCE(SUM(payout_rub) FILTER (WHERE status = 'approved'), 0)::numeric AS approved_payout_total,
-  COALESCE(SUM(payout_rub) FILTER (WHERE status = 'rejected'), 0)::numeric AS rejected_payout_total,
-  COALESCE(SUM(revenue_amount) FILTER (WHERE status = 'pending'), 0)::numeric AS pending_revenue_total,
-  COALESCE(SUM(revenue_amount) FILTER (WHERE status = 'approved'), 0)::numeric AS approved_revenue_total,
-  COALESCE(SUM(revenue_amount) FILTER (WHERE status = 'rejected'), 0)::numeric AS rejected_revenue_total
+  COUNT(*) FILTER (WHERE ${alias}.status = 'pending')::bigint AS conversions_pending,
+  COUNT(*) FILTER (WHERE ${alias}.status = 'approved')::bigint AS conversions_approved,
+  COUNT(*) FILTER (WHERE ${alias}.status = 'rejected')::bigint AS conversions_rejected,
+  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'pending'), 0)::numeric AS pending_payout_total,
+  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'approved'), 0)::numeric AS approved_payout_total,
+  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'rejected'), 0)::numeric AS rejected_payout_total,
+  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'pending'), 0)::numeric AS pending_revenue_total,
+  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'approved'), 0)::numeric AS approved_revenue_total,
+  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'rejected'), 0)::numeric AS rejected_revenue_total
 `;
 
 function createEmptyMetrics() {
@@ -83,6 +83,13 @@ function buildConversionFilter(filter = {}, alias = 'c') {
   const normalized = normalizeDateRange(filter);
   const conditions = [];
   const params = [];
+  const joins = [];
+
+  if (normalized.advertiserId) {
+    joins.push(`JOIN offers o ON o.id = ${alias}.offer_id`);
+    params.push(normalized.advertiserId);
+    conditions.push(`o.advertiser_id = $${params.length}`);
+  }
 
   if (normalized.offerId) {
     params.push(normalized.offerId);
@@ -116,13 +123,20 @@ function buildConversionFilter(filter = {}, alias = 'c') {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  return { whereClause, params };
+  return { joins, whereClause, params };
 }
 
 function buildClickFilter(filter = {}, alias = 'c') {
   const normalized = normalizeDateRange(filter);
   const conditions = [];
   const params = [];
+  const joins = [];
+
+  if (normalized.advertiserId) {
+    joins.push(`JOIN offers o ON o.id = ${alias}.offer_id`);
+    params.push(normalized.advertiserId);
+    conditions.push(`o.advertiser_id = $${params.length}`);
+  }
 
   if (normalized.offerId) {
     params.push(normalized.offerId);
@@ -146,17 +160,24 @@ function buildClickFilter(filter = {}, alias = 'c') {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  return { whereClause, params };
+  return { joins, whereClause, params };
 }
 
 export async function getStatsSummary(filter = {}) {
-  const { whereClause, params } = buildConversionFilter(filter, 'c');
-  const { whereClause: clickClause, params: clickParams } = buildClickFilter(filter, 'c');
+  const { joins: conversionJoins, whereClause, params } = buildConversionFilter(filter, 'c');
+  const {
+    joins: clickJoins,
+    whereClause: clickClause,
+    params: clickParams,
+  } = buildClickFilter(filter, 'c');
+  const conversionJoinClause = conversionJoins.length ? ` ${conversionJoins.join(' ')}` : '';
+  const clickJoinClause = clickJoins.length ? ` ${clickJoins.join(' ')}` : '';
 
   const conversionResult = await pool.query(
     `
-      SELECT ${CONVERSION_METRIC_COLUMNS}
+      SELECT ${CONVERSION_METRIC_COLUMNS('c')}
       FROM conversions c
+      ${conversionJoinClause}
       ${whereClause}
     `,
     params,
@@ -166,6 +187,7 @@ export async function getStatsSummary(filter = {}) {
     `
       SELECT COUNT(*)::bigint AS clicks_total
       FROM clicks c
+      ${clickJoinClause}
       ${clickClause}
     `,
     clickParams,
@@ -185,13 +207,15 @@ async function getClickBreakdown(filter = {}, groupColumn, alias = 'c') {
     return [];
   }
 
-  const { whereClause, params } = buildClickFilter(filter, alias);
+  const { joins, whereClause, params } = buildClickFilter(filter, alias);
+  const joinClause = joins.length ? ` ${joins.join(' ')}` : '';
 
   const result = await pool.query(
     `
       SELECT ${groupColumn.expression} AS "groupValue",
              COUNT(*)::bigint AS clicks_total
       FROM clicks ${alias}
+      ${joinClause}
       ${whereClause}
       GROUP BY ${groupColumn.expression}
     `,
@@ -228,14 +252,16 @@ async function getConversionBreakdown(filter, groupColumns, { orderBy } = {}) {
     .join(',\n             ');
   const groupByClause = groupColumns.map((column) => column.expression).join(', ');
 
-  const { whereClause, params } = buildConversionFilter(filter, 'c');
+  const { joins, whereClause, params } = buildConversionFilter(filter, 'c');
+  const joinClause = joins.length ? ` ${joins.join(' ')}` : '';
 
   const result = await pool.query(
     `
       SELECT
         ${selectFields},
-        ${CONVERSION_METRIC_COLUMNS}
+        ${CONVERSION_METRIC_COLUMNS('c')}
       FROM conversions c
+      ${joinClause}
       ${whereClause}
       GROUP BY ${groupByClause}
       ${orderBy ? `ORDER BY ${orderBy}` : ''}

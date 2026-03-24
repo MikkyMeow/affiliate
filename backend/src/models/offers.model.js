@@ -247,3 +247,25 @@ export async function updateOffer(id, attrs = {}) {
 
   return result.rows[0] ?? null;
 }
+
+export async function findOfferTitlesByIds(offerIds = []) {
+  if (!Array.isArray(offerIds) || offerIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await pool.query(
+    `
+      SELECT id, title
+      FROM offers
+      WHERE id = ANY($1::uuid[])
+    `,
+    [offerIds],
+  );
+
+  const map = new Map();
+  result.rows.forEach((row) => {
+    map.set(row.id, row.title ?? null);
+  });
+
+  return map;
+}
