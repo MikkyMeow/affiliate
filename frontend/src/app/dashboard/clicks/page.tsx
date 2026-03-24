@@ -12,6 +12,7 @@ type Click = {
   offerId: string | null;
   affiliateId: string | null;
   sub1: string | null;
+  device: string | null;
   createdAt: string;
   ip: string | null;
 };
@@ -240,6 +241,7 @@ export default function ClicksPage() {
                   <th className="px-6 py-3 font-medium">offerId</th>
                   <th className="px-6 py-3 font-medium">affiliateId</th>
                   <th className="px-6 py-3 font-medium">sub1</th>
+                  <th className="px-6 py-3 font-medium">device</th>
                   <th className="px-6 py-3 font-medium">createdAt</th>
                   <th className="px-6 py-3 font-medium">ip</th>
                 </tr>
@@ -261,6 +263,9 @@ export default function ClicksPage() {
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
                       {click.sub1 ?? '—'}
+                    </td>
+                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
+                      {click.device ?? '—'}
                     </td>
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                       {formatter.format(new Date(click.createdAt))}

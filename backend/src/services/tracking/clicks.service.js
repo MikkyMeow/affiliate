@@ -185,6 +185,7 @@ export async function prepareClick(input, options = {}) {
     redirectUrl: redirectMeta.redirectUrl,
     ip: input.ip ?? null,
     userAgent: input.userAgent ?? null,
+    device: input.device ?? null,
     referer: input.referer ?? null,
     sub1: input.sub1 ?? null,
     sub2: input.sub2 ?? null,

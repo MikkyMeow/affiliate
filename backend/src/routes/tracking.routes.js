@@ -26,6 +26,7 @@ import {
   geoRedirectFallbackCounter,
 } from '../lib/metrics.js';
 import { detectRequestCountry } from '../lib/detectRequestCountry.js';
+import { detectDevice } from '../lib/detectDevice.js';
 import { logInfo } from '../lib/structuredLogger.js';
 
 const router = express.Router();
@@ -72,11 +73,14 @@ function extractPostbackClickId(payload) {
 router.get('/click', clickRateLimiter, async (req, res, next) => {
   const startedAt = Date.now();
   trackingClickRequestsCounter.inc();
+  const userAgent = req.get('user-agent') ?? null;
+  const providedDevice = extractQueryParam(req.query.device);
   const clickPayload = {
     offerId: extractQueryParam(req.query.offerId),
     affiliateId: extractQueryParam(req.query.affiliateId),
     ip: getClientIp(req),
-    userAgent: req.get('user-agent') ?? null,
+    userAgent,
+    device: providedDevice ?? detectDevice(userAgent),
     referer: req.get('referer') ?? null,
   };
 

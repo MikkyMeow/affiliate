@@ -218,13 +218,14 @@ export default function PartnerClicksPage() {
                 <th className="px-4 py-3">Click ID</th>
                 <th className="px-4 py-3">Offer ID</th>
                 <th className="px-4 py-3">Sub1</th>
+                <th className="px-4 py-3">Device</th>
                 <th className="px-4 py-3">Создан</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {clicks.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     {loading ? 'Загружаем клики…' : 'Пока нет данных.'}
                   </td>
                 </tr>
@@ -235,6 +236,9 @@ export default function PartnerClicksPage() {
                     <td className="px-4 py-3 font-mono text-xs">{click.offerId ?? '—'}</td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                       {click.sub1 ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                      {click.device ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                       {dateFormatter.format(new Date(click.createdAt))}

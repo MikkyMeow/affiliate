@@ -8,6 +8,7 @@ const clickFields = `
   created_at AS "createdAt",
   ip,
   user_agent AS "userAgent",
+  device,
   referer,
   sub1,
   sub2,
@@ -27,6 +28,7 @@ const clickListFields = `
   affiliate_id AS "affiliateId",
   created_at AS "createdAt",
   ip,
+  device,
   referer,
   sub1,
   country_code AS "countryCode",
@@ -40,6 +42,7 @@ export async function createClick({
   affiliateId,
   ip = null,
   userAgent = null,
+  device = null,
   referer = null,
   sub1 = null,
   sub2 = null,
@@ -60,6 +63,7 @@ export async function createClick({
         affiliate_id,
         ip,
         user_agent,
+        device,
         referer,
         sub1,
         sub2,
@@ -72,7 +76,7 @@ export async function createClick({
         redirect_reason,
         destination_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING ${clickFields};
     `,
     [
@@ -81,6 +85,7 @@ export async function createClick({
       affiliateId,
       ip,
       userAgent,
+      device,
       referer,
       sub1,
       sub2,
