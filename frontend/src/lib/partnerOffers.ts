@@ -29,6 +29,7 @@ export type PartnerOffer = {
   denyReason: string | null;
   requestStatus: string | null;
   view: PartnerOfferViewRestricted | PartnerOfferViewFull;
+  description?: string | null;
 };
 
 type PartnerOfferGoalResponse = {
@@ -50,6 +51,7 @@ type PartnerOfferResponse = PartnerOffer & {
 };
 
 export type PartnerOfferDetail = PartnerOffer & {
+  description: string | null;
   goals?: OfferGoal[];
 };
 
@@ -81,7 +83,7 @@ function mapOfferResponse(offer: PartnerOfferResponse): PartnerOfferDetail {
   const goals = Array.isArray(offer.goals)
     ? offer.goals.map(mapGoal)
     : undefined;
-  return { ...offer, goals };
+  return { ...offer, description: offer.description ?? null, goals };
 }
 
 export async function fetchPartnerOffer(

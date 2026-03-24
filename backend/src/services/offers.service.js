@@ -122,6 +122,7 @@ function buildOfferSnapshot(offer) {
     fallbackUrl: offer.fallbackUrl ?? null,
     payoutRub: offer.payoutRub ?? null,
     targetUrl: offer.targetUrl ?? null,
+    description: offer.description ?? null,
     allowDuplicateClicks:
       typeof offer.allowDuplicateClicks === 'boolean'
         ? offer.allowDuplicateClicks
@@ -161,6 +162,7 @@ function diffOfferSnapshots(previous, next) {
     'visibilityMode',
     'targetingStrict',
     'fallbackUrl',
+    'description',
     'allowDuplicateClicks',
     'duplicateClickWindowSeconds',
   ];

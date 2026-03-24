@@ -312,6 +312,19 @@ export default function PartnerOfferDetailsPage() {
             )}
           </div>
 
+          {offer.description && offer.description.trim() && (
+            <div className={sectionCardStyles}>
+              <div className="flex flex-col gap-2">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">
+                  Описание оффера
+                </p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-line">
+                  {offer.description}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className={sectionCardStyles}>
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>

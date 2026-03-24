@@ -32,6 +32,7 @@ type Offer = {
   fallbackUrl: string | null;
   allowDuplicateClicks: boolean;
   duplicateClickWindowSeconds: number | null;
+  description: string | null;
 };
 
 type FormState = {
@@ -43,6 +44,7 @@ type FormState = {
   allowDuplicateClicks: boolean;
   duplicateClickWindowValue: string;
   duplicateClickWindowUnit: DuplicateWindowUnit;
+  description: string;
 };
 
 type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
@@ -64,6 +66,7 @@ export default function EditOfferPage() {
     allowDuplicateClicks: true,
     duplicateClickWindowValue: '',
     duplicateClickWindowUnit: 'minutes',
+    description: '',
   });
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -127,6 +130,7 @@ export default function EditOfferPage() {
               : true,
           duplicateClickWindowValue: windowParts.value,
           duplicateClickWindowUnit: windowParts.unit,
+          description: offer.description ?? '',
         });
         setOfferTargeting({
           targetingStrict: Boolean(offer.targetingStrict),
@@ -222,6 +226,10 @@ export default function EditOfferPage() {
       return;
     }
 
+    const normalizedDescription = form.description.trim();
+    const description =
+      normalizedDescription.length > 0 ? normalizedDescription : null;
+
     setSubmitting(true);
 
     try {
@@ -236,6 +244,7 @@ export default function EditOfferPage() {
           status: form.status,
           allowDuplicateClicks: form.allowDuplicateClicks,
           duplicateClickWindowSeconds: duplicateWindowSeconds,
+          description,
         }),
       });
       router.push('/dashboard/offers');
@@ -260,6 +269,7 @@ export default function EditOfferPage() {
             case 'payoutRub':
             case 'status':
             case 'allowDuplicateClicks':
+            case 'description':
               if (!fieldErrors[field]) {
                 fieldErrors[field] = message;
               }
@@ -433,6 +443,26 @@ export default function EditOfferPage() {
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.targetUrl && <p className="text-sm text-red-600">{errors.targetUrl}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="description">
+            Описание
+          </label>
+          <textarea
+            id="description"
+            value={form.description}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                description: event.target.value,
+              }))
+            }
+            placeholder="Требования к трафику, таргетинги, ограничения"
+            rows={6}
+            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+          />
+          {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
         </div>
 
         <div className="space-y-2">

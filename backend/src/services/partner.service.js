@@ -82,7 +82,11 @@ function buildFullView(offer) {
   };
 }
 
-function serializeAffiliateOffer(offer, accessResolution) {
+function serializeAffiliateOffer(
+  offer,
+  accessResolution,
+  { includeDescription = false } = {},
+) {
   const base = {
     id: offer.id,
     title: offer.title,
@@ -96,6 +100,13 @@ function serializeAffiliateOffer(offer, accessResolution) {
     denyReason: accessResolution.denyReason ?? null,
     requestStatus: null,
   };
+
+  if (includeDescription) {
+    base.description =
+      typeof offer.description === 'string' && offer.description.trim()
+        ? offer.description
+        : null;
+  }
 
   if (accessResolution.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL) {
     return {
@@ -152,7 +163,9 @@ export async function getPartnerOfferDetails(userId, offerId) {
     });
   }
 
-  const serialized = serializeAffiliateOffer(offer, accessResolution);
+  const serialized = serializeAffiliateOffer(offer, accessResolution, {
+    includeDescription: true,
+  });
 
   if (accessResolution.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL) {
     serialized.goals = Array.isArray(offer.goals) ? offer.goals : [];

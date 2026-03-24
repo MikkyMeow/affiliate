@@ -681,6 +681,20 @@ export function validateCreateOfferDto(payload) {
     dto.duplicateClickWindowSeconds = null;
   }
 
+  if (Object.hasOwn(source, 'description')) {
+    if (source.description === null) {
+      dto.description = null;
+    } else if (typeof source.description !== 'string') {
+      errors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      const trimmedDescription = source.description.trim();
+      dto.description =
+        trimmedDescription.length > 0 ? trimmedDescription : null;
+    }
+  }
+
   // TODO: (offer-domain-v2) Подключить доменную часть DTO к createOffer.
   const { draft: domainDraft, errors: domainDraftErrors } =
     validateOfferDomainDraft(source);
@@ -767,6 +781,21 @@ export function validateUpdateOfferDto(payload) {
     errors.push(...categoryErrors);
     if (typeof category === 'string') {
       dto.category = category;
+    }
+  }
+
+  if (Object.hasOwn(source, 'description')) {
+    hasAtLeastOneField = true;
+    if (source.description === null) {
+      dto.description = null;
+    } else if (typeof source.description !== 'string') {
+      errors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      const trimmedDescription = source.description.trim();
+      dto.description =
+        trimmedDescription.length > 0 ? trimmedDescription : null;
     }
   }
 

@@ -30,6 +30,7 @@ type FormState = {
   allowDuplicateClicks: boolean;
   duplicateClickWindowValue: string;
   duplicateClickWindowUnit: DuplicateWindowUnit;
+  description: string;
 };
 
 type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
@@ -48,6 +49,7 @@ export default function CreateOfferPage() {
     allowDuplicateClicks: true,
     duplicateClickWindowValue: '',
     duplicateClickWindowUnit: 'minutes',
+    description: '',
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -173,6 +175,9 @@ export default function CreateOfferPage() {
       return;
     }
 
+    const normalizedDescription = form.description.trim();
+    const description = normalizedDescription.length > 0 ? normalizedDescription : null;
+
     setSubmitting(true);
 
     try {
@@ -188,6 +193,7 @@ export default function CreateOfferPage() {
           status: form.status,
           allowDuplicateClicks: form.allowDuplicateClicks,
           duplicateClickWindowSeconds: duplicateWindowSeconds,
+          description,
         }),
       });
       router.push('/dashboard/offers');
@@ -213,6 +219,7 @@ export default function CreateOfferPage() {
             case 'payoutRub':
             case 'status':
             case 'allowDuplicateClicks':
+            case 'description':
               if (!fieldErrors[field]) {
                 fieldErrors[field] = message;
               }
@@ -423,6 +430,29 @@ export default function CreateOfferPage() {
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.payoutRub && <p className="text-sm text-red-600">{errors.payoutRub}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            htmlFor="description"
+          >
+            Описание
+          </label>
+          <textarea
+            id="description"
+            value={form.description}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                description: event.target.value,
+              }))
+            }
+            placeholder="Опишите требования к трафику, ограничения и ценность оффера"
+            rows={6}
+            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+          />
+          {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
         </div>
 
         <div className="space-y-2">

@@ -1,41 +1,28 @@
 import pool from '../db.js';
 
-const offerFields = `
-  id,
-  title,
-  category,
-  advertiser_id AS "advertiserId",
-  target_url AS "targetUrl",
-  payout_rub AS "payoutRub",
-  status,
-  visibility_mode AS "visibilityMode",
-  targeting_strict AS "targetingStrict",
-  fallback_url AS "fallbackUrl",
-  preview_url AS "previewUrl",
-  allow_duplicate_clicks AS "allowDuplicateClicks",
-  duplicate_click_window_seconds AS "duplicateClickWindowSeconds",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
-`;
+const baseOfferColumns = [
+  'id',
+  'title',
+  'category',
+  'advertiser_id AS "advertiserId"',
+  'target_url AS "targetUrl"',
+  'payout_rub AS "payoutRub"',
+  'status',
+  'visibility_mode AS "visibilityMode"',
+  'targeting_strict AS "targetingStrict"',
+  'fallback_url AS "fallbackUrl"',
+  'preview_url AS "previewUrl"',
+  'allow_duplicate_clicks AS "allowDuplicateClicks"',
+  'duplicate_click_window_seconds AS "duplicateClickWindowSeconds"',
+  'created_at AS "createdAt"',
+  'updated_at AS "updatedAt"',
+];
 
-const offerFieldsWithPostbackToken = `
-  id,
-  title,
-  category,
-  advertiser_id AS "advertiserId",
-  target_url AS "targetUrl",
-  payout_rub AS "payoutRub",
-  status,
-  visibility_mode AS "visibilityMode",
-  targeting_strict AS "targetingStrict",
-  fallback_url AS "fallbackUrl",
-  preview_url AS "previewUrl",
-  allow_duplicate_clicks AS "allowDuplicateClicks",
-  duplicate_click_window_seconds AS "duplicateClickWindowSeconds",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt",
-  postback_token AS "postbackToken"
-`;
+const offerListFields = baseOfferColumns.map((column) => `  ${column}`).join(',\n');
+
+const offerDetailFields = `${offerListFields},\n  description`;
+
+const offerFieldsWithPostbackToken = `${offerListFields},\n  postback_token AS "postbackToken"`;
 
 const offerPostbackFields = `
   id,
@@ -54,6 +41,7 @@ export async function createOffer({
   postbackToken,
   allowDuplicateClicks = true,
   duplicateClickWindowSeconds = null,
+  description = null,
 }) {
   const result = await pool.query(
     `
@@ -66,11 +54,11 @@ export async function createOffer({
         status,
         postback_token,
         allow_duplicate_clicks,
-        duplicate_click_window_seconds
-        duplicate_click_window_seconds
+        duplicate_click_window_seconds,
+        description
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING ${offerFields},
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING ${offerDetailFields},
         postback_token AS "postbackToken";
     `,
     [
@@ -83,6 +71,7 @@ export async function createOffer({
       postbackToken,
       allowDuplicateClicks,
       duplicateClickWindowSeconds,
+      description ?? null,
     ],
   );
 
@@ -96,7 +85,7 @@ export async function listOffers(
 ) {
   const params = [];
   const conditions = [];
-  const fields = includePostbackToken ? offerFieldsWithPostbackToken : offerFields;
+  const fields = includePostbackToken ? offerFieldsWithPostbackToken : offerListFields;
 
   if (status) {
     params.push(status);
@@ -145,7 +134,7 @@ export async function listOffers(
 export async function findOfferById(id) {
   const result = await pool.query(
     `
-      SELECT ${offerFields}
+      SELECT ${offerDetailFields}
       FROM offers
       WHERE id = $1;
     `,
@@ -180,6 +169,7 @@ export async function updateOffer(id, attrs = {}) {
     fallbackUrl,
     allowDuplicateClicks,
     duplicateClickWindowSeconds,
+    description,
   } = attrs;
 
   const assignments = [];
@@ -250,6 +240,18 @@ export async function updateOffer(id, attrs = {}) {
     assignments.push(`duplicate_click_window_seconds = $${params.length}`);
   }
 
+  if (Object.hasOwn(attrs, 'description')) {
+    if (typeof description === 'string') {
+      params.push(description);
+    } else if (description === null) {
+      params.push(null);
+    }
+
+    if (params.length > assignments.length) {
+      assignments.push(`description = $${params.length}`);
+    }
+  }
+
   if (assignments.length === 0) {
     return findOfferById(id);
   }
@@ -259,7 +261,7 @@ export async function updateOffer(id, attrs = {}) {
       UPDATE offers
       SET ${assignments.join(', ')}, updated_at = NOW()
       WHERE id = $${params.length + 1}
-      RETURNING ${offerFields};
+      RETURNING ${offerDetailFields};
     `,
     [...params, id],
   );
