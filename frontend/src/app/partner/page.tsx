@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
 import { formatCount, formatMoney } from "@/lib/format";
@@ -15,6 +15,7 @@ import {
   type OfferCategoryValue,
   getOfferCategoryLabel,
 } from "@/lib/offerCategories";
+import type { PartnerOffer } from "@/lib/partnerOffers";
 
 const PARTNER_NAV_LINKS = [
   { href: "/partner", label: "Офферы" },
@@ -42,38 +43,10 @@ type PartnerProfile = {
   };
 };
 
-type PartnerOfferViewRestricted = {
-  type: "restricted";
-  previewUrl: string | null;
-};
-
-type PartnerOfferViewFull = {
-  type: "full";
-  advertiserId: string;
-  targetUrl: string;
-  fallbackUrl: string | null;
-  previewUrl: string | null;
-  payoutRub: number;
-};
-
-type PartnerOffer = {
-  id: string;
-  title: string;
-  category: OfferCategoryValue | null;
-  advertiserId: string;
-  status: "active" | "inactive";
-  visibilityMode: string;
-  targetingStrict: boolean;
-  accessLevel: string;
-  canRequestAccess: boolean;
-  denyReason: string | null;
-  requestStatus: string | null;
-  view: PartnerOfferViewRestricted | PartnerOfferViewFull;
-};
-
 export default function PartnerDashboardPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
@@ -537,7 +510,16 @@ export default function PartnerDashboardPage() {
               return (
                 <div
                   key={offer.id}
-                  className="rounded-xl border border-zinc-200 p-4 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950/20"
+                  className="rounded-xl border border-zinc-200 p-4 text-sm shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/partner/offers/${offer.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(`/partner/offers/${offer.id}`);
+                    }
+                  }}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -564,6 +546,7 @@ export default function PartnerDashboardPage() {
                         className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
                         target="_blank"
                         rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
                       >
                         {targetUrl}
                       </a>
@@ -593,9 +576,10 @@ export default function PartnerDashboardPage() {
                       <div className="mt-2 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            void handleCopyLink(trackingLink, offer.id)
-                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleCopyLink(trackingLink, offer.id);
+                          }}
                           className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
                           {copiedOfferId === offer.id
@@ -606,6 +590,7 @@ export default function PartnerDashboardPage() {
                           href={trackingLink}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
                           className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
                         >
                           Проверить

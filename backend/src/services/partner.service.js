@@ -142,7 +142,7 @@ export async function listPartnerOffers(userId, { category } = {}) {
 
 export async function getPartnerOfferDetails(userId, offerId) {
   const affiliate = await requireAffiliateForUser(userId);
-  const offer = await getOfferById(offerId);
+  const offer = await getOfferById(offerId, { includeGoals: true });
   const accessRecord = await findAffiliateAccessForOffer(offerId, affiliate.id);
   const accessResolution = resolveAffiliateOfferAccess(offer, accessRecord);
 
@@ -152,7 +152,13 @@ export async function getPartnerOfferDetails(userId, offerId) {
     });
   }
 
-  return serializeAffiliateOffer(offer, accessResolution);
+  const serialized = serializeAffiliateOffer(offer, accessResolution);
+
+  if (accessResolution.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL) {
+    serialized.goals = Array.isArray(offer.goals) ? offer.goals : [];
+  }
+
+  return serialized;
 }
 
 export async function listPartnerClicks(userId, pagination) {
