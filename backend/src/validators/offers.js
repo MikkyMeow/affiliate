@@ -18,6 +18,10 @@ const currencyCodeRegex = /^[A-Z]{3}$/;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
+const DUPLICATE_CLICK_WINDOW_LIMITS = {
+  min: 60,
+  max: 2592000,
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -101,6 +105,49 @@ function validateBoolean(value, { allowMissing = true, field } = {}) {
     value: undefined,
     errors: [buildError(field, 'Значение должно быть булевым')],
   };
+}
+
+function validateDuplicateClickWindowSeconds(
+  value,
+  { allowMissing = true, field = 'duplicateClickWindowSeconds' } = {},
+) {
+  if (value === undefined) {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (value === null || value === '') {
+    return { value: null, errors: [] };
+  }
+
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Окно должно быть целым числом')],
+    };
+  }
+
+  if (
+    parsed < DUPLICATE_CLICK_WINDOW_LIMITS.min ||
+    parsed > DUPLICATE_CLICK_WINDOW_LIMITS.max
+  ) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Окно должно быть от ${DUPLICATE_CLICK_WINDOW_LIMITS.min} до ${DUPLICATE_CLICK_WINDOW_LIMITS.max} секунд`,
+        ),
+      ],
+    };
+  }
+
+  return { value: parsed, errors: [] };
 }
 
 function validateVisibilityMode(
@@ -539,11 +586,55 @@ export function validateCreateOfferDto(payload) {
     dto.status = status;
   }
 
+  const {
+    value: allowDuplicateClicksValue,
+    errors: allowDuplicateErrors,
+  } = validateBoolean(source.allowDuplicateClicks, {
+    field: 'allowDuplicateClicks',
+  });
+  errors.push(...allowDuplicateErrors);
+
+  const allowDuplicateClicks =
+    allowDuplicateClicksValue === undefined ? true : allowDuplicateClicksValue;
+  dto.allowDuplicateClicks = allowDuplicateClicks;
+
+  const {
+    value: duplicateWindowValue,
+    errors: duplicateWindowErrors,
+  } = validateDuplicateClickWindowSeconds(
+    source.duplicateClickWindowSeconds,
+    { allowMissing: allowDuplicateClicks },
+  );
+  errors.push(...duplicateWindowErrors);
+
+  if (!allowDuplicateClicks) {
+    if (typeof duplicateWindowValue === 'number') {
+      dto.duplicateClickWindowSeconds = duplicateWindowValue;
+    } else {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Укажите окно повторных кликов от 60 до 2592000 секунд',
+        ),
+      );
+    }
+  } else if (duplicateWindowValue !== undefined) {
+    dto.duplicateClickWindowSeconds =
+      duplicateWindowValue === null ? null : duplicateWindowValue;
+  } else {
+    dto.duplicateClickWindowSeconds = null;
+  }
+
   // TODO: (offer-domain-v2) Подключить доменную часть DTO к createOffer.
   const { draft: domainDraft, errors: domainDraftErrors } =
     validateOfferDomainDraft(source);
 
-  return { dto, errors, domainDraft, domainDraftErrors };
+  return {
+    dto,
+    errors: [...errors, ...domainDraftErrors],
+    domainDraft,
+    domainDraftErrors,
+  };
 }
 
 export function validateUpdateOfferDto(payload) {
@@ -611,6 +702,62 @@ export function validateUpdateOfferDto(payload) {
     }
   }
 
+  let pendingAllowDuplicateClicks;
+  if (Object.hasOwn(source, 'allowDuplicateClicks')) {
+    hasAtLeastOneField = true;
+    const {
+      value: allowDuplicateClicksValue,
+      errors: allowDuplicateErrors,
+    } = validateBoolean(source.allowDuplicateClicks, {
+      allowMissing: false,
+      field: 'allowDuplicateClicks',
+    });
+    errors.push(...allowDuplicateErrors);
+
+    if (typeof allowDuplicateClicksValue === 'boolean') {
+      pendingAllowDuplicateClicks = allowDuplicateClicksValue;
+      dto.allowDuplicateClicks = allowDuplicateClicksValue;
+    }
+  }
+
+  let hasDuplicateWindowField = false;
+  let pendingDuplicateWindowValue;
+  if (Object.hasOwn(source, 'duplicateClickWindowSeconds')) {
+    hasAtLeastOneField = true;
+    hasDuplicateWindowField = true;
+    const {
+      value: duplicateWindowValue,
+      errors: duplicateWindowErrors,
+    } = validateDuplicateClickWindowSeconds(
+      source.duplicateClickWindowSeconds,
+      { allowMissing: false },
+    );
+    errors.push(...duplicateWindowErrors);
+
+    if (duplicateWindowValue !== undefined) {
+      pendingDuplicateWindowValue = duplicateWindowValue;
+      dto.duplicateClickWindowSeconds = duplicateWindowValue;
+    }
+  }
+
+  if (pendingAllowDuplicateClicks === false) {
+    if (!hasDuplicateWindowField) {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Укажите окно повторных кликов при отключении дублей',
+        ),
+      );
+    } else if (typeof pendingDuplicateWindowValue !== 'number') {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Окно должно быть задано в секундах',
+        ),
+      );
+    }
+  }
+
   if (!hasAtLeastOneField) {
     errors.push(buildError(null, 'Нужно указать поля для обновления'));
   }
@@ -619,7 +766,12 @@ export function validateUpdateOfferDto(payload) {
   const { draft: domainDraft, errors: domainDraftErrors } =
     validateOfferDomainDraft(source);
 
-  return { dto, errors, domainDraft, domainDraftErrors };
+  return {
+    dto,
+    errors: [...errors, ...domainDraftErrors],
+    domainDraft,
+    domainDraftErrors,
+  };
 }
 
 export function validateOfferFilters(payload = {}) {

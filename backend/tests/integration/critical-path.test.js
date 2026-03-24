@@ -353,4 +353,147 @@ describe('Critical path integration tests', () => {
     ).toBe('https://merchant.example.com/landing');
     expect(redirectUrl.searchParams.get('click_id')).toBeTruthy();
   });
+
+  it('creates separate clicks when duplicates are allowed', async () => {
+    const affiliate = await createTestAffiliate();
+    const offer = await createTestOffer({
+      visibilityMode: 'public',
+      allowDuplicateClicks: true,
+      duplicateClickWindowSeconds: null,
+    });
+
+    const firstRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    const secondRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    expect(firstRes.status).toBe(302);
+    expect(secondRes.status).toBe(302);
+
+    const firstClickId = extractClickIdFromRedirect(firstRes.headers.location);
+    const secondClickId = extractClickIdFromRedirect(secondRes.headers.location);
+
+    expect(firstClickId).toBeTruthy();
+    expect(secondClickId).toBeTruthy();
+    expect(firstClickId).not.toBe(secondClickId);
+
+    const clickCount = await pool.query(
+      `
+        SELECT COUNT(*)::int AS count
+        FROM clicks
+        WHERE offer_id = $1 AND affiliate_id = $2
+      `,
+      [offer.id, affiliate.id],
+    );
+
+    expect(clickCount.rows[0].count).toBe(2);
+  });
+
+  it('reuses click id when duplicates are disabled within the dedup window', async () => {
+    const affiliate = await createTestAffiliate();
+    const offer = await createTestOffer({
+      visibilityMode: 'public',
+      allowDuplicateClicks: false,
+      duplicateClickWindowSeconds: 300,
+    });
+
+    const firstRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    const secondRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    expect(firstRes.status).toBe(302);
+    expect(secondRes.status).toBe(302);
+
+    const firstClickId = extractClickIdFromRedirect(firstRes.headers.location);
+    const secondClickId = extractClickIdFromRedirect(secondRes.headers.location);
+
+    expect(firstClickId).toBeTruthy();
+    expect(firstClickId).toBe(secondClickId);
+
+    const clickRowCount = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM clicks WHERE click_id = $1',
+      [firstClickId],
+    );
+    expect(clickRowCount.rows[0].count).toBe(1);
+
+    const registryCount = await pool.query(
+      `
+        SELECT COUNT(*)::int AS count
+        FROM click_dedup_registry
+        WHERE offer_id = $1 AND affiliate_id = $2
+      `,
+      [offer.id, affiliate.id],
+    );
+    expect(registryCount.rows[0].count).toBe(1);
+  });
+
+  it('creates a new click when dedup window has expired', async () => {
+    const affiliate = await createTestAffiliate();
+    const offer = await createTestOffer({
+      visibilityMode: 'public',
+      allowDuplicateClicks: false,
+      duplicateClickWindowSeconds: 120,
+    });
+
+    const firstRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    const firstClickId = extractClickIdFromRedirect(firstRes.headers.location);
+    expect(firstClickId).toBeTruthy();
+
+    const fingerprintRes = await pool.query(
+      `
+        SELECT dedupe_fingerprint
+        FROM clicks
+        WHERE click_id = $1
+        LIMIT 1
+      `,
+      [firstClickId],
+    );
+
+    const fingerprint = fingerprintRes.rows[0]?.dedupe_fingerprint;
+    expect(fingerprint).toBeTruthy();
+
+    await pool.query(
+      `
+        UPDATE click_dedup_registry
+        SET expires_at = NOW() - interval '1 second'
+        WHERE fingerprint = $1
+      `,
+      [fingerprint],
+    );
+
+    const secondRes = await request(app)
+      .get('/track/click')
+      .query({ offerId: offer.id, affiliateId: affiliate.id })
+      .set('CF-IPCountry', 'RU');
+
+    const secondClickId = extractClickIdFromRedirect(secondRes.headers.location);
+    expect(secondClickId).toBeTruthy();
+    expect(secondClickId).not.toBe(firstClickId);
+
+    const totalClicks = await pool.query(
+      `
+        SELECT COUNT(*)::int AS count
+        FROM clicks
+        WHERE offer_id = $1 AND affiliate_id = $2
+      `,
+      [offer.id, affiliate.id],
+    );
+
+    expect(totalClicks.rows[0].count).toBe(2);
+  });
 });

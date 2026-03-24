@@ -98,6 +98,20 @@ function buildOfferSnapshot(offer) {
     fallbackUrl: offer.fallbackUrl ?? null,
     payoutRub: offer.payoutRub ?? null,
     targetUrl: offer.targetUrl ?? null,
+    allowDuplicateClicks:
+      typeof offer.allowDuplicateClicks === 'boolean'
+        ? offer.allowDuplicateClicks
+        : offer.allowDuplicateClicks == null
+          ? null
+          : Boolean(offer.allowDuplicateClicks),
+    duplicateClickWindowSeconds: (() => {
+      const raw = offer.duplicateClickWindowSeconds;
+      if (raw === null || raw === undefined) {
+        return null;
+      }
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    })(),
   };
 }
 
@@ -122,6 +136,8 @@ function diffOfferSnapshots(previous, next) {
     'visibilityMode',
     'targetingStrict',
     'fallbackUrl',
+    'allowDuplicateClicks',
+    'duplicateClickWindowSeconds',
   ];
 
   const changes = {};

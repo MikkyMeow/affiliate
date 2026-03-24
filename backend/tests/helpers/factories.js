@@ -92,6 +92,8 @@ export async function createTestOffer({
   fallbackUrl = null,
   previewUrl = null,
   postbackToken = crypto.randomBytes(16).toString('hex'),
+  allowDuplicateClicks = true,
+  duplicateClickWindowSeconds = null,
 } = {}) {
   const advertiser =
     advertiserId ?? (await createTestAdvertiser()).id;
@@ -108,9 +110,11 @@ export async function createTestOffer({
         targeting_strict,
         fallback_url,
         preview_url,
-        postback_token
+        postback_token,
+        allow_duplicate_clicks,
+        duplicate_click_window_seconds
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING
         id,
         title,
@@ -122,7 +126,9 @@ export async function createTestOffer({
         targeting_strict AS "targetingStrict",
         fallback_url AS "fallbackUrl",
         preview_url AS "previewUrl",
-        postback_token AS "postbackToken"
+        postback_token AS "postbackToken",
+        allow_duplicate_clicks AS "allowDuplicateClicks",
+        duplicate_click_window_seconds AS "duplicateClickWindowSeconds"
     `,
     [
       title,
@@ -135,6 +141,8 @@ export async function createTestOffer({
       fallbackUrl,
       previewUrl,
       postbackToken,
+      allowDuplicateClicks,
+      duplicateClickWindowSeconds,
     ],
   );
 

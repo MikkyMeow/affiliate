@@ -20,6 +20,7 @@ import {
 import {
   trackingClickRequestsCounter,
   trackingClickErrorsCounter,
+  trackingClickDuplicatesCounter,
   trackingPostbackRequestsCounter,
   trackingPostbackErrorsCounter,
   trackingPostbackDuplicatesCounter,
@@ -104,6 +105,7 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       redirectOutcome: extra.redirectOutcome ?? null,
       redirectReason: extra.redirectReason ?? null,
       destinationType: extra.destinationType ?? null,
+      deduplicated: extra.deduplicated ?? false,
     };
 
     logInfo('track_click', logEntry);
@@ -130,6 +132,7 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       destinationType,
       countryCode,
       targetingStrict,
+      deduplicated,
     } = await registerClick(clickPayload, {
       internalFallbackUrl,
     });
@@ -168,7 +171,12 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
       destinationType,
       countryCode,
       targetingStrict,
+      deduplicated,
     });
+
+    if (deduplicated) {
+      trackingClickDuplicatesCounter.inc();
+    }
 
     if (
       destinationType === 'fallback' ||

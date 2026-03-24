@@ -39,6 +39,11 @@ const trackingClickErrorsCounter = new client.Counter({
   labelNames: ['type'],
 });
 
+const trackingClickDuplicatesCounter = new client.Counter({
+  name: 'tracking_click_duplicates_total',
+  help: 'Number of click tracking requests resolved via dedup reuse',
+});
+
 const geoRedirectFallbackCounter = new client.Counter({
   name: 'geo_redirect_fallback_total',
   help: 'Number of click tracking requests that ended in a fallback redirect',
@@ -132,6 +137,7 @@ register.registerMetric(httpRequestDurationHistogram);
 register.registerMetric(httpRequestErrorsCounter);
 register.registerMetric(trackingClickRequestsCounter);
 register.registerMetric(trackingClickErrorsCounter);
+register.registerMetric(trackingClickDuplicatesCounter);
 register.registerMetric(geoRedirectFallbackCounter);
 register.registerMetric(trackingPostbackRequestsCounter);
 register.registerMetric(trackingPostbackErrorsCounter);
@@ -155,6 +161,7 @@ export {
   httpRequestErrorsCounter,
   trackingClickRequestsCounter,
   trackingClickErrorsCounter,
+  trackingClickDuplicatesCounter,
   geoRedirectFallbackCounter,
   trackingPostbackRequestsCounter,
   trackingPostbackErrorsCounter,

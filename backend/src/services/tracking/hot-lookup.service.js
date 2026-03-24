@@ -26,6 +26,18 @@ const ENTITY_CONFIG = {
       targetUrl: offer.targetUrl,
       targetingStrict: Boolean(offer.targetingStrict),
       fallbackUrl: offer.fallbackUrl ?? null,
+      allowDuplicateClicks: Boolean(
+        offer.allowDuplicateClicks ?? true,
+      ),
+      duplicateClickWindowSeconds: (() => {
+        const raw = offer.duplicateClickWindowSeconds;
+        if (raw === null || raw === undefined) {
+          return null;
+        }
+
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : null;
+      })(),
     }),
     warning:
       '⚠️ Offer lookup cache disabled because Redis is unavailable.',

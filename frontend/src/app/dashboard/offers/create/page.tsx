@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
+import {
+  DuplicateClickSettings,
+  DuplicateWindowUnit,
+  windowPartsToSeconds,
+} from '../components/DuplicateClickSettings';
 
 type Advertiser = {
   id: string;
@@ -17,6 +22,9 @@ type FormState = {
   targetUrl: string;
   payoutRub: string;
   status: 'active' | 'inactive';
+  allowDuplicateClicks: boolean;
+  duplicateClickWindowValue: string;
+  duplicateClickWindowUnit: DuplicateWindowUnit;
 };
 
 type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
@@ -31,6 +39,9 @@ export default function CreateOfferPage() {
     targetUrl: '',
     payoutRub: '',
     status: 'inactive',
+    allowDuplicateClicks: true,
+    duplicateClickWindowValue: '',
+    duplicateClickWindowUnit: 'minutes',
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -85,6 +96,14 @@ export default function CreateOfferPage() {
     const normalizedTitle = form.title.trim();
     const normalizedTargetUrl = form.targetUrl.trim();
     const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    const duplicateSettingsValid =
+      form.allowDuplicateClicks || duplicateWindowSeconds !== null;
 
     return (
       normalizedTitle.length > 0 &&
@@ -92,7 +111,8 @@ export default function CreateOfferPage() {
       /^https?:\/\//i.test(normalizedTargetUrl) &&
       Number.isFinite(payoutValue) &&
       payoutValue > 0 &&
-      ['active', 'inactive'].includes(form.status)
+      ['active', 'inactive'].includes(form.status) &&
+      duplicateSettingsValid
     );
   }, [form]);
 
@@ -128,6 +148,19 @@ export default function CreateOfferPage() {
       return;
     }
 
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    if (!form.allowDuplicateClicks && duplicateWindowSeconds === null) {
+      setErrors({
+        duplicateClickWindowValue: 'Укажите окно от 1 минуты до 30 дней',
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -140,6 +173,8 @@ export default function CreateOfferPage() {
           targetUrl: normalizedUrl,
           payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
+          allowDuplicateClicks: form.allowDuplicateClicks,
+          duplicateClickWindowSeconds: duplicateWindowSeconds,
         }),
       });
       router.push('/dashboard/offers');
@@ -163,8 +198,14 @@ export default function CreateOfferPage() {
             case 'targetUrl':
             case 'payoutRub':
             case 'status':
+            case 'allowDuplicateClicks':
               if (!fieldErrors[field]) {
                 fieldErrors[field] = message;
+              }
+              break;
+            case 'duplicateClickWindowSeconds':
+              if (!fieldErrors.duplicateClickWindowValue) {
+                fieldErrors.duplicateClickWindowValue = message;
               }
               break;
             default:
@@ -361,6 +402,34 @@ export default function CreateOfferPage() {
             <option value="inactive">Неактивен</option>
           </select>
         </div>
+
+        <DuplicateClickSettings
+          allowDuplicateClicks={form.allowDuplicateClicks}
+          duplicateClickWindowValue={form.duplicateClickWindowValue}
+          duplicateClickWindowUnit={form.duplicateClickWindowUnit}
+          onAllowDuplicateClicksChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              allowDuplicateClicks: value,
+            }))
+          }
+          onDuplicateClickWindowValueChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowValue: value,
+            }))
+          }
+          onDuplicateClickWindowUnitChange={(unit) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowUnit: unit,
+            }))
+          }
+          errors={{
+            allowDuplicateClicks: errors.allowDuplicateClicks,
+            duplicateClickWindow: errors.duplicateClickWindowValue,
+          }}
+        />
 
         {errors.form && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">

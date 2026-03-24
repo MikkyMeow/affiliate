@@ -11,6 +11,8 @@ const offerFields = `
   targeting_strict AS "targetingStrict",
   fallback_url AS "fallbackUrl",
   preview_url AS "previewUrl",
+  allow_duplicate_clicks AS "allowDuplicateClicks",
+  duplicate_click_window_seconds AS "duplicateClickWindowSeconds",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `;
@@ -26,6 +28,8 @@ const offerFieldsWithPostbackToken = `
   targeting_strict AS "targetingStrict",
   fallback_url AS "fallbackUrl",
   preview_url AS "previewUrl",
+  allow_duplicate_clicks AS "allowDuplicateClicks",
+  duplicate_click_window_seconds AS "duplicateClickWindowSeconds",
   created_at AS "createdAt",
   updated_at AS "updatedAt",
   postback_token AS "postbackToken"
@@ -45,6 +49,8 @@ export async function createOffer({
   payoutRub,
   status = 'inactive',
   postbackToken,
+  allowDuplicateClicks = true,
+  duplicateClickWindowSeconds = null,
 }) {
   const result = await pool.query(
     `
@@ -54,13 +60,24 @@ export async function createOffer({
         target_url,
         payout_rub,
         status,
-        postback_token
+        postback_token,
+        allow_duplicate_clicks,
+        duplicate_click_window_seconds
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING ${offerFields},
         postback_token AS "postbackToken";
     `,
-    [title, advertiserId, targetUrl, payoutRub, status, postbackToken],
+    [
+      title,
+      advertiserId,
+      targetUrl,
+      payoutRub,
+      status,
+      postbackToken,
+      allowDuplicateClicks,
+      duplicateClickWindowSeconds,
+    ],
   );
 
   return result.rows[0];
@@ -149,6 +166,8 @@ export async function updateOffer(id, attrs = {}) {
     status,
     targetingStrict,
     fallbackUrl,
+    allowDuplicateClicks,
+    duplicateClickWindowSeconds,
   } = attrs;
 
   const assignments = [];
@@ -196,6 +215,20 @@ export async function updateOffer(id, attrs = {}) {
     if (params.length > assignments.length) {
       assignments.push(`fallback_url = $${params.length}`);
     }
+  }
+
+  if (typeof allowDuplicateClicks === 'boolean') {
+    params.push(allowDuplicateClicks);
+    assignments.push(`allow_duplicate_clicks = $${params.length}`);
+  }
+
+  if (Object.hasOwn(attrs, 'duplicateClickWindowSeconds')) {
+    if (typeof duplicateClickWindowSeconds === 'number') {
+      params.push(duplicateClickWindowSeconds);
+    } else {
+      params.push(null);
+    }
+    assignments.push(`duplicate_click_window_seconds = $${params.length}`);
   }
 
   if (assignments.length === 0) {

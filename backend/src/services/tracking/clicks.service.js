@@ -1,3 +1,4 @@
+import pool from '../../db.js';
 import { createClick, findByClickId } from '../../models/clicks.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
@@ -17,6 +18,12 @@ import {
 } from '../../lib/resolveOfferGeoAccess.js';
 import { normalizeCountryCode } from '../../lib/detectRequestCountry.js';
 import { logError } from '../../lib/structuredLogger.js';
+import { insertDedupEntry } from '../../models/clickDedupRegistry.model.js';
+import { buildClickDedupFingerprint } from '../../lib/buildClickDedupFingerprint.js';
+import {
+  isDuplicateClickProtectionEnabled,
+  resolveDuplicateClick,
+} from './click-dedup.service.js';
 
 const DESTINATION_TYPES = {
   TARGET: 'target',
@@ -179,6 +186,7 @@ export async function prepareClick(input, options = {}) {
   });
 
   return {
+    offer,
     clickId,
     offerId: offer.id,
     affiliateId: affiliate.id,
@@ -233,28 +241,144 @@ async function publishClickCreatedJob(click) {
 
 export async function registerClick(input, options = {}) {
   const prepared = await prepareClick(input, options);
-  const { redirectUrl, ...clickPayload } = prepared;
+  const { redirectUrl: preparedRedirectUrl, offer, ...clickPayload } = prepared;
+  const dedupeFingerprint = buildClickDedupFingerprint({
+    offerId: clickPayload.offerId,
+    affiliateId: clickPayload.affiliateId,
+    ip: clickPayload.ip,
+    userAgent: clickPayload.userAgent,
+    device: clickPayload.device,
+    referer: clickPayload.referer,
+    sub1: clickPayload.sub1,
+    sub2: clickPayload.sub2,
+    sub3: clickPayload.sub3,
+    sub4: clickPayload.sub4,
+    sub5: clickPayload.sub5,
+  });
 
-  try {
-    const savedClick = await createClick(clickPayload);
-    await publishClickCreatedJob(savedClick);
-  } catch (error) {
-    if (error?.code === '23505') {
-      throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
-        clickId: clickPayload.clickId,
-      });
+  const dedupProtectionEnabled = isDuplicateClickProtectionEnabled(offer);
+  let savedClick = null;
+  let deduplicated = false;
+  let reusedClickId = null;
+
+  if (!dedupProtectionEnabled) {
+    try {
+      savedClick = await createClick(
+        { ...clickPayload, dedupeFingerprint },
+      );
+    } catch (error) {
+      if (error?.code === '23505') {
+        throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
+          clickId: clickPayload.clickId,
+        });
+      }
+
+      throw error;
     }
+  } else {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const resolution = await resolveDuplicateClick(
+        {
+          offer,
+          offerId: clickPayload.offerId,
+          affiliateId: clickPayload.affiliateId,
+          ip: clickPayload.ip,
+          userAgent: clickPayload.userAgent,
+          device: clickPayload.device,
+          referer: clickPayload.referer,
+          sub1: clickPayload.sub1,
+          sub2: clickPayload.sub2,
+          sub3: clickPayload.sub3,
+          sub4: clickPayload.sub4,
+          sub5: clickPayload.sub5,
+          fingerprint: dedupeFingerprint,
+        },
+        { client },
+      );
 
-    throw error;
+      if (resolution.reused) {
+        deduplicated = true;
+        reusedClickId = resolution.clickId;
+      } else {
+        savedClick = await createClick(
+          { ...clickPayload, dedupeFingerprint },
+          { client },
+        );
+        await insertDedupEntry(
+          {
+            fingerprint: resolution.dedupeFingerprint,
+            offerId: savedClick.offerId,
+            affiliateId: savedClick.affiliateId,
+            clickId: savedClick.clickId,
+            expiresAt: resolution.expiresAt,
+          },
+          { client },
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error?.code === '23505') {
+        throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
+          clickId: clickPayload.clickId,
+        });
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  if (savedClick) {
+    await publishClickCreatedJob(savedClick);
+    return {
+      redirectUrl: preparedRedirectUrl,
+      clickId: savedClick.clickId,
+      redirectOutcome: savedClick.redirectOutcome,
+      redirectReason: savedClick.redirectReason,
+      destinationType: savedClick.destinationType,
+      countryCode: savedClick.countryCode,
+      targetingStrict: savedClick.targetingStrict,
+      deduplicated: false,
+    };
+  }
+
+  if (!deduplicated || !reusedClickId) {
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось обработать клик',
+    );
+  }
+
+  const existingClick = await findByClickId(reusedClickId);
+  if (!existingClick) {
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Клик для повторного использования не найден',
+      { clickId: reusedClickId },
+    );
+  }
+
+  let redirectUrl = preparedRedirectUrl;
+  if (existingClick.destinationType === DESTINATION_TYPES.TARGET) {
+    redirectUrl = buildRedirectUrl(offer.targetUrl, existingClick.clickId);
+  } else if (existingClick.destinationType === DESTINATION_TYPES.FALLBACK) {
+    redirectUrl = sanitizeUrlCandidate(offer.fallbackUrl) ?? preparedRedirectUrl;
   }
 
   return {
     redirectUrl,
-    clickId: clickPayload.clickId,
-    redirectOutcome: clickPayload.redirectOutcome,
-    redirectReason: clickPayload.redirectReason,
-    destinationType: clickPayload.destinationType,
-    countryCode: clickPayload.countryCode,
-    targetingStrict: clickPayload.targetingStrict,
+    clickId: existingClick.clickId,
+    redirectOutcome: existingClick.redirectOutcome,
+    redirectReason: existingClick.redirectReason,
+    destinationType: existingClick.destinationType,
+    countryCode: existingClick.countryCode,
+    targetingStrict: existingClick.targetingStrict,
+    deduplicated: true,
   };
 }

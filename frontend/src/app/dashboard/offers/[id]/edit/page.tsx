@@ -8,6 +8,12 @@ import { apiFetch, type ApiError } from '@/lib/api';
 import { OfferGoalsSection } from './OfferGoalsSection';
 import { OfferStatsSection } from './OfferStatsSection';
 import { OfferGeoTargetingSection } from './OfferGeoTargetingSection';
+import {
+  DuplicateClickSettings,
+  DuplicateWindowUnit,
+  secondsToWindowParts,
+  windowPartsToSeconds,
+} from '../../components/DuplicateClickSettings';
 
 type Offer = {
   id: string;
@@ -19,6 +25,8 @@ type Offer = {
   updatedAt: string;
   targetingStrict: boolean;
   fallbackUrl: string | null;
+  allowDuplicateClicks: boolean;
+  duplicateClickWindowSeconds: number | null;
 };
 
 type FormState = {
@@ -26,6 +34,9 @@ type FormState = {
   targetUrl: string;
   payoutRub: string;
   status: 'active' | 'inactive';
+  allowDuplicateClicks: boolean;
+  duplicateClickWindowValue: string;
+  duplicateClickWindowUnit: DuplicateWindowUnit;
 };
 
 type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
@@ -43,6 +54,9 @@ export default function EditOfferPage() {
     targetUrl: '',
     payoutRub: '',
     status: 'inactive',
+    allowDuplicateClicks: true,
+    duplicateClickWindowValue: '',
+    duplicateClickWindowUnit: 'minutes',
   });
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -91,11 +105,20 @@ export default function EditOfferPage() {
         if (!active) {
           return;
         }
+        const windowParts = secondsToWindowParts(
+          offer.duplicateClickWindowSeconds,
+        );
         setForm({
           title: offer.title,
           targetUrl: offer.targetUrl,
           payoutRub: offer.payoutRub.toString(),
           status: offer.status,
+          allowDuplicateClicks:
+            typeof offer.allowDuplicateClicks === 'boolean'
+              ? offer.allowDuplicateClicks
+              : true,
+          duplicateClickWindowValue: windowParts.value,
+          duplicateClickWindowUnit: windowParts.unit,
         });
         setOfferTargeting({
           targetingStrict: Boolean(offer.targetingStrict),
@@ -126,13 +149,22 @@ export default function EditOfferPage() {
     const normalizedTitle = form.title.trim();
     const normalizedUrl = form.targetUrl.trim();
     const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    const duplicateSettingsValid =
+      form.allowDuplicateClicks || duplicateWindowSeconds !== null;
 
     return (
       normalizedTitle.length > 0 &&
       /^https?:\/\//i.test(normalizedUrl) &&
       Number.isFinite(payoutValue) &&
       payoutValue > 0 &&
-      ['active', 'inactive'].includes(form.status)
+      ['active', 'inactive'].includes(form.status) &&
+      duplicateSettingsValid
     );
   }, [form]);
 
@@ -163,6 +195,19 @@ export default function EditOfferPage() {
       return;
     }
 
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    if (!form.allowDuplicateClicks && duplicateWindowSeconds === null) {
+      setErrors({
+        duplicateClickWindowValue: 'Укажите окно от 1 минуты до 30 дней',
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -174,6 +219,8 @@ export default function EditOfferPage() {
           targetUrl: normalizedUrl,
           payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
+          allowDuplicateClicks: form.allowDuplicateClicks,
+          duplicateClickWindowSeconds: duplicateWindowSeconds,
         }),
       });
       router.push('/dashboard/offers');
@@ -196,8 +243,14 @@ export default function EditOfferPage() {
             case 'targetUrl':
             case 'payoutRub':
             case 'status':
+            case 'allowDuplicateClicks':
               if (!fieldErrors[field]) {
                 fieldErrors[field] = message;
+              }
+              break;
+            case 'duplicateClickWindowSeconds':
+              if (!fieldErrors.duplicateClickWindowValue) {
+                fieldErrors.duplicateClickWindowValue = message;
               }
               break;
             default:
@@ -379,6 +432,34 @@ export default function EditOfferPage() {
             <option value="inactive">Неактивен</option>
           </select>
         </div>
+
+        <DuplicateClickSettings
+          allowDuplicateClicks={form.allowDuplicateClicks}
+          duplicateClickWindowValue={form.duplicateClickWindowValue}
+          duplicateClickWindowUnit={form.duplicateClickWindowUnit}
+          onAllowDuplicateClicksChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              allowDuplicateClicks: value,
+            }))
+          }
+          onDuplicateClickWindowValueChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowValue: value,
+            }))
+          }
+          onDuplicateClickWindowUnitChange={(unit) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowUnit: unit,
+            }))
+          }
+          errors={{
+            allowDuplicateClicks: errors.allowDuplicateClicks,
+            duplicateClickWindow: errors.duplicateClickWindowValue,
+          }}
+        />
 
         {errors.form && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
