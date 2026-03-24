@@ -24,6 +24,7 @@ import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
 import usersRouter from './routes/users.routes.js';
 import advertiserSelfRouter from './routes/advertiser-self.routes.js';
+import advertiserOffersRouter from './routes/advertiser-offers.routes.js';
 import { requestMetrics } from './middleware/requestMetrics.js';
 import { register as metricsRegister } from './lib/metrics.js';
 import { verifyDatabaseConnection } from './db.js';
@@ -121,6 +122,7 @@ export function createApp() {
   app.use(`${API_PREFIX}/stats`, statsRouter);
   app.use(`${API_PREFIX}/partner`, partnerRouter);
   app.use(`${API_PREFIX}/users`, usersRouter);
+  app.use(`${API_PREFIX}/advertiser/offers`, advertiserOffersRouter);
   app.use(`${API_PREFIX}/advertiser`, advertiserSelfRouter);
   app.use('/track', trackingRouter);
 
