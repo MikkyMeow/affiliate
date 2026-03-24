@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getRoleHomeRoute } from "@/lib/auth/routes";
+import { getHomePathByRole } from "@/lib/auth/routes";
 
 const ADMIN_LINKS = [
   { href: "/dashboard/stats", label: "Статистика" },
@@ -23,7 +23,12 @@ const AFFILIATE_LINKS = [
 ];
 
 const ADVERTISER_LINKS = [
-  { href: "/advertiser", label: "Кабинет рекламодателя" },
+  { href: "/advertiser", label: "Обзор" },
+  { href: "/advertiser/offers", label: "Офферы" },
+  { href: "/advertiser/stats", label: "Статистика" },
+  { href: "/advertiser/postbacks", label: "Postbacks" },
+  { href: "/advertiser/finance", label: "Финансы" },
+  { href: "/advertiser/profile", label: "Профиль" },
 ];
 
 const LINK_STYLES =
@@ -68,7 +73,7 @@ export function AppNavbar() {
       return;
     }
 
-    const target = getRoleHomeRoute(user.role);
+    const target = getHomePathByRole(user);
 
     if (target && target !== pathname) {
       router.replace(target);

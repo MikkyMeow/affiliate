@@ -41,3 +41,35 @@ export function formatMoney(value: unknown, currency = 'RUB'): string {
   const formatter = getCurrencyFormatter(currency);
   return formatter.format(toNumeric(value));
 }
+
+const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  dateStyle: 'medium',
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+function parseDate(value?: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function formatDate(value?: string | null): string {
+  const parsed = parseDate(value);
+  return parsed ? dateFormatter.format(parsed) : '—';
+}
+
+export function formatDateTime(value?: string | null): string {
+  const parsed = parseDate(value);
+  return parsed ? dateTimeFormatter.format(parsed) : '—';
+}

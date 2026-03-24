@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getRoleHomeRoute } from "@/lib/auth/routes";
+import { getHomePathByRole } from "@/lib/auth/routes";
 
 export default function RegisterPage() {
   return (
@@ -69,7 +69,7 @@ function RegisterPageContent() {
     setLoading(true);
     try {
       const registeredUser = await register(form);
-      const target = redirectParam ?? getRoleHomeRoute(registeredUser.role);
+      const target = redirectParam ?? getHomePathByRole(registeredUser);
       router.push(target);
     } catch (err) {
       setError((err as Error).message ?? "Не удалось создать аккаунт");
@@ -80,7 +80,7 @@ function RegisterPageContent() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace(redirectParam ?? getRoleHomeRoute(user.role));
+      router.replace(redirectParam ?? getHomePathByRole(user));
     }
   }, [authLoading, redirectParam, router, user]);
 

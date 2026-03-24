@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getRoleHomeRoute } from "@/lib/auth/routes";
+import { getHomePathByRole } from "@/lib/auth/routes";
 
 export default function LoginPage() {
   return (
@@ -39,7 +39,7 @@ function LoginPageContent() {
     setLoading(true);
     try {
       const loggedInUser = await login({ email, password });
-      const target = redirectParam ?? getRoleHomeRoute(loggedInUser.role);
+      const target = redirectParam ?? getHomePathByRole(loggedInUser);
       router.push(target);
     } catch (err) {
       setError((err as Error).message ?? "Не удалось войти");
@@ -50,7 +50,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace(redirectParam ?? getRoleHomeRoute(user.role));
+      router.replace(redirectParam ?? getHomePathByRole(user));
     }
   }, [authLoading, redirectParam, router, user]);
 
