@@ -10,6 +10,11 @@ import { fetchPartnerStats, type PartnerStats } from "@/lib/stats";
 import { buildTrackingUrl } from "@/lib/tracking";
 import { PARTNER_STATS_CARDS } from "./stats-config";
 import { PartnerOfferBreakdownTable } from "./PartnerOfferBreakdownTable";
+import {
+  OFFER_CATEGORY_OPTIONS,
+  type OfferCategoryValue,
+  getOfferCategoryLabel,
+} from "@/lib/offerCategories";
 
 const PARTNER_NAV_LINKS = [
   { href: "/partner", label: "Офферы" },
@@ -54,6 +59,7 @@ type PartnerOfferViewFull = {
 type PartnerOffer = {
   id: string;
   title: string;
+  category: OfferCategoryValue | null;
   advertiserId: string;
   status: "active" | "inactive";
   visibilityMode: string;
@@ -71,6 +77,9 @@ export default function PartnerDashboardPage() {
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
+  const [offerCategoryFilter, setOfferCategoryFilter] = useState<
+    "all" | OfferCategoryValue
+  >("all");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [offersError, setOffersError] = useState<string | null>(null);
@@ -135,9 +144,16 @@ export default function PartnerDashboardPage() {
     setLoadingOffers(true);
     setOffersError(null);
     try {
-      const list = await apiFetch<PartnerOffer[]>("/partner/offers", {
-        token: accessToken,
-      });
+      const categoryParam =
+        offerCategoryFilter === "all"
+          ? ""
+          : `?category=${offerCategoryFilter}`;
+      const list = await apiFetch<PartnerOffer[]>(
+        `/partner/offers${categoryParam}`,
+        {
+          token: accessToken,
+        },
+      );
       setOffers(list);
     } catch (error) {
       const apiError = error as ApiError;
@@ -146,7 +162,7 @@ export default function PartnerDashboardPage() {
     } finally {
       setLoadingOffers(false);
     }
-  }, [accessToken]);
+  }, [accessToken, offerCategoryFilter]);
 
   useEffect(() => {
     if (authLoading || !accessToken || user?.role !== "affiliate") {
@@ -465,11 +481,37 @@ export default function PartnerDashboardPage() {
               Доступные кампании
             </h2>
           </div>
-          {offersError && (
-            <span className="text-sm text-red-600 dark:text-red-300">
-              {offersError}
-            </span>
-          )}
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <label
+              className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+              htmlFor="partner-category-filter"
+            >
+              Категория
+            </label>
+            <select
+              id="partner-category-filter"
+              value={offerCategoryFilter}
+              onChange={(event) =>
+                setOfferCategoryFilter(
+                  event.target.value as "all" | OfferCategoryValue,
+                )
+              }
+              disabled={loadingOffers}
+              className="w-full min-w-[180px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-400"
+            >
+              <option value="all">Все категории</option>
+              {OFFER_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {offersError && (
+              <span className="text-xs text-red-600 dark:text-red-300">
+                {offersError}
+              </span>
+            )}
+          </div>
         </div>
         {loadingOffers && offers.length === 0 ? (
           <p className="text-sm text-zinc-500">Загружаем офферы…</p>
@@ -511,6 +553,9 @@ export default function PartnerDashboardPage() {
                       {offer.status === "active" ? "Активен" : "Пауза"}
                     </span>
                   </div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {getOfferCategoryLabel(offer.category ?? undefined)}
+                  </p>
                   <p className="text-zinc-600 dark:text-zinc-400">
                     Целевая:{" "}
                     {targetUrl ? (

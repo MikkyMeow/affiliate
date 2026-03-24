@@ -3,6 +3,7 @@ import pool from '../db.js';
 const offerFields = `
   id,
   title,
+  category,
   advertiser_id AS "advertiserId",
   target_url AS "targetUrl",
   payout_rub AS "payoutRub",
@@ -20,6 +21,7 @@ const offerFields = `
 const offerFieldsWithPostbackToken = `
   id,
   title,
+  category,
   advertiser_id AS "advertiserId",
   target_url AS "targetUrl",
   payout_rub AS "payoutRub",
@@ -44,6 +46,7 @@ const offerPostbackFields = `
 
 export async function createOffer({
   title,
+  category,
   advertiserId,
   targetUrl,
   payoutRub,
@@ -56,6 +59,7 @@ export async function createOffer({
     `
       INSERT INTO offers (
         title,
+        category,
         advertiser_id,
         target_url,
         payout_rub,
@@ -63,13 +67,15 @@ export async function createOffer({
         postback_token,
         allow_duplicate_clicks,
         duplicate_click_window_seconds
+        duplicate_click_window_seconds
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING ${offerFields},
         postback_token AS "postbackToken";
     `,
     [
       title,
+      category ?? null,
       advertiserId,
       targetUrl,
       payoutRub,
@@ -84,7 +90,7 @@ export async function createOffer({
 }
 
 export async function listOffers(
-  { status, advertiserId } = {},
+  { status, advertiserId, category } = {},
   { limit = 20, offset = 0 } = {},
   { includePostbackToken = false } = {},
 ) {
@@ -100,6 +106,11 @@ export async function listOffers(
   if (advertiserId) {
     params.push(advertiserId);
     conditions.push(`advertiser_id = $${params.length}`);
+  }
+
+  if (category) {
+    params.push(category);
+    conditions.push(`category = $${params.length}`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -160,6 +171,7 @@ export async function findOfferForPostback(id) {
 export async function updateOffer(id, attrs = {}) {
   const {
     title,
+    category,
     advertiserId,
     targetUrl,
     payoutRub,
@@ -196,6 +208,13 @@ export async function updateOffer(id, attrs = {}) {
   if (typeof status === 'string') {
     params.push(status);
     assignments.push(`status = $${params.length}`);
+  }
+
+  if (Object.hasOwn(attrs, 'category')) {
+    if (typeof category === 'string' || category === null) {
+      params.push(category);
+      assignments.push(`category = $${params.length}`);
+    }
   }
 
   if (typeof targetingStrict === 'boolean') {

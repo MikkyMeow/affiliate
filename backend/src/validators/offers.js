@@ -1,5 +1,6 @@
 import {
   LEGACY_OFFER_STATUS_INACTIVE,
+  OFFER_CATEGORY_VALUES,
   OFFER_GOAL_TYPES,
   OFFER_STATUSES,
   OFFER_VISIBILITY_MODES,
@@ -11,6 +12,7 @@ const allowedStatuses = new Set([
 ]);
 const allowedVisibilityModes = new Set(Object.values(OFFER_VISIBILITY_MODES));
 const allowedGoalTypes = new Set(Object.values(OFFER_GOAL_TYPES));
+const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const countryCodeRegex = /^[A-Z]{2}$/;
@@ -59,6 +61,51 @@ function normalizeMoney(value) {
   }
 
   return null;
+}
+
+export function validateOfferCategory(
+  value,
+  { allowMissing = true, field = 'category' } = {},
+) {
+  if (value === undefined) {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Категория обязательна')],
+        };
+  }
+
+  if (value === null || value === '') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория обязательна')],
+    };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория должна быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория обязательна')],
+    };
+  }
+
+  if (!allowedCategories.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Недопустимое значение категории')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
 }
 
 function parseInteger(value) {
@@ -586,6 +633,15 @@ export function validateCreateOfferDto(payload) {
     dto.status = status;
   }
 
+  const { value: category, errors: categoryErrors } = validateOfferCategory(
+    source.category,
+    { allowMissing: false },
+  );
+  errors.push(...categoryErrors);
+  if (typeof category === 'string') {
+    dto.category = category;
+  }
+
   const {
     value: allowDuplicateClicksValue,
     errors: allowDuplicateErrors,
@@ -702,6 +758,18 @@ export function validateUpdateOfferDto(payload) {
     }
   }
 
+  if (Object.hasOwn(source, 'category')) {
+    hasAtLeastOneField = true;
+    const { value: category, errors: categoryErrors } = validateOfferCategory(
+      source.category,
+      { allowMissing: false },
+    );
+    errors.push(...categoryErrors);
+    if (typeof category === 'string') {
+      dto.category = category;
+    }
+  }
+
   let pendingAllowDuplicateClicks;
   if (Object.hasOwn(source, 'allowDuplicateClicks')) {
     hasAtLeastOneField = true;
@@ -795,6 +863,18 @@ export function validateOfferFilters(payload = {}) {
     errors.push(...advertiserErrors);
     if (advertiserId) {
       filter.advertiserId = advertiserId;
+    }
+  }
+
+  if (Object.hasOwn(payload, 'category')) {
+    const { value: category, errors: categoryErrors } =
+      validateOfferCategory(payload.category, {
+        allowMissing: false,
+        field: 'category',
+      });
+    errors.push(...categoryErrors);
+    if (typeof category === 'string') {
+      filter.category = category;
     }
   }
 

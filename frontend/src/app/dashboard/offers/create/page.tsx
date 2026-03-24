@@ -10,6 +10,10 @@ import {
   DuplicateWindowUnit,
   windowPartsToSeconds,
 } from '../components/DuplicateClickSettings';
+import {
+  OFFER_CATEGORY_OPTIONS,
+  type OfferCategoryValue,
+} from '@/lib/offerCategories';
 
 type Advertiser = {
   id: string;
@@ -19,6 +23,7 @@ type Advertiser = {
 type FormState = {
   title: string;
   advertiserId: string;
+  category: OfferCategoryValue | '';
   targetUrl: string;
   payoutRub: string;
   status: 'active' | 'inactive';
@@ -36,6 +41,7 @@ export default function CreateOfferPage() {
   const [form, setForm] = useState<FormState>({
     title: '',
     advertiserId: '',
+    category: '',
     targetUrl: '',
     payoutRub: '',
     status: 'inactive',
@@ -108,6 +114,7 @@ export default function CreateOfferPage() {
     return (
       normalizedTitle.length > 0 &&
       form.advertiserId.length > 0 &&
+      form.category.length > 0 &&
       /^https?:\/\//i.test(normalizedTargetUrl) &&
       Number.isFinite(payoutValue) &&
       payoutValue > 0 &&
@@ -133,6 +140,11 @@ export default function CreateOfferPage() {
 
     if (!form.advertiserId) {
       setErrors({ advertiserId: 'Выберите рекламодателя' });
+      return;
+    }
+
+    if (!form.category) {
+      setErrors({ category: 'Выберите категорию' });
       return;
     }
 
@@ -170,6 +182,7 @@ export default function CreateOfferPage() {
         body: JSON.stringify({
           title: normalizedTitle,
           advertiserId: form.advertiserId,
+          category: form.category,
           targetUrl: normalizedUrl,
           payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
@@ -195,6 +208,7 @@ export default function CreateOfferPage() {
           switch (field) {
             case 'title':
             case 'advertiserId':
+            case 'category':
             case 'targetUrl':
             case 'payoutRub':
             case 'status':
@@ -339,6 +353,34 @@ export default function CreateOfferPage() {
             </p>
           )}
           {errors.advertiserId && <p className="text-sm text-red-600">{errors.advertiserId}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            htmlFor="category"
+          >
+            Категория
+          </label>
+          <select
+            id="category"
+            value={form.category}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                category: event.target.value as OfferCategoryValue | '',
+              }))
+            }
+            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+          >
+            <option value="">Выберите категорию</option>
+            {OFFER_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p className="text-sm text-red-600">{errors.category}</p>}
         </div>
 
         <div className="space-y-2">

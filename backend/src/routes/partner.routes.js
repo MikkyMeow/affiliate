@@ -17,7 +17,10 @@ import {
   validatePartnerClicksQuery,
   validatePartnerConversionsQuery,
 } from '../validators/stats.js';
-import { validateUuid } from '../validators/offers.js';
+import {
+  validateOfferCategory,
+  validateUuid,
+} from '../validators/offers.js';
 import { validateOfferRequestPayload } from '../validators/offerRequests.js';
 
 const router = express.Router();
@@ -122,7 +125,23 @@ router.get(
 router.get(
   '/offers',
   asyncHandler(async (req, res) => {
-    const offers = await listPartnerOffers(req.user.userId);
+    const { value: category, errors } = validateOfferCategory(
+      req.query?.category,
+      { allowMissing: true, field: 'category' },
+    );
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const offers = await listPartnerOffers(req.user.userId, {
+      category: typeof category === 'string' ? category : undefined,
+    });
     return sendSuccess(res, offers);
   }),
 );

@@ -102,6 +102,7 @@ export async function createTestAdvertiser({
 export async function createTestOffer({
   advertiserId,
   title = `Offer ${randomString(4)}`,
+  category = 'other',
   targetUrl = `https://offers.example.com/${randomString(6)}`,
   payoutRub = 1000,
   status = 'active',
@@ -120,6 +121,7 @@ export async function createTestOffer({
     `
       INSERT INTO offers (
         title,
+        category,
         advertiser_id,
         target_url,
         payout_rub,
@@ -132,10 +134,11 @@ export async function createTestOffer({
         allow_duplicate_clicks,
         duplicate_click_window_seconds
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING
         id,
         title,
+        category,
         advertiser_id AS "advertiserId",
         target_url AS "targetUrl",
         payout_rub AS "payoutRub",
@@ -150,6 +153,7 @@ export async function createTestOffer({
     `,
     [
       title,
+      category,
       advertiser,
       targetUrl,
       payoutRub,

@@ -6,6 +6,7 @@ const advertiserOfferFields = `
   id,
   title,
   status,
+  category,
   payout_rub AS "payoutRub",
   preview_url AS "previewUrl",
   created_at AS "createdAt",

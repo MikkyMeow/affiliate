@@ -7,10 +7,15 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
 import { buildTrackingUrl } from '@/lib/tracking';
+import {
+  getOfferCategoryLabel,
+  type OfferCategoryValue,
+} from '@/lib/offerCategories';
 
 type Offer = {
   id: string;
   title: string;
+  category: OfferCategoryValue | null;
   advertiserId: string | null;
   targetUrl: string;
   payoutRub: number;
@@ -381,6 +386,7 @@ export default function OffersPage() {
                 <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                   <tr>
                     <th className="px-6 py-3 font-medium">Название</th>
+                    <th className="px-6 py-3 font-medium">Категория</th>
                     <th className="px-6 py-3 font-medium">Рекламодатель</th>
                     <th className="px-6 py-3 font-medium">Выплата</th>
                     <th className="px-6 py-3 font-medium">Статус</th>
@@ -397,6 +403,9 @@ export default function OffersPage() {
                       <td className="px-6 py-4">
                         <div className="font-medium">{offer.title}</div>
                         <p className="text-xs text-zinc-500">#{offer.id.slice(0, 8)}</p>
+                      </td>
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                        {getOfferCategoryLabel(offer.category ?? undefined)}
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                         {offer.advertiserId ? (

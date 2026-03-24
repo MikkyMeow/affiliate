@@ -65,6 +65,14 @@ describe('Critical path integration tests', () => {
     const token = await loginAndGetToken(user.email, password);
 
     const publicOffer = await createTestOffer({ visibilityMode: 'public' });
+    const gamesOffer = await createTestOffer({
+      visibilityMode: 'public',
+      category: 'games',
+    });
+    const financeOffer = await createTestOffer({
+      visibilityMode: 'public',
+      category: 'finance',
+    });
     const onRequestOffer = await createTestOffer({
       visibilityMode: 'on_request',
     });
@@ -127,6 +135,18 @@ describe('Critical path integration tests', () => {
 
     expect(map.has(excludedPublicOffer.id)).toBe(false);
     expect(map.has(privateOffer.id)).toBe(false);
+
+    const filteredResponse = await request(app)
+      .get('/api/v1/partner/offers?category=games')
+      .set('Authorization', `Bearer ${token}`);
+    expect(filteredResponse.status).toBe(200);
+    expect(filteredResponse.body.data).toHaveLength(1);
+    expect(filteredResponse.body.data[0].id).toBe(gamesOffer.id);
+    expect(filteredResponse.body.data[0].category).toBe('games');
+    const invalidCategoryResponse = await request(app)
+      .get('/api/v1/partner/offers?category=unknown')
+      .set('Authorization', `Bearer ${token}`);
+    expect(invalidCategoryResponse.status).toBe(400);
   });
 
   it('allows affiliates to request on-request offers and prevents duplicates', async () => {

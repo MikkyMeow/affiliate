@@ -11,6 +11,7 @@ import { generatePostbackToken } from '../lib/generatePostbackToken.js';
 import { invalidateOfferCache } from './tracking/cache-invalidation.service.js';
 import { listOfferGoals as listOfferGoalsService } from './offer-goals.service.js';
 import { writeAuditEvent } from './audit.service.js';
+import { OFFER_CATEGORY_VALUES } from '../constants/offers.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -70,6 +71,28 @@ function assertValidPayout(payoutRub) {
   }
 }
 
+const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
+
+function assertValidCategory(category) {
+  if (typeof category !== 'string' || !category.trim()) {
+    throwValidationError([
+      {
+        field: 'category',
+        message: 'Категория обязательна',
+      },
+    ]);
+  }
+
+  if (!allowedCategories.has(category.trim().toLowerCase())) {
+    throwValidationError([
+      {
+        field: 'category',
+        message: 'Недопустимая категория',
+      },
+    ]);
+  }
+}
+
 async function ensureAdvertiserExists(advertiserId) {
   if (!advertiserId) {
     return;
@@ -91,6 +114,7 @@ function buildOfferSnapshot(offer) {
 
   return {
     title: offer.title ?? null,
+    category: offer.category ?? null,
     advertiserId: offer.advertiserId ?? null,
     status: offer.status ?? null,
     visibilityMode: offer.visibilityMode ?? null,
@@ -129,6 +153,7 @@ function getOfferActorMeta(actor) {
 function diffOfferSnapshots(previous, next) {
   const trackedFields = [
     'title',
+    'category',
     'status',
     'advertiserId',
     'targetUrl',
@@ -158,6 +183,7 @@ export async function createOffer(dto, { actor = null, requestId = null } = {}) 
   await ensureAdvertiserExists(dto.advertiserId);
   assertValidTargetUrl(dto.targetUrl);
   assertValidPayout(dto.payoutRub);
+  assertValidCategory(dto.category);
 
   const offer = await createOfferModel({
     ...dto,
@@ -210,6 +236,18 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
 
   if (Object.hasOwn(dto, 'payoutRub')) {
     assertValidPayout(dto.payoutRub);
+  }
+
+  if (Object.hasOwn(dto, 'category')) {
+    if (dto.category === null) {
+      throwValidationError([
+        {
+          field: 'category',
+          message: 'Категория не может быть пустой',
+        },
+      ]);
+    }
+    assertValidCategory(dto.category);
   }
 
   const existing = await findOfferByIdModel(id);

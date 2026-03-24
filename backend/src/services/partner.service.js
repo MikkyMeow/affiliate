@@ -86,6 +86,7 @@ function serializeAffiliateOffer(offer, accessResolution) {
   const base = {
     id: offer.id,
     title: offer.title,
+    category: offer.category ?? null,
     advertiserId: offer.advertiserId,
     status: offer.status,
     visibilityMode: offer.visibilityMode ?? 'public',
@@ -109,12 +110,13 @@ function serializeAffiliateOffer(offer, accessResolution) {
   };
 }
 
-export async function listPartnerOffers(userId) {
+export async function listPartnerOffers(userId, { category } = {}) {
   const affiliate = await requireAffiliateForUser(userId);
-  const { items } = await listOffers(
-    { status: OFFER_STATUSES.ACTIVE },
-    { limit: 200, offset: 0 },
-  );
+  const filter = { status: OFFER_STATUSES.ACTIVE };
+  if (category) {
+    filter.category = category;
+  }
+  const { items } = await listOffers(filter, { limit: 200, offset: 0 });
 
   if (items.length === 0) {
     return [];

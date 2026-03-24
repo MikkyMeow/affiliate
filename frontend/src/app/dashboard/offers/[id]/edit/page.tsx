@@ -14,10 +14,15 @@ import {
   secondsToWindowParts,
   windowPartsToSeconds,
 } from '../../components/DuplicateClickSettings';
+import {
+  OFFER_CATEGORY_OPTIONS,
+  type OfferCategoryValue,
+} from '@/lib/offerCategories';
 
 type Offer = {
   id: string;
   title: string;
+  category: OfferCategoryValue | null;
   targetUrl: string;
   payoutRub: number;
   status: 'active' | 'inactive';
@@ -31,6 +36,7 @@ type Offer = {
 
 type FormState = {
   title: string;
+  category: OfferCategoryValue | '';
   targetUrl: string;
   payoutRub: string;
   status: 'active' | 'inactive';
@@ -51,6 +57,7 @@ export default function EditOfferPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const [form, setForm] = useState<FormState>({
     title: '',
+    category: '',
     targetUrl: '',
     payoutRub: '',
     status: 'inactive',
@@ -110,6 +117,7 @@ export default function EditOfferPage() {
         );
         setForm({
           title: offer.title,
+          category: offer.category ?? '',
           targetUrl: offer.targetUrl,
           payoutRub: offer.payoutRub.toString(),
           status: offer.status,
@@ -160,6 +168,7 @@ export default function EditOfferPage() {
 
     return (
       normalizedTitle.length > 0 &&
+      form.category.length > 0 &&
       /^https?:\/\//i.test(normalizedUrl) &&
       Number.isFinite(payoutValue) &&
       payoutValue > 0 &&
@@ -180,6 +189,11 @@ export default function EditOfferPage() {
     const normalizedTitle = form.title.trim();
     if (!normalizedTitle) {
       setErrors({ title: 'Введите название' });
+      return;
+    }
+
+    if (!form.category) {
+      setErrors({ category: 'Выберите категорию' });
       return;
     }
 
@@ -217,6 +231,7 @@ export default function EditOfferPage() {
         body: JSON.stringify({
           title: normalizedTitle,
           targetUrl: normalizedUrl,
+          category: form.category,
           payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
           allowDuplicateClicks: form.allowDuplicateClicks,
@@ -240,6 +255,7 @@ export default function EditOfferPage() {
 
           switch (field) {
             case 'title':
+            case 'category':
             case 'targetUrl':
             case 'payoutRub':
             case 'status':
@@ -375,6 +391,31 @@ export default function EditOfferPage() {
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="category">
+            Категория
+          </label>
+          <select
+            id="category"
+            value={form.category}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                category: event.target.value as OfferCategoryValue | '',
+              }))
+            }
+            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+          >
+            <option value="">Выберите категорию</option>
+            {OFFER_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p className="text-sm text-red-600">{errors.category}</p>}
         </div>
 
         <div className="space-y-2">

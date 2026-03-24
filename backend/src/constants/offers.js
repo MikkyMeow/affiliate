@@ -51,3 +51,41 @@ export const OFFER_ACCESS_PRIORITY = Object.freeze([
 export const OFFER_DEFAULT_TARGETING = Object.freeze({
   TARGETING_STRICT: false,
 });
+
+export const OFFER_CATEGORY_SLUGS = Object.freeze({
+  FINANCE_AND_MFO: 'finance_mfo',
+  SERVICES: 'services',
+  FINANCE: 'finance',
+  SPORTS_BETTING: 'sports_betting',
+  EDUCATION: 'education',
+  SURVEYS: 'surveys',
+  HR: 'hr_jobs',
+  AUTOMOTIVE: 'automotive',
+  B2B: 'b2b',
+  TRAVEL: 'travel',
+  OTHER: 'other',
+  GAMES: 'games',
+  ECOMMERCE: 'ecommerce',
+  REAL_ESTATE: 'real_estate',
+});
+
+export const OFFER_CATEGORY_LABELS = Object.freeze({
+  [OFFER_CATEGORY_SLUGS.FINANCE_AND_MFO]: 'Финансы и МФО',
+  [OFFER_CATEGORY_SLUGS.SERVICES]: 'Сервисы и услуги',
+  [OFFER_CATEGORY_SLUGS.FINANCE]: 'Финансы',
+  [OFFER_CATEGORY_SLUGS.SPORTS_BETTING]: 'Ставки на спорт',
+  [OFFER_CATEGORY_SLUGS.EDUCATION]: 'Образование',
+  [OFFER_CATEGORY_SLUGS.SURVEYS]: 'Опросы',
+  [OFFER_CATEGORY_SLUGS.HR]: 'Работа (HR, подбор персонала)',
+  [OFFER_CATEGORY_SLUGS.AUTOMOTIVE]: 'Автомобильная тематика',
+  [OFFER_CATEGORY_SLUGS.B2B]: 'B2B',
+  [OFFER_CATEGORY_SLUGS.TRAVEL]: 'Путешествия',
+  [OFFER_CATEGORY_SLUGS.OTHER]: 'Другое',
+  [OFFER_CATEGORY_SLUGS.GAMES]: 'Игры',
+  [OFFER_CATEGORY_SLUGS.ECOMMERCE]: 'E-Commerce',
+  [OFFER_CATEGORY_SLUGS.REAL_ESTATE]: 'Недвижимость',
+});
+
+export const OFFER_CATEGORY_VALUES = Object.freeze(
+  Object.values(OFFER_CATEGORY_SLUGS),
+);
