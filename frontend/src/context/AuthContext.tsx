@@ -15,8 +15,9 @@ export type AuthUser = {
   email: string;
   displayName?: string | null;
   createdAt?: string;
-  role: "admin" | "affiliate";
+  role: "admin" | "affiliate" | "advertiser";
   affiliateId?: string | null;
+  advertiserId?: string | null;
 };
 
 type AuthContextValue = {
@@ -28,6 +29,7 @@ type AuthContextValue = {
     email: string;
     password: string;
     name: string;
+    accountType: "affiliate" | "advertiser";
   }): Promise<void>;
   logout(): void;
   refreshProfile(): Promise<void>;
@@ -183,7 +185,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (payload: { email: string; password: string; name: string }) => {
+    async (payload: {
+      email: string;
+      password: string;
+      name: string;
+      accountType: "affiliate" | "advertiser";
+    }) => {
       const data = await apiFetch<{ token: string; user: AuthUser }>(
         "/auth/register",
         {

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChangeEvent,
   FormEvent,
@@ -9,8 +9,8 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { useAuth } from '@/context/AuthContext';
+} from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   return (
@@ -24,24 +24,41 @@ function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register, user, loading: authLoading } = useAuth();
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    name: '',
+  type RegisterFormState = {
+    email: string;
+    password: string;
+    name: string;
+    accountType: "affiliate" | "advertiser";
+  };
+  const [form, setForm] = useState<RegisterFormState>({
+    email: "",
+    password: "",
+    name: "",
+    accountType: "affiliate",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const redirectTo = useMemo(() => {
-    const next = searchParams.get('next');
-    if (next && next.startsWith('/')) {
+    const next = searchParams.get("next");
+    if (next && next.startsWith("/")) {
       return next;
     }
-    return '/';
+    return "/";
   }, [searchParams]);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+  const handleChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ): void => {
+    const { name, value } = event.target;
+
+    if (name === "accountType") {
+      const typedValue = value === "advertiser" ? "advertiser" : "affiliate";
+      setForm((prev) => ({ ...prev, accountType: typedValue }));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -52,7 +69,7 @@ function RegisterPageContent() {
       await register(form);
       router.push(redirectTo);
     } catch (err) {
-      setError((err as Error).message ?? 'Не удалось создать аккаунт');
+      setError((err as Error).message ?? "Не удалось создать аккаунт");
     } finally {
       setLoading(false);
     }
@@ -60,7 +77,7 @@ function RegisterPageContent() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/');
+      router.replace("/");
     }
   }, [authLoading, router, user]);
 
@@ -90,6 +107,19 @@ function RegisterPageContent() {
               onChange={handleChange}
               className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
+          </label>
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Тип аккаунта
+            <select
+              name="accountType"
+              required
+              value={form.accountType}
+              onChange={handleChange}
+              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            >
+              <option value="affiliate">Партнёр</option>
+              <option value="advertiser">Рекламодатель</option>
+            </select>
           </label>
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Email
@@ -124,11 +154,11 @@ function RegisterPageContent() {
             disabled={loading}
             className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
           >
-            {loading ? 'Создаём...' : 'Создать аккаунт'}
+            {loading ? "Создаём..." : "Создать аккаунт"}
           </button>
         </form>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Уже есть аккаунт?{' '}
+          Уже есть аккаунт?{" "}
           <Link
             href={`/auth/login?next=${encodeURIComponent(redirectTo)}`}
             className="font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
@@ -145,7 +175,9 @@ function AuthPageFallback({ title }: { title: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
       <main className="flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-10 text-center shadow-xl dark:bg-black">
-        <p className="text-sm uppercase tracking-wide text-zinc-400">Загрузка</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-400">
+          Загрузка
+        </p>
         <p className="text-base text-zinc-800 dark:text-zinc-100">
           Открываем страницу «{title}»...
         </p>

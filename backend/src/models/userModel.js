@@ -1,12 +1,17 @@
 import pool from '../db.js';
 
+function getQueryable(client) {
+  return client ?? pool;
+}
+
 export async function createUser({
   email,
   passwordHash,
   displayName,
   role = 'affiliate',
-}) {
-  const result = await pool.query(
+}, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       INSERT INTO users (email, password_hash, display_name, role)
       VALUES ($1, $2, $3, $4)
@@ -23,8 +28,9 @@ export async function createUser({
   return result.rows[0];
 }
 
-export async function findUserByEmail(email) {
-  const result = await pool.query(
+export async function findUserByEmail(email, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT
         u.id,
@@ -47,8 +53,9 @@ export async function findUserByEmail(email) {
   return result.rows[0] ?? null;
 }
 
-export async function findUserById(id) {
-  const result = await pool.query(
+export async function findUserById(id, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT
         u.id,
@@ -69,8 +76,9 @@ export async function findUserById(id) {
   return result.rows[0] ?? null;
 }
 
-export async function deleteUserById(id) {
-  await pool.query(
+export async function deleteUserById(id, { client } = {}) {
+  const queryable = getQueryable(client);
+  await queryable.query(
     `
       DELETE FROM users
       WHERE id = $1;

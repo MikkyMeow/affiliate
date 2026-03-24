@@ -29,6 +29,12 @@ export function AppNavbar() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navLinks =
+    user?.role === "admin"
+      ? ADMIN_LINKS
+      : user?.role === "affiliate"
+        ? AFFILIATE_LINKS
+        : [];
 
   const authLinks = useMemo(() => {
     const redirect = encodeURIComponent(pathname);
@@ -56,9 +62,15 @@ export function AppNavbar() {
     }
 
     const target =
-      user.role === "admin" ? "/dashboard/stats" : "/partner";
+      user.role === "admin"
+        ? "/dashboard/stats"
+        : user.role === "affiliate"
+          ? "/partner"
+          : null;
 
-    router.replace(target);
+    if (target) {
+      router.replace(target);
+    }
   }, [loading, pathname, router, user]);
 
   return (
@@ -77,9 +89,13 @@ export function AppNavbar() {
           </span>
         ) : user ? (
           <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
-            <nav className="flex flex-wrap items-center gap-2">
-              {(user.role === "admin" ? ADMIN_LINKS : AFFILIATE_LINKS).map(
-                (link) => {
+            {navLinks.length === 0 ? (
+              <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                Кабинет рекламодателя появится позже.
+              </div>
+            ) : (
+              <nav className="flex flex-wrap items-center gap-2">
+                {navLinks.map((link) => {
                   const isActive =
                     pathname === link.href ||
                     (link.href !== "/" && pathname.startsWith(link.href));
@@ -96,9 +112,9 @@ export function AppNavbar() {
                       {link.label}
                     </Link>
                   );
-                },
-              )}
-            </nav>
+                })}
+              </nav>
+            )}
             <div className="flex items-center gap-3">
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
                 {user.displayName ?? user.email}

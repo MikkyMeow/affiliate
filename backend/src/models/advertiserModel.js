@@ -9,12 +9,17 @@ const advertiserFields = `
   updated_at AS "updatedAt"
 `;
 
+function getQueryable(client) {
+  return client ?? pool;
+}
+
 export async function createAdvertiser({
   name,
   status = 'active',
   userId = null,
-}) {
-  const result = await pool.query(
+}, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       INSERT INTO advertisers (name, status, user_id)
       VALUES ($1, $2, $3)
@@ -67,8 +72,9 @@ export async function listAdvertisers(
   };
 }
 
-export async function findAdvertiserById(id) {
-  const result = await pool.query(
+export async function findAdvertiserById(id, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${advertiserFields}
       FROM advertisers
@@ -80,8 +86,9 @@ export async function findAdvertiserById(id) {
   return result.rows[0] ?? null;
 }
 
-export async function findAdvertiserByUserId(userId) {
-  const result = await pool.query(
+export async function findAdvertiserByUserId(userId, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${advertiserFields}
       FROM advertisers

@@ -1,12 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {
-  createUser,
-  deleteUserById,
-  findUserByEmail,
-  findUserById,
-} from '../models/userModel.js';
+import { findUserByEmail, findUserById } from '../models/userModel.js';
 import {
   createRefreshTokenForUser,
   deleteRefreshToken,
@@ -21,12 +16,9 @@ import {
 } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import {
-  createAffiliate,
-  findAffiliateByEmail,
-  requireAffiliateForUser,
-} from '../services/affiliates.service.js';
+import { requireAffiliateForUser } from '../services/affiliates.service.js';
 import { requireAdvertiserForUser } from '../services/advertisers.service.js';
+import { registerUser } from '../services/auth/register.service.js';
 import { validateRegisterDto } from '../validators/users.js';
 import {
   clearRefreshTokenCookie,
@@ -109,50 +101,12 @@ router.post(
       );
     }
 
-    const existingUser = await findUserByEmail(dto.email);
-
-    if (existingUser) {
-      throw new ApiError(
-        ERROR_CODES.CONFLICT,
-        409,
-        'Пользователь с таким email уже существует',
-        { email: dto.email },
-      );
-    }
-
-    const existingAffiliate = await findAffiliateByEmail(dto.email);
-
-    if (existingAffiliate) {
-      throw new ApiError(
-        ERROR_CODES.CONFLICT,
-        409,
-        'Аффилиат с таким email уже существует',
-        { email: dto.email },
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    let user;
-    try {
-      user = await createUser({
-        email: dto.email,
-        passwordHash,
-        displayName: dto.displayName,
-        role: 'affiliate',
-      });
-
-      await createAffiliate({
-        name: dto.displayName,
-        email: dto.email,
-        userId: user.id,
-      });
-    } catch (error) {
-      if (user?.id) {
-        await deleteUserById(user.id);
-      }
-      throw error;
-    }
+    const { user } = await registerUser({
+      email: dto.email,
+      password: dto.password,
+      displayName: dto.displayName,
+      accountType: dto.accountType,
+    });
 
     const response = await issueAuthPackage(user, res);
     return sendSuccess(res, response, { status: 201 });

@@ -1,3 +1,4 @@
+import { ACCOUNT_TYPE_VALUES } from '../constants/accountTypes.js';
 import { validateEmail } from './affiliates.js';
 
 const UUID_REGEX =
@@ -46,6 +47,38 @@ function validateAffiliateId(value) {
   }
 
   return { value: trimmed, errors: [] };
+}
+
+function validateAccountType(value) {
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError('accountType', 'accountType обязателен')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!normalized) {
+    return {
+      value: undefined,
+      errors: [buildError('accountType', 'accountType обязателен')],
+    };
+  }
+
+  if (!ACCOUNT_TYPE_VALUES.includes(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          'accountType',
+          `accountType должен быть одним из: ${ACCOUNT_TYPE_VALUES.join(', ')}`,
+        ),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
 }
 
 function validatePassword(password) {
@@ -141,6 +174,15 @@ export function validateRegisterDto(payload) {
     );
   } else {
     dto.displayName = normalizedName;
+  }
+
+  const {
+    value: accountType,
+    errors: accountTypeErrors,
+  } = validateAccountType(source.accountType);
+  errors.push(...accountTypeErrors);
+  if (accountType) {
+    dto.accountType = accountType;
   }
 
   return { dto, errors };

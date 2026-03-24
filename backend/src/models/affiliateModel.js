@@ -10,13 +10,18 @@ const affiliateFields = `
   updated_at AS "updatedAt"
 `;
 
+function getQueryable(client) {
+  return client ?? pool;
+}
+
 export async function createAffiliate({
   name,
   email,
   status = 'active',
   userId = null,
-}) {
-  const result = await pool.query(
+}, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       INSERT INTO affiliates (name, email, status, user_id)
       VALUES ($1, $2, $3, $4)
@@ -69,8 +74,9 @@ export async function listAffiliates(
   };
 }
 
-export async function findAffiliateById(id) {
-  const result = await pool.query(
+export async function findAffiliateById(id, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
       FROM affiliates
@@ -82,8 +88,9 @@ export async function findAffiliateById(id) {
   return result.rows[0] ?? null;
 }
 
-export async function findAffiliateByEmail(email) {
-  const result = await pool.query(
+export async function findAffiliateByEmail(email, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
       FROM affiliates
@@ -95,8 +102,9 @@ export async function findAffiliateByEmail(email) {
   return result.rows[0] ?? null;
 }
 
-export async function findAffiliateByUserId(userId) {
-  const result = await pool.query(
+export async function findAffiliateByUserId(userId, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
       FROM affiliates
