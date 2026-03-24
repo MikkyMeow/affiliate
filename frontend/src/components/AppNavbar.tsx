@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 const ADMIN_LINKS = [
-  { href: "/", label: "Главная" },
   { href: "/dashboard/stats", label: "Статистика" },
   { href: "/dashboard/clicks", label: "Клики" },
   { href: "/dashboard/conversions", label: "Конверсии" },
@@ -16,7 +15,6 @@ const ADMIN_LINKS = [
 ];
 
 const AFFILIATE_LINKS = [
-  { href: "/", label: "Главная" },
   { href: "/partner", label: "Кабинет партнера" },
   { href: "/partner/stats", label: "Статистика" },
   { href: "/partner/clicks", label: "Клики" },
@@ -28,6 +26,7 @@ const LINK_STYLES =
 
 export function AppNavbar() {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const { user, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -50,6 +49,17 @@ export function AppNavbar() {
       setIsLoggingOut(false);
     }
   };
+
+  useEffect(() => {
+    if (loading || !user || pathname !== "/") {
+      return;
+    }
+
+    const target =
+      user.role === "admin" ? "/dashboard/stats" : "/partner";
+
+    router.replace(target);
+  }, [loading, pathname, router, user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/70">
