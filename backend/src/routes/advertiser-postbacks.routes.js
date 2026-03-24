@@ -4,13 +4,13 @@ import { authorizeRole } from '../middleware/authorizeRole.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import {
-  listAdvertiserOffers,
-  getAdvertiserOfferById,
-} from '../services/advertisers/advertiser-offers.service.js';
-import { validateUuid } from '../validators/offers.js';
-import { validateAdvertiserOfferListQuery } from '../validators/advertiserOffers.js';
 import { resolveAdvertiserIdFromUser } from '../services/advertisers/advertiser-context.service.js';
+import {
+  listAdvertiserPostbacks,
+  getAdvertiserPostbackById,
+} from '../services/advertisers/advertiser-postbacks.service.js';
+import { validateAdvertiserPostbackListQuery } from '../validators/advertiserPostbacks.js';
+import { validateUuid } from '../validators/offers.js';
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.use(authorizeRole('advertiser'));
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { pagination, filters, errors } = validateAdvertiserOfferListQuery(
+    const { pagination, filters, errors } = validateAdvertiserPostbackListQuery(
       req.query ?? {},
     );
 
@@ -34,39 +34,44 @@ router.get(
     }
 
     const advertiserId = await resolveAdvertiserIdFromUser(req.user);
-    const result = await listAdvertiserOffers({
+    const logs = await listAdvertiserPostbacks({
       advertiserId,
       page: pagination.page,
       pageSize: pagination.pageSize,
       status: filters.status,
-      search: filters.search,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      offerId: filters.offerId,
     });
 
-    return sendSuccess(res, result);
+    return sendSuccess(res, logs);
   }),
 );
 
 router.get(
-  '/:offerId',
+  '/:postbackId',
   asyncHandler(async (req, res) => {
-    const { value: offerId, errors } = validateUuid(req.params?.offerId, {
-      allowMissing: false,
-      field: 'offerId',
-    });
+    const { value: postbackId, errors: idErrors } = validateUuid(
+      req.params?.postbackId,
+      { allowMissing: false, field: 'postbackId' },
+    );
 
-    if (errors.length) {
+    if (idErrors.length) {
       throw new ApiError(
         ERROR_CODES.VALIDATION_ERROR,
         400,
         'Ошибка валидации',
-        { errors },
+        { errors: idErrors },
       );
     }
 
     const advertiserId = await resolveAdvertiserIdFromUser(req.user);
-    const offer = await getAdvertiserOfferById({ advertiserId, offerId });
+    const postback = await getAdvertiserPostbackById({
+      advertiserId,
+      postbackLogId: postbackId,
+    });
 
-    return sendSuccess(res, { offer });
+    return sendSuccess(res, { postback });
   }),
 );
 

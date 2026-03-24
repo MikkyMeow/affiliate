@@ -4,7 +4,6 @@ import { authorizeRole } from '../middleware/authorizeRole.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import { requireAdvertiserForUser } from '../services/advertisers.service.js';
 import {
   getAdvertiserStatsSummary,
   getAdvertiserStatsBreakdowns,
@@ -15,29 +14,12 @@ import {
   validateAdvertiserStatsFilters,
 } from '../validators/stats.js';
 import { validateUuid } from '../validators/offers.js';
+import { resolveAdvertiserIdFromUser } from '../services/advertisers/advertiser-context.service.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 router.use(authorizeRole('advertiser'));
-
-async function resolveAdvertiserId(user) {
-  if (user?.advertiserId) {
-    return user.advertiserId;
-  }
-
-  const userId = user?.userId ?? user?.id ?? null;
-  if (!userId) {
-    throw new ApiError(
-      ERROR_CODES.FORBIDDEN,
-      403,
-      'Не удалось определить рекламодателя',
-    );
-  }
-
-  const advertiser = await requireAdvertiserForUser(userId);
-  return advertiser.id;
-}
 
 router.get(
   '/summary',
@@ -53,7 +35,7 @@ router.get(
       );
     }
 
-    const advertiserId = await resolveAdvertiserId(req.user);
+    const advertiserId = await resolveAdvertiserIdFromUser(req.user);
     const summary = await getAdvertiserStatsSummary({ advertiserId, filter });
 
     return sendSuccess(res, summary);
@@ -74,7 +56,7 @@ router.get(
       );
     }
 
-    const advertiserId = await resolveAdvertiserId(req.user);
+    const advertiserId = await resolveAdvertiserIdFromUser(req.user);
     const breakdowns = await getAdvertiserStatsBreakdowns({ advertiserId, filter });
 
     return sendSuccess(res, breakdowns);
@@ -102,7 +84,7 @@ router.get(
       );
     }
 
-    const advertiserId = await resolveAdvertiserId(req.user);
+    const advertiserId = await resolveAdvertiserIdFromUser(req.user);
     const stats = await getAdvertiserOfferStats({ advertiserId, offerId, filter });
 
     return sendSuccess(res, stats);

@@ -1,55 +1,12 @@
 import { getStatsSummary, getOfferBreakdown, getStatusBreakdown, getGoalBreakdown } from '../../models/stats-aggregator.model.js';
-import { findOfferById, findOfferTitlesByIds } from '../../models/offers.model.js';
+import { findOfferById } from '../../models/offers.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
-
-function ensureAdvertiserContext(advertiserId) {
-  if (!advertiserId) {
-    throw new ApiError(
-      ERROR_CODES.FORBIDDEN,
-      403,
-      'Не удалось определить рекламодателя',
-    );
-  }
-}
-
-function buildAdvertiserFilter(advertiserId, filter = {}) {
-  ensureAdvertiserContext(advertiserId);
-
-  const resolved = {
-    advertiserId,
-  };
-
-  if (filter.dateFrom) {
-    resolved.dateFrom = filter.dateFrom;
-  }
-
-  if (filter.dateTo) {
-    resolved.dateTo = filter.dateTo;
-  }
-
-  if (filter.offerId) {
-    resolved.offerId = filter.offerId;
-  }
-
-  return resolved;
-}
-
-async function attachOfferTitles(entries = []) {
-  const offerIds = entries
-    .map((entry) => entry.offerId)
-    .filter((offerId, index, self) => typeof offerId === 'string' && self.indexOf(offerId) === index);
-
-  if (!offerIds.length) {
-    return entries.map((entry) => ({ ...entry, title: null }));
-  }
-
-  const titleMap = await findOfferTitlesByIds(offerIds);
-  return entries.map((entry) => ({
-    ...entry,
-    title: entry.offerId ? titleMap.get(entry.offerId) ?? null : null,
-  }));
-}
+import {
+  attachOfferTitles,
+  buildAdvertiserFilter,
+  ensureAdvertiserContext,
+} from './advertiser-context.service.js';
 
 export async function getAdvertiserStatsSummary({ advertiserId, filter = {} }) {
   const resolvedFilter = buildAdvertiserFilter(advertiserId, filter);

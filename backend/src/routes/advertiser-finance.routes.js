@@ -4,13 +4,12 @@ import { authorizeRole } from '../middleware/authorizeRole.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import {
-  listAdvertiserOffers,
-  getAdvertiserOfferById,
-} from '../services/advertisers/advertiser-offers.service.js';
-import { validateUuid } from '../validators/offers.js';
-import { validateAdvertiserOfferListQuery } from '../validators/advertiserOffers.js';
 import { resolveAdvertiserIdFromUser } from '../services/advertisers/advertiser-context.service.js';
+import {
+  getAdvertiserFinanceSummary,
+  getAdvertiserFinanceBreakdown,
+} from '../services/advertisers/advertiser-finance.service.js';
+import { validateAdvertiserFinanceFilters } from '../validators/advertiserFinance.js';
 
 const router = express.Router();
 
@@ -18,11 +17,9 @@ router.use(authenticate);
 router.use(authorizeRole('advertiser'));
 
 router.get(
-  '/',
+  '/summary',
   asyncHandler(async (req, res) => {
-    const { pagination, filters, errors } = validateAdvertiserOfferListQuery(
-      req.query ?? {},
-    );
+    const { filter, errors } = validateAdvertiserFinanceFilters(req.query ?? {});
 
     if (errors.length) {
       throw new ApiError(
@@ -34,25 +31,15 @@ router.get(
     }
 
     const advertiserId = await resolveAdvertiserIdFromUser(req.user);
-    const result = await listAdvertiserOffers({
-      advertiserId,
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      status: filters.status,
-      search: filters.search,
-    });
-
-    return sendSuccess(res, result);
+    const summary = await getAdvertiserFinanceSummary({ advertiserId, filter });
+    return sendSuccess(res, summary);
   }),
 );
 
 router.get(
-  '/:offerId',
+  '/breakdowns',
   asyncHandler(async (req, res) => {
-    const { value: offerId, errors } = validateUuid(req.params?.offerId, {
-      allowMissing: false,
-      field: 'offerId',
-    });
+    const { filter, errors } = validateAdvertiserFinanceFilters(req.query ?? {});
 
     if (errors.length) {
       throw new ApiError(
@@ -64,9 +51,8 @@ router.get(
     }
 
     const advertiserId = await resolveAdvertiserIdFromUser(req.user);
-    const offer = await getAdvertiserOfferById({ advertiserId, offerId });
-
-    return sendSuccess(res, { offer });
+    const breakdowns = await getAdvertiserFinanceBreakdown({ advertiserId, filter });
+    return sendSuccess(res, breakdowns);
   }),
 );
 
