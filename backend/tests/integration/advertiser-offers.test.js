@@ -142,6 +142,35 @@ describe('Advertiser offers read-only API', () => {
     expect(response.status).toBe(403);
   });
 
+  it('requires authentication to list offers', async () => {
+    const response = await request(app).get('/api/v1/advertiser/offers');
+    expect(response.status).toBe(401);
+  });
+
+  it('prevents advertiser tokens from calling admin offer CRUD routes', async () => {
+    const { user, password } = await createTestAdvertiserUser();
+    const loginResponse = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: user.email, password });
+    const token = loginResponse.body.data.token;
+
+    const createAttempt = await request(app)
+      .post('/api/v1/offers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Blocked',
+        advertiserId: '00000000-0000-0000-0000-000000000000',
+      });
+    expect(createAttempt.status).toBe(403);
+
+    const offer = await createTestOffer();
+    const updateAttempt = await request(app)
+      .patch(`/api/v1/offers/${offer.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'inactive' });
+    expect(updateAttempt.status).toBe(403);
+  });
+
   it('validates pagination input', async () => {
     const { token } = await authenticateAdvertiser();
     const response = await request(app)

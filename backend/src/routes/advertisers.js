@@ -2,7 +2,6 @@ import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { authorizeRole } from '../middleware/authorizeRole.js';
 import {
-  validateCreateAdvertiserDto,
   validateUpdateAdvertiserDto,
   validateAdvertiserListFilters,
 } from '../validators/advertisers.js';
@@ -10,7 +9,6 @@ import { ERROR_CODES, sendSuccess } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
-  createAdvertiser,
   getAdvertiserById,
   listAdvertisers,
   updateAdvertiser,
@@ -20,25 +18,6 @@ const router = express.Router();
 
 router.use(authenticate);
 router.use(authorizeRole('admin'));
-
-router.post(
-  '/',
-  asyncHandler(async (req, res) => {
-    const { dto, errors } = validateCreateAdvertiserDto(req.body);
-
-    if (errors.length) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        'Ошибка валидации',
-        { errors },
-      );
-    }
-
-    const advertiser = await createAdvertiser(dto);
-    return sendSuccess(res, { advertiser }, { status: 201 });
-  }),
-);
 
 router.get(
   '/',

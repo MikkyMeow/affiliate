@@ -79,4 +79,22 @@ describe('POST /auth/register', () => {
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('rejects duplicate email regardless of accountType', async () => {
+    const payload = buildPayload({ accountType: 'affiliate' });
+
+    const firstResponse = await request(app)
+      .post('/api/v1/auth/register')
+      .send(payload);
+
+    expect(firstResponse.status).toBe(201);
+
+    const duplicateResponse = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ ...payload, accountType: 'advertiser' });
+
+    expect(duplicateResponse.status).toBe(409);
+    expect(duplicateResponse.body.success).toBe(false);
+    expect(duplicateResponse.body.error.code).toBe('CONFLICT');
+  });
 });

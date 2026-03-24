@@ -66,28 +66,6 @@ export function validateStatus(status, { allowMissing = true } = {}) {
   return { value: status, errors: [] };
 }
 
-export function validateCreateAdvertiserDto(payload) {
-  const errors = [];
-  const source = payload ?? {};
-  const dto = {};
-
-  const normalizedName = normalizeName(source.name);
-  if (!normalizedName) {
-    errors.push(buildError('name', 'Название обязательно и должно быть строкой'));
-  } else {
-    dto.name = normalizedName;
-  }
-
-  const { value: status, errors: statusErrors } = validateStatus(source.status);
-  errors.push(...statusErrors);
-
-  if (status) {
-    dto.status = status;
-  }
-
-  return { dto, errors };
-}
-
 export function validateUpdateAdvertiserDto(payload) {
   const errors = [];
   const source = payload ?? {};

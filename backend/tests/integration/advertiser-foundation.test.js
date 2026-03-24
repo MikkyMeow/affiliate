@@ -4,6 +4,7 @@ import { findUserByEmail, findUserById } from '../../src/models/userModel.js';
 import {
   createTestAdvertiserUser,
   createTestAffiliateUser,
+  createTestAdminUser,
 } from '../helpers/factories.js';
 
 const app = createApp();
@@ -79,6 +80,11 @@ describe('Advertiser role foundation', () => {
     expect(advertiserProfileResponse.status).toBe(200);
     expect(advertiserProfileResponse.body.data.id).toBe(advertiser.id);
 
+    const unauthenticatedResponse = await request(app).get(
+      '/api/v1/advertiser/profile',
+    );
+    expect(unauthenticatedResponse.status).toBe(401);
+
     const { user: affiliateUser, password: affiliatePassword } =
       await createTestAffiliateUser();
 
@@ -93,6 +99,18 @@ describe('Advertiser role foundation', () => {
       .set('Authorization', `Bearer ${affiliateToken}`);
 
     expect(forbiddenResponse.status).toBe(403);
+
+    const { user: adminUser, password: adminPassword } =
+      await createTestAdminUser();
+    const adminLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: adminUser.email, password: adminPassword });
+    const adminToken = adminLogin.body.data.token;
+
+    const adminResponse = await request(app)
+      .get('/api/v1/advertiser/profile')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(adminResponse.status).toBe(403);
   });
 
   it('supports advertiser smoke flow from registration to profile', async () => {

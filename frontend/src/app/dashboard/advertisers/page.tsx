@@ -138,21 +138,17 @@ export default function AdvertisersPage() {
 
   return (
     <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Dashboard
-          </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Рекламодатели
-          </h1>
-        </div>
-        <Link
-          href="/dashboard/advertisers/create"
-          className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
-        >
-          Создать рекламодателя
-        </Link>
+      <div className="mb-8 space-y-2">
+        <p className="text-sm uppercase tracking-wide text-zinc-500">
+          Dashboard
+        </p>
+        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Рекламодатели
+        </h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Новые рекламодатели теперь проходят только через self-registration, поэтому
+          админка отображает список без возможности ручного создания.
+        </p>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -175,7 +171,7 @@ export default function AdvertisersPage() {
           </div>
         ) : advertisers.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет рекламодателей.
+            Пока нет рекламодателей, зарегистрированных через self-service.
           </div>
         ) : (
           <div className="overflow-x-auto">

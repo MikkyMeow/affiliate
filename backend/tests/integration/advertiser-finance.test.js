@@ -219,4 +219,11 @@ describe('Advertiser finance API', () => {
       conversionsRejected: 0,
     });
   });
+
+  it('requires authentication for finance routes', async () => {
+    const response = await request(app).get(
+      '/api/v1/advertiser/finance/summary',
+    );
+    expect(response.status).toBe(401);
+  });
 });

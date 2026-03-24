@@ -288,6 +288,19 @@ describe('Advertiser stats API', () => {
     expect(response.status).toBe(403);
   });
 
+  it('rejects unsupported filters like affiliateId or offerId', async () => {
+    const { token } = await authenticateAdvertiser();
+
+    const response = await request(app)
+      .get(
+        '/api/v1/advertiser/stats/summary?affiliateId=123&offerId=abc123',
+      )
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('validates authentication and query params', async () => {
     const unauthResponse = await request(app).get('/api/v1/advertiser/stats/summary');
     expect(unauthResponse.status).toBe(401);

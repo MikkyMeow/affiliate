@@ -193,4 +193,14 @@ describe('Advertiser postback logs API', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(invalid.status).toBe(400);
   });
+
+  it('requires authentication for postback APIs', async () => {
+    const listResponse = await request(app).get('/api/v1/advertiser/postbacks');
+    expect(listResponse.status).toBe(401);
+
+    const detailResponse = await request(app).get(
+      '/api/v1/advertiser/postbacks/00000000-0000-0000-0000-000000000000',
+    );
+    expect(detailResponse.status).toBe(401);
+  });
 });

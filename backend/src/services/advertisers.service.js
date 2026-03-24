@@ -1,5 +1,4 @@
 import {
-  createAdvertiser as createAdvertiserModel,
   listAdvertisers as listAdvertisersModel,
   findAdvertiserById as findAdvertiserByIdModel,
   findAdvertiserByUserId as findAdvertiserByUserIdModel,
@@ -7,10 +6,6 @@ import {
 } from '../models/advertiserModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
-
-export async function createAdvertiser(dto) {
-  return createAdvertiserModel(dto);
-}
 
 export async function listAdvertisers(filter, pagination) {
   return listAdvertisersModel(filter, pagination);
