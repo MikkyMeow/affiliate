@@ -485,9 +485,10 @@ export default function PartnerDashboardPage() {
                 offer.view.type === "full"
                   ? offer.view.targetUrl
                   : offer.view.previewUrl;
-              const payoutText = hasFullAccess
-                ? formatMoney(offer.view.payoutRub)
-                : null;
+              const payoutText =
+                offer.view.type === "full"
+                  ? formatMoney(offer.view.payoutRub)
+                  : null;
               const trackingLink = affiliateId
                 ? `${buildTrackingUrl("/click")}?offerId=${offer.id}&affiliateId=${affiliateId}`
                 : null;
