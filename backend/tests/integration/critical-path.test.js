@@ -382,16 +382,21 @@ describe('Critical path integration tests', () => {
     expect(secondClickId).toBeTruthy();
     expect(firstClickId).not.toBe(secondClickId);
 
-    const clickCount = await pool.query(
+    const clickRows = await pool.query(
       `
-        SELECT COUNT(*)::int AS count
+        SELECT click_id, canonical_click_id, is_duplicate
         FROM clicks
         WHERE offer_id = $1 AND affiliate_id = $2
+        ORDER BY created_at ASC
       `,
       [offer.id, affiliate.id],
     );
 
-    expect(clickCount.rows[0].count).toBe(2);
+    expect(clickRows.rows).toHaveLength(2);
+    clickRows.rows.forEach((row) => {
+      expect(row.is_duplicate).toBe(false);
+      expect(row.canonical_click_id).toBe(row.click_id);
+    });
   });
 
   it('reuses click id when duplicates are disabled within the dedup window', async () => {
@@ -421,11 +426,27 @@ describe('Critical path integration tests', () => {
     expect(firstClickId).toBeTruthy();
     expect(firstClickId).toBe(secondClickId);
 
-    const clickRowCount = await pool.query(
-      'SELECT COUNT(*)::int AS count FROM clicks WHERE click_id = $1',
-      [firstClickId],
+    const storedClicks = await pool.query(
+      `
+        SELECT click_id, canonical_click_id, is_duplicate, duplicate_of_click_id
+        FROM clicks
+        WHERE offer_id = $1 AND affiliate_id = $2
+        ORDER BY created_at ASC
+      `,
+      [offer.id, affiliate.id],
     );
-    expect(clickRowCount.rows[0].count).toBe(1);
+
+    expect(storedClicks.rows).toHaveLength(2);
+
+    const canonicalRow = storedClicks.rows.find((row) => row.is_duplicate === false);
+    const duplicateRow = storedClicks.rows.find((row) => row.is_duplicate === true);
+
+    expect(canonicalRow).toBeTruthy();
+    expect(duplicateRow).toBeTruthy();
+    expect(canonicalRow?.click_id).toBe(firstClickId);
+    expect(duplicateRow?.canonical_click_id).toBe(canonicalRow?.click_id);
+    expect(duplicateRow?.duplicate_of_click_id).toBe(canonicalRow?.click_id);
+    expect(duplicateRow?.click_id).not.toBe(canonicalRow?.click_id);
 
     const registryCount = await pool.query(
       `
@@ -487,13 +508,18 @@ describe('Critical path integration tests', () => {
 
     const totalClicks = await pool.query(
       `
-        SELECT COUNT(*)::int AS count
+        SELECT click_id, is_duplicate, canonical_click_id
         FROM clicks
         WHERE offer_id = $1 AND affiliate_id = $2
+        ORDER BY created_at ASC
       `,
       [offer.id, affiliate.id],
     );
 
-    expect(totalClicks.rows[0].count).toBe(2);
+    expect(totalClicks.rows).toHaveLength(2);
+    totalClicks.rows.forEach((row) => {
+      expect(row.is_duplicate).toBe(false);
+      expect(row.canonical_click_id).toBe(row.click_id);
+    });
   });
 });

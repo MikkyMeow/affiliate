@@ -15,6 +15,8 @@ type Click = {
   device: string | null;
   createdAt: string;
   ip: string | null;
+  canonicalClickId: string;
+  isDuplicate: boolean;
 };
 
 type ClicksMeta = {
@@ -250,10 +252,24 @@ export default function ClicksPage() {
                 {clicks.map((click) => (
                   <tr
                     key={click.clickId}
+                    id={`click-${click.clickId}`}
                     className="text-zinc-900 hover:bg-zinc-50 dark:text-zinc-100 dark:hover:bg-zinc-900/40"
                   >
-                    <td className="px-6 py-4 font-mono text-xs text-zinc-600 dark:text-zinc-300">
-                      {click.clickId}
+                    <td className="px-6 py-4">
+                      <div className="font-mono text-xs text-zinc-600 dark:text-zinc-300">
+                        {click.clickId}
+                      </div>
+                      {click.isDuplicate ? (
+                        <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
+                          Дубликат →
+                          <Link
+                            href={`#click-${click.canonicalClickId}`}
+                            className="underline-offset-2 hover:underline"
+                          >
+                            {click.canonicalClickId}
+                          </Link>
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
                       {click.offerId ?? '—'}

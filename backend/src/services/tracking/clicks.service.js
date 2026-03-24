@@ -259,13 +259,20 @@ export async function registerClick(input, options = {}) {
   const dedupProtectionEnabled = isDuplicateClickProtectionEnabled(offer);
   let savedClick = null;
   let deduplicated = false;
-  let reusedClickId = null;
+  let canonicalClick = null;
+
+  const baseInsertPayload = {
+    ...clickPayload,
+    dedupeFingerprint,
+    canonicalClickId: clickPayload.clickId,
+    isDuplicate: false,
+    duplicateOfClickId: null,
+  };
 
   if (!dedupProtectionEnabled) {
     try {
-      savedClick = await createClick(
-        { ...clickPayload, dedupeFingerprint },
-      );
+      savedClick = await createClick(baseInsertPayload);
+      canonicalClick = savedClick;
     } catch (error) {
       if (error?.code === '23505') {
         throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
@@ -300,12 +307,35 @@ export async function registerClick(input, options = {}) {
 
       if (resolution.reused) {
         deduplicated = true;
-        reusedClickId = resolution.clickId;
+        canonicalClick = await findByClickId(resolution.clickId, { client });
+
+        if (!canonicalClick) {
+          throw new ApiError(
+            ERROR_CODES.INTERNAL_ERROR,
+            500,
+            'Канонический клик для повторного запроса не найден',
+            { clickId: resolution.clickId },
+          );
+        }
+
+        const canonicalId = canonicalClick.canonicalClickId ?? canonicalClick.clickId;
+
+        const duplicatePayload = {
+          ...baseInsertPayload,
+          canonicalClickId: canonicalId,
+          isDuplicate: true,
+          duplicateOfClickId: canonicalId,
+          redirectOutcome: canonicalClick.redirectOutcome,
+          redirectReason: canonicalClick.redirectReason,
+          destinationType: canonicalClick.destinationType,
+          countryCode: canonicalClick.countryCode,
+          targetingStrict: canonicalClick.targetingStrict,
+        };
+
+        savedClick = await createClick(duplicatePayload, { client });
       } else {
-        savedClick = await createClick(
-          { ...clickPayload, dedupeFingerprint },
-          { client },
-        );
+        savedClick = await createClick(baseInsertPayload, { client });
+        canonicalClick = savedClick;
         await insertDedupEntry(
           {
             fingerprint: resolution.dedupeFingerprint,
@@ -332,21 +362,7 @@ export async function registerClick(input, options = {}) {
     }
   }
 
-  if (savedClick) {
-    await publishClickCreatedJob(savedClick);
-    return {
-      redirectUrl: preparedRedirectUrl,
-      clickId: savedClick.clickId,
-      redirectOutcome: savedClick.redirectOutcome,
-      redirectReason: savedClick.redirectReason,
-      destinationType: savedClick.destinationType,
-      countryCode: savedClick.countryCode,
-      targetingStrict: savedClick.targetingStrict,
-      deduplicated: false,
-    };
-  }
-
-  if (!deduplicated || !reusedClickId) {
+  if (!savedClick || (!canonicalClick && deduplicated)) {
     throw new ApiError(
       ERROR_CODES.INTERNAL_ERROR,
       500,
@@ -354,31 +370,29 @@ export async function registerClick(input, options = {}) {
     );
   }
 
-  const existingClick = await findByClickId(reusedClickId);
-  if (!existingClick) {
-    throw new ApiError(
-      ERROR_CODES.INTERNAL_ERROR,
-      500,
-      'Клик для повторного использования не найден',
-      { clickId: reusedClickId },
-    );
+  if (savedClick && !savedClick.isDuplicate) {
+    await publishClickCreatedJob(savedClick);
   }
 
+  const responseClick = deduplicated ? canonicalClick : savedClick;
   let redirectUrl = preparedRedirectUrl;
-  if (existingClick.destinationType === DESTINATION_TYPES.TARGET) {
-    redirectUrl = buildRedirectUrl(offer.targetUrl, existingClick.clickId);
-  } else if (existingClick.destinationType === DESTINATION_TYPES.FALLBACK) {
-    redirectUrl = sanitizeUrlCandidate(offer.fallbackUrl) ?? preparedRedirectUrl;
+
+  if (deduplicated) {
+    if (responseClick.destinationType === DESTINATION_TYPES.TARGET) {
+      redirectUrl = buildRedirectUrl(offer.targetUrl, responseClick.clickId);
+    } else if (responseClick.destinationType === DESTINATION_TYPES.FALLBACK) {
+      redirectUrl = sanitizeUrlCandidate(offer.fallbackUrl) ?? preparedRedirectUrl;
+    }
   }
 
   return {
     redirectUrl,
-    clickId: existingClick.clickId,
-    redirectOutcome: existingClick.redirectOutcome,
-    redirectReason: existingClick.redirectReason,
-    destinationType: existingClick.destinationType,
-    countryCode: existingClick.countryCode,
-    targetingStrict: existingClick.targetingStrict,
-    deduplicated: true,
+    clickId: responseClick.clickId,
+    redirectOutcome: responseClick.redirectOutcome,
+    redirectReason: responseClick.redirectReason,
+    destinationType: responseClick.destinationType,
+    countryCode: responseClick.countryCode,
+    targetingStrict: responseClick.targetingStrict,
+    deduplicated,
   };
 }
