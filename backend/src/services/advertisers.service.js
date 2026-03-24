@@ -2,6 +2,7 @@ import {
   createAdvertiser as createAdvertiserModel,
   listAdvertisers as listAdvertisersModel,
   findAdvertiserById as findAdvertiserByIdModel,
+  findAdvertiserByUserId as findAdvertiserByUserIdModel,
   updateAdvertiser as updateAdvertiserModel,
 } from '../models/advertiserModel.js';
 import { ApiError } from '../utils/apiError.js';
@@ -34,6 +35,33 @@ export async function updateAdvertiser(id, dto) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Рекламодатель не найден', {
       advertiserId: id,
     });
+  }
+
+  return advertiser;
+}
+
+export async function getAdvertiserByUserId(userId) {
+  if (!userId) {
+    throw new Error('User id is required to fetch advertiser');
+  }
+
+  return findAdvertiserByUserIdModel(userId);
+}
+
+export async function requireAdvertiserForUser(userId) {
+  if (!userId) {
+    throw new Error('User id is required to fetch advertiser');
+  }
+
+  const advertiser = await findAdvertiserByUserIdModel(userId);
+
+  if (!advertiser) {
+    throw new ApiError(
+      ERROR_CODES.NOT_FOUND,
+      404,
+      'Рекламодатель для пользователя не найден',
+      { userId },
+    );
   }
 
   return advertiser;

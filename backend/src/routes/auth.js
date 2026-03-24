@@ -26,6 +26,7 @@ import {
   findAffiliateByEmail,
   requireAffiliateForUser,
 } from '../services/affiliates.service.js';
+import { requireAdvertiserForUser } from '../services/advertisers.service.js';
 import { validateRegisterDto } from '../validators/users.js';
 import {
   clearRefreshTokenCookie,
@@ -54,6 +55,7 @@ function buildTokenPayload(user) {
     userId: user.id,
     role: user.role,
     affiliateId: user.affiliateId ?? null,
+    advertiserId: user.advertiserId ?? null,
   };
 }
 
@@ -63,13 +65,19 @@ function signToken(payload) {
 
 async function issueAuthPackage(user, res) {
   let affiliateId = user.affiliateId ?? null;
+  let advertiserId = user.advertiserId ?? null;
 
   if (user.role === 'affiliate' && !affiliateId) {
     const affiliate = await requireAffiliateForUser(user.id);
     affiliateId = affiliate.id;
   }
 
-  const token = signToken(buildTokenPayload({ ...user, affiliateId }));
+  if (user.role === 'advertiser' && !advertiserId) {
+    const advertiser = await requireAdvertiserForUser(user.id);
+    advertiserId = advertiser.id;
+  }
+
+  const token = signToken(buildTokenPayload({ ...user, affiliateId, advertiserId }));
   const refreshToken = await createRefreshTokenForUser(user.id);
   setRefreshTokenCookie(res, refreshToken.token, refreshToken.expiresAt);
 
@@ -82,6 +90,7 @@ async function issueAuthPackage(user, res) {
       createdAt: user.createdAt,
       role: user.role,
       affiliateId,
+      advertiserId,
     },
   };
 }

@@ -74,11 +74,29 @@ export async function createTestAdminUser(options = {}) {
   });
 }
 
+export async function createTestAdvertiserUser(options = {}) {
+  const { user, password } = await createTestUser({
+    role: 'advertiser',
+    email: options.email,
+    password: options.password,
+    displayName: options.displayName ?? 'Advertiser User',
+  });
+
+  const advertiser = await createTestAdvertiser({
+    name: options.advertiserName ?? 'Test Advertiser',
+    status: options.status ?? 'active',
+    userId: user.id,
+  });
+
+  return { user, advertiser, password };
+}
+
 export async function createTestAdvertiser({
   name = `Advertiser ${randomString(4)}`,
   status = 'active',
+  userId = null,
 } = {}) {
-  return createAdvertiser({ name, status });
+  return createAdvertiser({ name, status, userId });
 }
 
 export async function createTestOffer({

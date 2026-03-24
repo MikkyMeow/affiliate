@@ -4,18 +4,23 @@ const advertiserFields = `
   id,
   name,
   status,
+  user_id AS "userId",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `;
 
-export async function createAdvertiser({ name, status = 'active' }) {
+export async function createAdvertiser({
+  name,
+  status = 'active',
+  userId = null,
+}) {
   const result = await pool.query(
     `
-      INSERT INTO advertisers (name, status)
-      VALUES ($1, $2)
+      INSERT INTO advertisers (name, status, user_id)
+      VALUES ($1, $2, $3)
       RETURNING ${advertiserFields};
     `,
-    [name, status],
+    [name, status, userId],
   );
 
   return result.rows[0];
@@ -70,6 +75,19 @@ export async function findAdvertiserById(id) {
       WHERE id = $1;
     `,
     [id],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findAdvertiserByUserId(userId) {
+  const result = await pool.query(
+    `
+      SELECT ${advertiserFields}
+      FROM advertisers
+      WHERE user_id = $1;
+    `,
+    [userId],
   );
 
   return result.rows[0] ?? null;

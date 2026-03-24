@@ -33,9 +33,11 @@ export async function findUserByEmail(email) {
         u.display_name AS "displayName",
         u.role,
         u.created_at AS "createdAt",
-        a.id AS "affiliateId"
+        a.id AS "affiliateId",
+        adv.id AS "advertiserId"
       FROM users AS u
       LEFT JOIN affiliates AS a ON a.user_id = u.id
+      LEFT JOIN advertisers AS adv ON adv.user_id = u.id
       WHERE LOWER(u.email) = LOWER($1)
       LIMIT 1;
     `,
@@ -54,9 +56,11 @@ export async function findUserById(id) {
         u.display_name AS "displayName",
         u.role,
         u.created_at AS "createdAt",
-        a.id AS "affiliateId"
+        a.id AS "affiliateId",
+        adv.id AS "advertiserId"
       FROM users AS u
       LEFT JOIN affiliates AS a ON a.user_id = u.id
+      LEFT JOIN advertisers AS adv ON adv.user_id = u.id
       WHERE u.id = $1;
     `,
     [id],
