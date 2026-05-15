@@ -16,6 +16,8 @@ export type AuthProfile =
   | {
       type: "affiliate";
       id: string;
+      publicId: string | null;
+      publicIdNumber: number | null;
       name: string | null;
       status: string | null;
       createdAt: string | null;
@@ -24,6 +26,8 @@ export type AuthProfile =
   | {
       type: "advertiser";
       id: string;
+      publicId: string | null;
+      publicIdNumber: number | null;
       name: string | null;
       status: string | null;
       createdAt: string | null;

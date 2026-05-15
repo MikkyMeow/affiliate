@@ -37,7 +37,7 @@ const LINK_STYLES =
 export function AppNavbar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navLinks =
     user?.role === "admin"
@@ -55,6 +55,22 @@ export function AppNavbar() {
       register: `/auth/register?next=${redirect}`,
     };
   }, [pathname]);
+
+  const profilePublicId = useMemo(() => {
+    if (!user || !profile) {
+      return null;
+    }
+
+    if (user.role === "affiliate" && profile.type === "affiliate") {
+      return profile.publicId ?? null;
+    }
+
+    if (user.role === "advertiser" && profile.type === "advertiser") {
+      return profile.publicId ?? null;
+    }
+
+    return null;
+  }, [profile, user]);
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -117,9 +133,16 @@ export function AppNavbar() {
               })}
             </nav>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                {user.displayName ?? user.email}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {user.displayName ?? user.email}
+                </span>
+                {profilePublicId ? (
+                  <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                    {profilePublicId}
+                  </span>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={handleLogout}

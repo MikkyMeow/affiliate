@@ -17,6 +17,7 @@ import {
 
 type Advertiser = {
   id: string;
+  publicId: string | null;
   name: string;
 };
 
@@ -350,7 +351,9 @@ export default function CreateOfferPage() {
             <option value="">Выберите рекламодателя</option>
             {advertisers.map((advertiser) => (
               <option key={advertiser.id} value={advertiser.id}>
-                {advertiser.name}
+                {advertiser.publicId
+                  ? `${advertiser.publicId} · ${advertiser.name}`
+                  : advertiser.name}
               </option>
             ))}
           </select>

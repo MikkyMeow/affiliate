@@ -1,7 +1,9 @@
 import pool from '../db.js';
+import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const advertiserFields = `
   id,
+  public_id_number AS "publicIdNumber",
   name,
   status,
   user_id AS "userId",
@@ -28,7 +30,7 @@ export async function createAdvertiser({
     [name, status, userId],
   );
 
-  return result.rows[0];
+  return attachPublicId(result.rows[0], PUBLIC_ID_PREFIXES.advertiser);
 }
 
 export async function listAdvertisers(
@@ -67,7 +69,7 @@ export async function listAdvertisers(
   );
 
   return {
-    items: result.rows,
+    items: attachPublicIds(result.rows, PUBLIC_ID_PREFIXES.advertiser),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }
@@ -83,7 +85,7 @@ export async function findAdvertiserById(id, { client } = {}) {
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
 }
 
 export async function findAdvertiserByUserId(userId, { client } = {}) {
@@ -97,7 +99,7 @@ export async function findAdvertiserByUserId(userId, { client } = {}) {
     [userId],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
 }
 
 export async function updateAdvertiser(id, { name, status }) {
@@ -128,5 +130,5 @@ export async function updateAdvertiser(id, { name, status }) {
     [...params, id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
 }

@@ -8,6 +8,8 @@ import { apiFetch } from '@/lib/api';
 
 type Advertiser = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   name: string;
   status: 'active' | 'inactive';
   createdAt: string;
@@ -188,7 +190,11 @@ export default function AdvertisersPage() {
                 {advertisers.map((advertiser) => (
                   <tr key={advertiser.id} className="text-zinc-900 dark:text-zinc-100">
                     <td className="px-6 py-4">
-                      <div className="font-medium">{advertiser.name}</div>
+                      <div className="font-medium">
+                        {advertiser.publicId
+                          ? `${advertiser.publicId} · ${advertiser.name}`
+                          : advertiser.name}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span

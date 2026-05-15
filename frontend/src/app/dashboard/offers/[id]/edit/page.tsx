@@ -21,6 +21,8 @@ import {
 
 type Offer = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   title: string;
   category: OfferCategoryValue | null;
   targetUrl: string;
@@ -72,6 +74,7 @@ export default function EditOfferPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [offerPublicId, setOfferPublicId] = useState<string | null>(null);
   const [offerTargeting, setOfferTargeting] = useState<{
     targetingStrict: boolean;
     fallbackUrl: string | null;
@@ -115,6 +118,7 @@ export default function EditOfferPage() {
         if (!active) {
           return;
         }
+        setOfferPublicId(offer.publicId ?? null);
         const windowParts = secondsToWindowParts(
           offer.duplicateClickWindowSeconds,
         );
@@ -371,6 +375,9 @@ export default function EditOfferPage() {
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Редактировать оффер</h1>
+        {offerPublicId && (
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{offerPublicId}</p>
+        )}
       </div>
 
       <div className="mb-6">

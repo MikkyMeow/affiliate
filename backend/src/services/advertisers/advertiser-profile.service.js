@@ -32,6 +32,8 @@ export async function getAdvertiserProfileByUser(user) {
 
   return {
     id: advertiser.id,
+    publicIdNumber: advertiser.publicIdNumber ?? null,
+    publicId: advertiser.publicId ?? null,
     name: advertiser.name ?? null,
     status: advertiser.status ?? null,
     createdAt: advertiser.createdAt ?? null,

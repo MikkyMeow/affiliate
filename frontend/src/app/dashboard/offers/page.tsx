@@ -14,6 +14,8 @@ import {
 
 type Offer = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   title: string;
   category: OfferCategoryValue | null;
   advertiserId: string | null;
@@ -32,6 +34,7 @@ type OffersMeta = {
 
 type AffiliateOption = {
   id: string;
+  publicId: string | null;
   name: string;
   email: string;
 };
@@ -402,7 +405,9 @@ export default function OffersPage() {
                     >
                       <td className="px-6 py-4">
                         <div className="font-medium">{offer.title}</div>
-                        <p className="text-xs text-zinc-500">#{offer.id.slice(0, 8)}</p>
+                        <p className="text-xs text-zinc-500">
+                          {offer.publicId ?? `#${offer.id.slice(0, 8)}`}
+                        </p>
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                         {getOfferCategoryLabel(offer.category ?? undefined)}
@@ -499,7 +504,9 @@ export default function OffersPage() {
                   Генерация ссылки
                 </p>
                 <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  {linkOffer.title}
+                  {linkOffer.publicId
+                    ? `${linkOffer.publicId} · ${linkOffer.title}`
+                    : linkOffer.title}
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   Укажите аффилиата и (опционально) sub1. Ссылка собирается на фронте из{' '}
@@ -542,8 +549,10 @@ export default function OffersPage() {
                   >
                     <option value="">Выберите аффилиата</option>
                     {affiliateOptions.map((affiliate) => (
-                      <option key={affiliate.id} value={affiliate.id}>
-                        {affiliate.name || affiliate.email || affiliate.id} · #{affiliate.id.slice(0, 8)}
+                    <option key={affiliate.id} value={affiliate.id}>
+                        {affiliate.publicId
+                          ? `${affiliate.publicId} · ${affiliate.name || affiliate.email || affiliate.id}`
+                          : `${affiliate.name || affiliate.email || affiliate.id} · #${affiliate.id.slice(0, 8)}`}
                       </option>
                     ))}
                   </select>

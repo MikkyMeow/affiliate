@@ -74,6 +74,8 @@ function buildRestrictedView(offer) {
 function buildFullView(offer) {
   return {
     type: 'full',
+    publicIdNumber: offer.publicIdNumber ?? null,
+    publicId: offer.publicId ?? null,
     advertiserId: offer.advertiserId,
     targetUrl: offer.targetUrl,
     fallbackUrl: offer.fallbackUrl ?? null,
@@ -89,6 +91,8 @@ function serializeAffiliateOffer(
 ) {
   const base = {
     id: offer.id,
+    publicIdNumber: offer.publicIdNumber ?? null,
+    publicId: offer.publicId ?? null,
     title: offer.title,
     category: offer.category ?? null,
     advertiserId: offer.advertiserId,

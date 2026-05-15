@@ -1,9 +1,11 @@
 import pool from '../../db.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
+import { attachPublicId, PUBLIC_ID_PREFIXES } from '../../lib/public-id.js';
 
 const advertiserOfferFields = `
   id,
+  public_id_number AS "publicIdNumber",
   title,
   status,
   category,
@@ -33,17 +35,21 @@ function mapOfferToAdvertiserView(offer) {
     return null;
   }
 
+  const withPublicId = attachPublicId(offer, PUBLIC_ID_PREFIXES.offer);
+
   return {
-    id: offer.id,
-    name: offer.title ?? null,
-    status: offer.status ?? null,
-    payoutRub: normalizeMoney(offer.payoutRub),
-    revenueRub: offer.revenueRub ?? null,
-    trackingType: offer.trackingType ?? null,
-    category: offer.category ?? null,
-    previewUrl: offer.previewUrl ?? null,
-    createdAt: offer.createdAt ?? null,
-    updatedAt: offer.updatedAt ?? null,
+    id: withPublicId.id,
+    publicIdNumber: withPublicId.publicIdNumber ?? null,
+    publicId: withPublicId.publicId ?? null,
+    name: withPublicId.title ?? null,
+    status: withPublicId.status ?? null,
+    payoutRub: normalizeMoney(withPublicId.payoutRub),
+    revenueRub: withPublicId.revenueRub ?? null,
+    trackingType: withPublicId.trackingType ?? null,
+    category: withPublicId.category ?? null,
+    previewUrl: withPublicId.previewUrl ?? null,
+    createdAt: withPublicId.createdAt ?? null,
+    updatedAt: withPublicId.updatedAt ?? null,
   };
 }
 

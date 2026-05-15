@@ -1,7 +1,9 @@
 import pool from '../db.js';
+import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const baseOfferColumns = [
   'id',
+  'public_id_number AS "publicIdNumber"',
   'title',
   'category',
   'advertiser_id AS "advertiserId"',
@@ -26,6 +28,7 @@ const offerFieldsWithPostbackToken = `${offerListFields},\n  postback_token AS "
 
 const offerPostbackFields = `
   id,
+  public_id_number AS "publicIdNumber",
   payout_rub AS "payoutRub",
   status,
   postback_token AS "postbackToken"
@@ -75,7 +78,7 @@ export async function createOffer({
     ],
   );
 
-  return result.rows[0];
+  return attachPublicId(result.rows[0], PUBLIC_ID_PREFIXES.offer);
 }
 
 export async function listOffers(
@@ -126,7 +129,7 @@ export async function listOffers(
   );
 
   return {
-    items: result.rows,
+    items: attachPublicIds(result.rows, PUBLIC_ID_PREFIXES.offer),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }
@@ -141,7 +144,7 @@ export async function findOfferById(id) {
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
 }
 
 export async function findOfferForPostback(id) {
@@ -154,7 +157,7 @@ export async function findOfferForPostback(id) {
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
 }
 
 export async function updateOffer(id, attrs = {}) {
@@ -266,7 +269,7 @@ export async function updateOffer(id, attrs = {}) {
     [...params, id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
 }
 
 export async function findOfferTitlesByIds(offerIds = []) {

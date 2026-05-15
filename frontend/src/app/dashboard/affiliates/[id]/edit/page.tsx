@@ -8,6 +8,8 @@ import { apiFetch } from '@/lib/api';
 
 type Affiliate = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   name: string;
   email: string;
   status: 'active' | 'inactive';
@@ -36,6 +38,7 @@ export default function EditAffiliatePage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [affiliatePublicId, setAffiliatePublicId] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? `/dashboard/affiliates/${affiliateId ?? ''}/edit`);
@@ -72,6 +75,7 @@ export default function EditAffiliatePage() {
         if (!active) {
           return;
         }
+        setAffiliatePublicId(affiliate.publicId ?? null);
         setForm({ name: affiliate.name, email: affiliate.email, status: affiliate.status });
       })
       .catch((error) => {
@@ -228,6 +232,9 @@ export default function EditAffiliatePage() {
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Редактировать аффилиата
         </h1>
+        {affiliatePublicId && (
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{affiliatePublicId}</p>
+        )}
       </div>
 
       <div className="mb-6">

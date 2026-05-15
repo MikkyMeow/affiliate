@@ -1,7 +1,9 @@
 import pool from '../db.js';
+import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const affiliateFields = `
   id,
+  public_id_number AS "publicIdNumber",
   name,
   email,
   status,
@@ -30,7 +32,7 @@ export async function createAffiliate({
     [name, email.toLowerCase(), status, userId],
   );
 
-  return result.rows[0];
+  return attachPublicId(result.rows[0], PUBLIC_ID_PREFIXES.affiliate);
 }
 
 export async function listAffiliates(
@@ -69,7 +71,7 @@ export async function listAffiliates(
   );
 
   return {
-    items: result.rows,
+    items: attachPublicIds(result.rows, PUBLIC_ID_PREFIXES.affiliate),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }
@@ -85,7 +87,7 @@ export async function findAffiliateById(id, { client } = {}) {
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.affiliate);
 }
 
 export async function findAffiliateByEmail(email, { client } = {}) {
@@ -99,7 +101,7 @@ export async function findAffiliateByEmail(email, { client } = {}) {
     [email],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.affiliate);
 }
 
 export async function findAffiliateByUserId(userId, { client } = {}) {
@@ -113,7 +115,7 @@ export async function findAffiliateByUserId(userId, { client } = {}) {
     [userId],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.affiliate);
 }
 
 export async function linkAffiliateToUser(id, userId) {
@@ -127,7 +129,7 @@ export async function linkAffiliateToUser(id, userId) {
     [userId, id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.affiliate);
 }
 
 export async function updateAffiliate(id, { name, email, status }) {
@@ -163,5 +165,5 @@ export async function updateAffiliate(id, { name, email, status }) {
     [...params, id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.affiliate);
 }

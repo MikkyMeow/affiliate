@@ -7,6 +7,7 @@ import { createAdvertiser } from '../../src/models/advertiserModel.js';
 import { insertOfferGoal } from '../../src/models/offerGoals.model.js';
 import { upsertOfferAffiliateAccess } from '../../src/models/offerAffiliateAccess.model.js';
 import { insertOfferGeoRule } from '../../src/models/offerGeoRules.model.js';
+import { attachPublicId, PUBLIC_ID_PREFIXES } from '../../src/lib/public-id.js';
 
 function randomString(length = 8) {
   return crypto.randomBytes(length).toString('hex');
@@ -137,6 +138,7 @@ export async function createTestOffer({
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING
         id,
+        public_id_number AS "publicIdNumber",
         title,
         category,
         advertiser_id AS "advertiserId",
@@ -168,7 +170,7 @@ export async function createTestOffer({
     ],
   );
 
-  return result.rows[0];
+  return attachPublicId(result.rows[0], PUBLIC_ID_PREFIXES.offer);
 }
 
 export async function createTestOfferGoal(

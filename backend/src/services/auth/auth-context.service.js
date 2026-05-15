@@ -26,6 +26,8 @@ async function resolveProfile(user) {
     return {
       type: 'affiliate',
       id: affiliate.id,
+      publicIdNumber: affiliate.publicIdNumber ?? null,
+      publicId: affiliate.publicId ?? null,
       name: affiliate.name ?? null,
       status: affiliate.status ?? null,
       createdAt: affiliate.createdAt ?? null,

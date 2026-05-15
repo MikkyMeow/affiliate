@@ -8,6 +8,7 @@ import {
   validateCreateOfferDto,
   validateOfferFilters,
   validateUpdateOfferDto,
+  validateUuid,
 } from '../validators/offers.js';
 import {
   createOffer,
@@ -102,15 +103,10 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const offer = await getOfferById(req.params.id, { includeGoals: true });
-    return sendSuccess(res, { offer });
-  }),
-);
-
-router.patch(
-  '/:id',
-  asyncHandler(async (req, res) => {
-    const { dto, errors } = validateUpdateOfferDto(req.body);
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'id',
+    });
 
     if (errors.length) {
       throw new ApiError(
@@ -121,8 +117,32 @@ router.patch(
       );
     }
 
+    const offer = await getOfferById(offerId, { includeGoals: true });
+    return sendSuccess(res, { offer });
+  }),
+);
+
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors: idErrors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'id',
+    });
+    const { dto, errors } = validateUpdateOfferDto(req.body);
+    const allErrors = [...idErrors, ...errors];
+
+    if (allErrors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors: allErrors },
+      );
+    }
+
     const offer = await updateOffer(
-      req.params.id,
+      offerId,
       dto,
       { actor: getActorContext(req.user), requestId: req.id ?? null },
     );

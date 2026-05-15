@@ -9,6 +9,8 @@ import { InlineAlert } from '@/components/InlineAlert';
 
 type Affiliate = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   name: string;
   email: string;
   status: 'active' | 'inactive';
@@ -174,9 +176,10 @@ export default function AffiliatesPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">
-                  Аффилиат «{highlightedAffiliate.name}» создан.
+                  Аффилиат «{highlightedAffiliate.publicId ?? highlightedAffiliate.name}» создан.
                 </p>
                 <p className="text-amber-800 dark:text-amber-200">
+                  {highlightedAffiliate.publicId ? `${highlightedAffiliate.publicId} · ` : ''}
                   Email: {highlightedAffiliate.email} · Статус:{' '}
                   {highlightedAffiliate.status === 'active' ? 'Активен' : 'Неактивен'}
                 </p>
@@ -249,7 +252,11 @@ export default function AffiliatesPage() {
                       }`}
                     >
                     <td className="px-6 py-4">
-                      <div className="font-medium">{affiliate.name}</div>
+                      <div className="font-medium">
+                        {affiliate.publicId
+                          ? `${affiliate.publicId} · ${affiliate.name}`
+                          : affiliate.name}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                       {affiliate.email}

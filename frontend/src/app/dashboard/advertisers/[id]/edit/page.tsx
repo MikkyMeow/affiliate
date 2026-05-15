@@ -8,6 +8,8 @@ import { apiFetch } from '@/lib/api';
 
 type Advertiser = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   name: string;
   status: 'active' | 'inactive';
   createdAt: string;
@@ -34,6 +36,7 @@ export default function EditAdvertiserPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [advertiserPublicId, setAdvertiserPublicId] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? `/dashboard/advertisers/${advertiserId ?? ''}/edit`);
@@ -70,6 +73,7 @@ export default function EditAdvertiserPage() {
         if (!active) {
           return;
         }
+        setAdvertiserPublicId(advertiser.publicId ?? null);
         setForm({ name: advertiser.name, status: advertiser.status });
       })
       .catch((error) => {
@@ -217,6 +221,11 @@ export default function EditAdvertiserPage() {
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Редактировать рекламодателя
         </h1>
+        {advertiserPublicId && (
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            {advertiserPublicId}
+          </p>
+        )}
       </div>
 
       <div className="mb-6">
