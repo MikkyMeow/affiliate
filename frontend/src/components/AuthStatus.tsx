@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { getRoleLabel } from '@/lib/auth/roles';
 
 export function AuthStatus() {
   const { user, profile, loading, logout } = useAuth();
@@ -38,12 +39,7 @@ export function AuthStatus() {
     );
   }
 
-  const roleLabel =
-    user.role === 'admin'
-      ? 'Администратор'
-      : user.role === 'affiliate'
-        ? 'Аффилиат'
-        : 'Рекламодатель';
+  const roleLabel = getRoleLabel(user.role);
 
   const profileName =
     user.role === 'affiliate' && profile && profile.type === 'affiliate'

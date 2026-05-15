@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
 import { trackingFetch } from '@/lib/tracking';
+import { canAccessAdminArea } from '@/lib/auth/roles';
 
 type Conversion = {
   clickId: string;
@@ -162,7 +163,7 @@ export default function ConversionsPage() {
   }, [accessToken, authLoading, offset]);
 
   useEffect(() => {
-    if (authLoading || !accessToken || user?.role !== 'admin') {
+    if (authLoading || !accessToken || !canAccessAdminArea(user)) {
       return;
     }
 
@@ -205,7 +206,7 @@ export default function ConversionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, user?.role]);
+  }, [accessToken, authLoading, user]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
@@ -450,20 +451,20 @@ export default function ConversionsPage() {
     );
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminArea(user)) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Просматривать конверсии могут только администраторы.
+          Просматривать конверсии могут только администраторы и менеджеры.
         </p>
         <Link
-          href="/partner"
+          href="/"
           className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В кабинет партнера
+          На главную
         </Link>
       </section>
     );

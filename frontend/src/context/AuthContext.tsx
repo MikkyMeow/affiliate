@@ -10,7 +10,7 @@ import {
 } from "react";
 import { apiFetch, type ApiError } from "@/lib/api";
 
-export type UserRole = "admin" | "affiliate" | "advertiser";
+export type UserRole = "admin" | "manager" | "affiliate" | "advertiser";
 
 export type AuthProfile =
   | {

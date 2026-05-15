@@ -19,13 +19,18 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireAffiliateForUser } from '../services/affiliates.service.js';
 import { requireAdvertiserForUser } from '../services/advertisers.service.js';
 import { registerUser } from '../services/auth/register.service.js';
-import { validateRegisterDto } from '../validators/users.js';
+import {
+  validateChangePasswordDto,
+  validateRegisterDto,
+} from '../validators/users.js';
 import {
   clearRefreshTokenCookie,
   getRefreshTokenFromRequest,
   setRefreshTokenCookie,
 } from '../lib/refreshTokenCookie.js';
 import { getAuthContext } from '../services/auth/auth-context.service.js';
+import { changeOwnPassword } from '../services/managers.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -223,6 +228,40 @@ router.get(
   asyncHandler(async (req, res) => {
     const context = await getAuthContext(req.user.userId);
     return sendSuccess(res, context);
+  }),
+);
+
+router.post(
+  '/change-password',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateChangePasswordDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    await changeOwnPassword(
+      {
+        userId: req.user.userId,
+        currentPassword: dto.currentPassword,
+        newPassword: dto.newPassword,
+      },
+      {
+        actor: getActorContext(req.user),
+        requestId: req.id ?? null,
+      },
+    );
+
+    const refreshToken = await createRefreshTokenForUser(req.user.userId);
+    setRefreshTokenCookie(res, refreshToken.token, refreshToken.expiresAt);
+
+    return sendSuccess(res, { ok: true });
   }),
 );
 

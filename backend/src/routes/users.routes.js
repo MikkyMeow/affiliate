@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRole } from '../middleware/authorizeRole.js';
+import { authorizeAdminOnly } from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
@@ -10,7 +10,7 @@ import { createAffiliateUser } from '../services/users.service.js';
 const router = express.Router();
 
 router.use(authenticate);
-router.use(authorizeRole('admin'));
+router.use(authorizeAdminOnly);
 
 router.post(
   '/',

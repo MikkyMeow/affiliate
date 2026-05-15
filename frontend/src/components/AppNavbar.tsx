@@ -5,6 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getHomePathByRole } from "@/lib/auth/routes";
+import {
+  canAccessAdminArea,
+  getProfilePathForRole,
+  isAdminRole,
+} from "@/lib/auth/roles";
 
 const ADMIN_LINKS = [
   { href: "/dashboard/stats", label: "Статистика" },
@@ -13,6 +18,7 @@ const ADMIN_LINKS = [
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
   { href: "/dashboard/affiliates", label: "Аффилиаты" },
   { href: "/dashboard/offers", label: "Офферы" },
+  { href: "/dashboard/managers", label: "Менеджеры", adminOnly: true },
 ];
 
 const AFFILIATE_LINKS = [
@@ -39,14 +45,25 @@ export function AppNavbar() {
   const router = useRouter();
   const { user, profile, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const navLinks =
-    user?.role === "admin"
-      ? ADMIN_LINKS
-      : user?.role === "affiliate"
-        ? AFFILIATE_LINKS
-        : user?.role === "advertiser"
-          ? ADVERTISER_LINKS
-          : [];
+  const navLinks = useMemo(() => {
+    if (!user) {
+      return [];
+    }
+
+    if (canAccessAdminArea(user)) {
+      return ADMIN_LINKS.filter((link) => !link.adminOnly || isAdminRole(user.role));
+    }
+
+    if (user.role === "affiliate") {
+      return AFFILIATE_LINKS;
+    }
+
+    if (user.role === "advertiser") {
+      return ADVERTISER_LINKS;
+    }
+
+    return [];
+  }, [user]);
 
   const authLinks = useMemo(() => {
     const redirect = encodeURIComponent(pathname);
@@ -71,6 +88,8 @@ export function AppNavbar() {
 
     return null;
   }, [profile, user]);
+
+  const profileHref = useMemo(() => getProfilePathForRole(user), [user]);
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -134,9 +153,18 @@ export function AppNavbar() {
             </nav>
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-end">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {user.displayName ?? user.email}
-                </span>
+                {profileHref ? (
+                  <Link
+                    href={profileHref}
+                    className="text-sm text-zinc-600 underline-offset-4 transition hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+                  >
+                    {user.displayName ?? user.email}
+                  </Link>
+                ) : (
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {user.displayName ?? user.email}
+                  </span>
+                )}
                 {profilePublicId ? (
                   <span className="text-xs text-zinc-500 dark:text-zinc-500">
                     {profilePublicId}
