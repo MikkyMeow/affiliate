@@ -113,6 +113,23 @@ export default function AdvertiserProfilePage() {
               {formatDateTime(profile.updatedAt)}
             </dd>
           </div>
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
+            <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Your manager
+            </dt>
+            {profile.manager ? (
+              <dd className="mt-2 space-y-1 text-sm text-zinc-900 dark:text-zinc-100">
+                <p className="text-lg font-semibold">
+                  {profile.manager.name ?? "—"}
+                </p>
+                <p>{profile.manager.email ?? "—"}</p>
+              </dd>
+            ) : (
+              <dd className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                No manager assigned yet
+              </dd>
+            )}
+          </div>
         </dl>
       ) : (
         <div className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">

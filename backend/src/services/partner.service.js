@@ -45,7 +45,15 @@ export async function getPartnerProfile(userId) {
       ...user,
       affiliateId: affiliate.id,
     },
-    affiliate,
+    affiliate: {
+      ...affiliate,
+      manager: affiliate.manager
+        ? {
+            name: affiliate.manager.displayName ?? null,
+            email: affiliate.manager.email ?? null,
+          }
+        : null,
+    },
   };
 }
 

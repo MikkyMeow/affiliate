@@ -38,5 +38,11 @@ export async function getAdvertiserProfileByUser(user) {
     status: advertiser.status ?? null,
     createdAt: advertiser.createdAt ?? null,
     updatedAt: advertiser.updatedAt ?? null,
+    manager: advertiser.manager
+      ? {
+          name: advertiser.manager.displayName ?? null,
+          email: advertiser.manager.email ?? null,
+        }
+      : null,
   };
 }

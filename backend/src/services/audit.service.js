@@ -20,6 +20,7 @@ export async function writeAuditEvent({
   actorRole = null,
   requestId = null,
   context = null,
+  client = null,
 }) {
   if (!entityType || !entityId || !action) {
     console.warn(
@@ -43,6 +44,7 @@ export async function writeAuditEvent({
       actorRole,
       requestId,
       context: coerceContext(context),
+      client,
     });
   } catch (error) {
     console.error(

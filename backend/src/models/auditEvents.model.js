@@ -20,11 +20,13 @@ export async function insertAuditEvent({
   actorRole = null,
   requestId = null,
   context = null,
+  client = null,
 }) {
   const normalizedContext =
     context && typeof context === 'object' ? context : {};
+  const queryable = client ?? pool;
 
-  const result = await pool.query(
+  const result = await queryable.query(
     `
       INSERT INTO audit_events (
         entity_type,

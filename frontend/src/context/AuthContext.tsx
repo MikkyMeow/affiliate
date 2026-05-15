@@ -22,6 +22,10 @@ export type AuthProfile =
       status: string | null;
       createdAt: string | null;
       updatedAt: string | null;
+      manager: {
+        name: string | null;
+        email: string | null;
+      } | null;
     }
   | {
       type: "advertiser";
@@ -32,6 +36,10 @@ export type AuthProfile =
       status: string | null;
       createdAt: string | null;
       updatedAt: string | null;
+      manager: {
+        name: string | null;
+        email: string | null;
+      } | null;
     }
   | null;
 

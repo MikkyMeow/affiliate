@@ -11,6 +11,10 @@ export type AdvertiserProfile = {
   status: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  manager: {
+    name: string | null;
+    email: string | null;
+  } | null;
 };
 
 export type AdvertiserPagination = {

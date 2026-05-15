@@ -2,17 +2,47 @@ import pool from '../db.js';
 import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const advertiserFields = `
-  id,
-  public_id_number AS "publicIdNumber",
-  name,
-  status,
-  user_id AS "userId",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
+  adv.id,
+  adv.public_id_number AS "publicIdNumber",
+  adv.name,
+  adv.status,
+  adv.user_id AS "userId",
+  adv.manager_user_id AS "managerUserId",
+  adv.created_at AS "createdAt",
+  adv.updated_at AS "updatedAt",
+  mu.id AS "manager.id",
+  mu.display_name AS "manager.displayName",
+  mu.email AS "manager.email"
 `;
 
 function getQueryable(client) {
   return client ?? pool;
+}
+
+function normalizeAdvertiser(row) {
+  if (!row) {
+    return null;
+  }
+
+  const managerId = row['manager.id'] ?? null;
+
+  return {
+    id: row.id,
+    publicIdNumber: row.publicIdNumber ?? null,
+    name: row.name,
+    status: row.status,
+    userId: row.userId ?? null,
+    managerUserId: row.managerUserId ?? null,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+    manager: managerId
+      ? {
+          id: managerId,
+          displayName: row['manager.displayName'] ?? null,
+          email: row['manager.email'] ?? null,
+        }
+      : null,
+  };
 }
 
 export async function createAdvertiser({
@@ -25,16 +55,16 @@ export async function createAdvertiser({
     `
       INSERT INTO advertisers (name, status, user_id)
       VALUES ($1, $2, $3)
-      RETURNING ${advertiserFields};
+      RETURNING id;
     `,
     [name, status, userId],
   );
 
-  return attachPublicId(result.rows[0], PUBLIC_ID_PREFIXES.advertiser);
+  return findAdvertiserById(result.rows[0]?.id, { client });
 }
 
 export async function listAdvertisers(
-  { status } = {},
+  { status, managerUserId } = {},
   { limit = 20, offset = 0 } = {},
 ) {
   const params = [];
@@ -42,7 +72,12 @@ export async function listAdvertisers(
 
   if (status) {
     params.push(status);
-    conditions.push(`status = $${params.length}`);
+    conditions.push(`adv.status = $${params.length}`);
+  }
+
+  if (managerUserId) {
+    params.push(managerUserId);
+    conditions.push(`adv.manager_user_id = $${params.length}`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -50,7 +85,7 @@ export async function listAdvertisers(
   const totalResult = await pool.query(
     `
       SELECT COUNT(*)::int AS count
-      FROM advertisers
+      FROM advertisers AS adv
       ${whereClause};
     `,
     params,
@@ -59,9 +94,10 @@ export async function listAdvertisers(
   const result = await pool.query(
     `
       SELECT ${advertiserFields}
-      FROM advertisers
+      FROM advertisers AS adv
+      LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY adv.created_at DESC
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,
@@ -69,7 +105,7 @@ export async function listAdvertisers(
   );
 
   return {
-    items: attachPublicIds(result.rows, PUBLIC_ID_PREFIXES.advertiser),
+    items: attachPublicIds(result.rows.map(normalizeAdvertiser), PUBLIC_ID_PREFIXES.advertiser),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }
@@ -79,13 +115,14 @@ export async function findAdvertiserById(id, { client } = {}) {
   const result = await queryable.query(
     `
       SELECT ${advertiserFields}
-      FROM advertisers
-      WHERE id = $1;
+      FROM advertisers AS adv
+      LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
+      WHERE adv.id = $1;
     `,
     [id],
   );
 
-  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
+  return attachPublicId(normalizeAdvertiser(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.advertiser);
 }
 
 export async function findAdvertiserByUserId(userId, { client } = {}) {
@@ -93,16 +130,18 @@ export async function findAdvertiserByUserId(userId, { client } = {}) {
   const result = await queryable.query(
     `
       SELECT ${advertiserFields}
-      FROM advertisers
-      WHERE user_id = $1;
+      FROM advertisers AS adv
+      LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
+      WHERE adv.user_id = $1;
     `,
     [userId],
   );
 
-  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
+  return attachPublicId(normalizeAdvertiser(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.advertiser);
 }
 
-export async function updateAdvertiser(id, { name, status }) {
+export async function updateAdvertiser(id, { name, status }, { client } = {}) {
+  const queryable = getQueryable(client);
   const assignments = [];
   const params = [];
 
@@ -117,18 +156,37 @@ export async function updateAdvertiser(id, { name, status }) {
   }
 
   if (assignments.length === 0) {
-    return findAdvertiserById(id);
+    return findAdvertiserById(id, { client });
   }
 
-  const result = await pool.query(
+  const result = await queryable.query(
     `
       UPDATE advertisers
       SET ${assignments.join(', ')}, updated_at = NOW()
       WHERE id = $${params.length + 1}
-      RETURNING ${advertiserFields};
+      RETURNING id;
     `,
     [...params, id],
   );
 
-  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.advertiser);
+  return result.rowCount > 0 ? findAdvertiserById(id, { client }) : null;
+}
+
+export async function updateAdvertiserManager(
+  id,
+  managerUserId,
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      UPDATE advertisers
+      SET manager_user_id = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id;
+    `,
+    [managerUserId ?? null, id],
+  );
+
+  return result.rowCount > 0 ? findAdvertiserById(id, { client }) : null;
 }

@@ -13,14 +13,28 @@ type Advertiser = {
   publicIdNumber: number | null;
   name: string;
   status: 'active' | 'inactive';
+  managerUserId: string | null;
+  manager: {
+    id: string;
+    displayName: string | null;
+    email: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type ManagerOption = {
+  id: string;
+  displayName: string | null;
+  email: string | null;
 };
 
 export default function AdvertisersPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([]);
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,14 +58,23 @@ export default function AdvertisersPage() {
       setError(null);
 
       try {
-        const fetchedAdvertisers = await apiFetch<Advertiser[]>('/advertisers', {
-          token: accessToken,
-        });
+        const query = selectedManagerId
+          ? `/advertisers?managerUserId=${encodeURIComponent(selectedManagerId)}`
+          : '/advertisers';
+        const [fetchedAdvertisers, lookup] = await Promise.all([
+          apiFetch<Advertiser[]>(query, {
+            token: accessToken,
+          }),
+          apiFetch<{ items: ManagerOption[] }>('/admin/managers/lookup', {
+            token: accessToken,
+          }),
+        ]);
 
         if (!active) {
           return;
         }
         setAdvertisers(fetchedAdvertisers);
+        setManagers(lookup.items);
       } catch (fetchError) {
         if (!active) {
           return;
@@ -71,7 +94,7 @@ export default function AdvertisersPage() {
     return () => {
       active = false;
     };
-  }, [accessToken, authLoading]);
+  }, [accessToken, authLoading, selectedManagerId]);
 
   const formatter = useMemo(
     () =>
@@ -156,9 +179,29 @@ export default function AdvertisersPage() {
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Список
-          </h2>
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Список
+            </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm text-zinc-500" htmlFor="advertiser-manager-filter">
+                Ответственный менеджер
+              </label>
+              <select
+                id="advertiser-manager-filter"
+                value={selectedManagerId}
+                onChange={(event) => setSelectedManagerId(event.target.value)}
+                className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              >
+                <option value="">Все</option>
+                {managers.map((manager) => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.displayName ?? manager.email ?? manager.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           {loading ? (
             <span className="text-sm text-zinc-500">Загружаем...</span>
           ) : (
@@ -182,6 +225,7 @@ export default function AdvertisersPage() {
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
                   <th className="px-6 py-3 font-medium">Название</th>
+                  <th className="px-6 py-3 font-medium">Менеджер</th>
                   <th className="px-6 py-3 font-medium">Статус</th>
                   <th className="px-6 py-3 font-medium">Создан</th>
                   <th className="px-6 py-3 text-right font-medium">Действия</th>
@@ -196,6 +240,22 @@ export default function AdvertisersPage() {
                           ? `${advertiser.publicId} · ${advertiser.name}`
                           : advertiser.name}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                      {advertiser.manager ? (
+                        <div>
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {advertiser.manager.displayName ?? 'Без имени'}
+                          </div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {advertiser.manager.email}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-500">
+                          Not assigned
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span

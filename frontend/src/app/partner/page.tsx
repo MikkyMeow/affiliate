@@ -40,6 +40,10 @@ type PartnerProfile = {
     status: "active" | "inactive";
     createdAt: string;
     updatedAt: string;
+    manager: {
+      name: string | null;
+      email: string | null;
+    } | null;
   };
 };
 
@@ -349,6 +353,23 @@ export default function PartnerDashboardPage() {
                     : "Неактивен"}
                 </span>
               </p>
+              <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">
+                  Your manager
+                </p>
+                {profile.affiliate.manager ? (
+                  <div className="mt-2 space-y-1">
+                    <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                      {profile.affiliate.manager.name ?? "—"}
+                    </p>
+                    <p>{profile.affiliate.manager.email ?? "—"}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-zinc-500">
+                    No manager assigned yet
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <p className="mt-4 text-sm text-zinc-500">Нет данных по профилю.</p>

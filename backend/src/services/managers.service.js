@@ -82,6 +82,40 @@ export async function listManagers(filter, pagination) {
   );
 }
 
+export async function listManagerLookup(filter, pagination) {
+  const { items } = await listManagers(filter, pagination);
+
+  return items.map((user) => ({
+    id: user.id,
+    displayName: user.displayName ?? null,
+    email: user.email ?? null,
+  }));
+}
+
+export async function requireAssignableManagerUser(id, { client } = {}) {
+  const user = await findUserById(id, { client });
+
+  if (!user) {
+    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Менеджер не найден', {
+      managerId: id,
+    });
+  }
+
+  if (user.role !== 'manager') {
+    throw new ApiError(
+      ERROR_CODES.VALIDATION_ERROR,
+      422,
+      'Выбранный пользователь не является менеджером',
+      {
+        managerId: id,
+        role: user.role ?? null,
+      },
+    );
+  }
+
+  return user;
+}
+
 export async function createManager(dto, { actor = null, requestId = null } = {}) {
   await ensureEmailIsUnique(dto.email);
 

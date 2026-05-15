@@ -32,6 +32,12 @@ async function resolveProfile(user) {
       status: affiliate.status ?? null,
       createdAt: affiliate.createdAt ?? null,
       updatedAt: affiliate.updatedAt ?? null,
+      manager: affiliate.manager
+        ? {
+            name: affiliate.manager.displayName ?? null,
+            email: affiliate.manager.email ?? null,
+          }
+        : null,
     };
   }
 

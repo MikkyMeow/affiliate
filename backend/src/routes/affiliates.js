@@ -4,6 +4,7 @@ import { authorizeAdminArea } from '../middleware/accessControl.js';
 import {
   validateCreateAffiliateDto,
   validateUpdateAffiliateDto,
+  validateAssignAffiliateManagerDto,
   validateAffiliateListFilters,
 } from '../validators/affiliates.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
@@ -13,8 +14,10 @@ import {
   createAffiliate,
   getAffiliateById,
   listAffiliates,
+  assignAffiliateManager,
   updateAffiliate,
 } from '../services/affiliates.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 
@@ -71,6 +74,29 @@ router.get(
   '/:id',
   asyncHandler(async (req, res) => {
     const affiliate = await getAffiliateById(req.params.id);
+    return sendSuccess(res, { affiliate });
+  }),
+);
+
+router.patch(
+  '/:id/manager',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateAssignAffiliateManagerDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const affiliate = await assignAffiliateManager(req.params.id, dto.managerUserId, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
     return sendSuccess(res, { affiliate });
   }),
 );

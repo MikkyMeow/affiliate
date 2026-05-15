@@ -1,3 +1,4 @@
+import pool from '../db.js';
 import {
   createAffiliate as createAffiliateModel,
   listAffiliates as listAffiliatesModel,
@@ -5,11 +6,14 @@ import {
   findAffiliateByUserId as findAffiliateByUserIdModel,
   findAffiliateByEmail as findAffiliateByEmailModel,
   updateAffiliate as updateAffiliateModel,
+  updateAffiliateManager as updateAffiliateManagerModel,
   linkAffiliateToUser as linkAffiliateToUserModel,
 } from '../models/affiliateModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { invalidateAffiliateCache } from './tracking/cache-invalidation.service.js';
+import { requireAssignableManagerUser } from './managers.service.js';
+import { writeAuditEvent } from './audit.service.js';
 
 function handleAffiliateDbConflict(error) {
   if (error?.code === '23505') {
@@ -63,6 +67,89 @@ export async function updateAffiliate(id, dto) {
     return affiliate;
   } catch (error) {
     handleAffiliateDbConflict(error);
+  }
+}
+
+function buildManagerAuditMetadata(previousManager, nextManager) {
+  return {
+    previousManager: previousManager
+      ? {
+          id: previousManager.id,
+          displayName: previousManager.displayName ?? null,
+          email: previousManager.email ?? null,
+        }
+      : null,
+    nextManager: nextManager
+      ? {
+          id: nextManager.id,
+          displayName: nextManager.displayName ?? null,
+          email: nextManager.email ?? null,
+        }
+      : null,
+  };
+}
+
+export async function assignAffiliateManager(
+  affiliateId,
+  managerUserId,
+  { actor = null, requestId = null } = {},
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAffiliate = await findAffiliateByIdModel(affiliateId, { client });
+
+    if (!existingAffiliate) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+        affiliateId,
+      });
+    }
+
+    const nextManager =
+      managerUserId === null
+        ? null
+        : await requireAssignableManagerUser(managerUserId, { client });
+
+    const updatedAffiliate = await updateAffiliateManagerModel(
+      affiliateId,
+      managerUserId,
+      { client },
+    );
+
+    await writeAuditEvent({
+      entityType: 'affiliate',
+      entityId: affiliateId,
+      action: 'manager_assigned',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      client,
+      context: {
+        oldValues: {
+          managerUserId: existingAffiliate.managerUserId ?? null,
+        },
+        newValues: {
+          managerUserId: updatedAffiliate?.managerUserId ?? null,
+        },
+        metadata: buildManagerAuditMetadata(
+          existingAffiliate.manager,
+          nextManager,
+        ),
+      },
+    });
+
+    await client.query('COMMIT');
+
+    await invalidateAffiliateCache(affiliateId);
+
+    return updatedAffiliate;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }
 

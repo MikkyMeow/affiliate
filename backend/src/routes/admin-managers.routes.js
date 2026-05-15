@@ -1,6 +1,9 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeManagerManagement } from '../middleware/accessControl.js';
+import {
+  authorizeAdminArea,
+  authorizeManagerManagement,
+} from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
@@ -13,6 +16,7 @@ import { validateUuid } from '../validators/offers.js';
 import {
   createManager,
   deleteManager,
+  listManagerLookup,
   listManagers,
   resetManagerPassword,
   updateManager,
@@ -40,6 +44,27 @@ function requireManagerId(value) {
 }
 
 router.use(authenticate);
+
+router.get(
+  '/lookup',
+  authorizeAdminArea,
+  asyncHandler(async (req, res) => {
+    const { filter, pagination, errors } = validateManagerListQuery(req.query ?? {});
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const items = await listManagerLookup(filter, pagination);
+    return sendSuccess(res, { items });
+  }),
+);
+
 router.use(authorizeManagerManagement);
 
 router.get(

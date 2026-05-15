@@ -14,8 +14,20 @@ type Affiliate = {
   name: string;
   email: string;
   status: 'active' | 'inactive';
+  managerUserId: string | null;
+  manager: {
+    id: string;
+    displayName: string | null;
+    email: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type ManagerOption = {
+  id: string;
+  displayName: string | null;
+  email: string | null;
 };
 
 type FieldErrors = Partial<Record<'name' | 'email' | 'form', string>>;
@@ -40,6 +52,11 @@ export default function EditAffiliatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [affiliatePublicId, setAffiliatePublicId] = useState<string | null>(null);
+  const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [managerSubmitting, setManagerSubmitting] = useState(false);
+  const [managerError, setManagerError] = useState<string | null>(null);
+  const [managerSuccess, setManagerSuccess] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? `/dashboard/affiliates/${affiliateId ?? ''}/edit`);
@@ -69,15 +86,22 @@ export default function EditAffiliatePage() {
     setInitialLoading(true);
     setLoadError(null);
 
-    apiFetch<{ affiliate: Affiliate }>(`/affiliates/${affiliateId}`, {
-      token: accessToken,
-    })
-      .then(({ affiliate }) => {
+    Promise.all([
+      apiFetch<{ affiliate: Affiliate }>(`/affiliates/${affiliateId}`, {
+        token: accessToken,
+      }),
+      apiFetch<{ items: ManagerOption[] }>('/admin/managers/lookup', {
+        token: accessToken,
+      }),
+    ])
+      .then(([{ affiliate }, lookup]) => {
         if (!active) {
           return;
         }
         setAffiliatePublicId(affiliate.publicId ?? null);
         setForm({ name: affiliate.name, email: affiliate.email, status: affiliate.status });
+        setSelectedManagerId(affiliate.managerUserId ?? '');
+        setManagerOptions(lookup.items);
       })
       .catch((error) => {
         if (!active) {
@@ -146,6 +170,41 @@ export default function EditAffiliatePage() {
       setErrors({ form: message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleManagerSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setManagerError(null);
+    setManagerSuccess(null);
+
+    if (!accessToken || !affiliateId) {
+      setManagerError('Нет доступа для редактирования');
+      return;
+    }
+
+    setManagerSubmitting(true);
+
+    try {
+      const response = await apiFetch<{ affiliate: Affiliate }>(
+        `/affiliates/${affiliateId}/manager`,
+        {
+          method: 'PATCH',
+          token: accessToken,
+          body: JSON.stringify({
+            managerUserId: selectedManagerId || null,
+          }),
+        },
+      );
+      setSelectedManagerId(response.affiliate.managerUserId ?? '');
+      setManagerSuccess('Ответственный менеджер обновлён');
+    } catch (error) {
+      const message =
+        (error as { message?: string } | null)?.message ??
+        'Не удалось обновить ответственного менеджера';
+      setManagerError(message);
+    } finally {
+      setManagerSubmitting(false);
     }
   };
 
@@ -317,6 +376,62 @@ export default function EditAffiliatePage() {
           className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
         >
           {submitting ? 'Сохраняем…' : 'Сохранить изменения'}
+        </button>
+      </form>
+
+      <form
+        onSubmit={handleManagerSubmit}
+        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <div>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">
+            Responsible manager
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Ответственный менеджер
+          </h2>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            htmlFor="affiliate-manager"
+          >
+            Менеджер
+          </label>
+          <select
+            id="affiliate-manager"
+            value={selectedManagerId}
+            onChange={(event) => setSelectedManagerId(event.target.value)}
+            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+          >
+            <option value="">Not assigned</option>
+            {managerOptions.map((manager) => (
+              <option key={manager.id} value={manager.id}>
+                {manager.displayName ?? manager.email ?? manager.id}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {managerSuccess && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-900/30 dark:text-emerald-200">
+            {managerSuccess}
+          </div>
+        )}
+
+        {managerError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
+            {managerError}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={managerSubmitting}
+          className="w-full rounded-full border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        >
+          {managerSubmitting ? 'Сохраняем…' : 'Сохранить менеджера'}
         </button>
       </form>
     </section>
