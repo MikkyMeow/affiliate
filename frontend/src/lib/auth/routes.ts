@@ -1,8 +1,8 @@
 import type { AuthUser, UserRole } from "@/context/AuthContext";
 
 const ROLE_HOME_ROUTES: Record<UserRole, string> = {
-  admin: "/dashboard/stats",
-  manager: "/dashboard/stats",
+  admin: "/dashboard",
+  manager: "/dashboard",
   affiliate: "/partner",
   advertiser: "/advertiser",
 };

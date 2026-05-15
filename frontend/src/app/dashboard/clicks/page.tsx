@@ -39,6 +39,10 @@ export default function ClicksPage() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
+  useEffect(() => {
+    document.title = 'Транзакции';
+  }, []);
+
   const pageParam = searchParams?.get('page') ?? '1';
   const parsed = Number.parseInt(pageParam, 10);
   const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -106,7 +110,7 @@ export default function ClicksPage() {
           return;
         }
         const apiError = fetchError as ApiError;
-        setError(apiError.message ?? 'Не удалось загрузить клики');
+        setError(apiError.message ?? 'Не удалось загрузить транзакции');
         setClicks([]);
         setTotal(0);
       } finally {
@@ -166,7 +170,7 @@ export default function ClicksPage() {
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы увидеть список кликов.
+          Войдите, чтобы увидеть список транзакций.
         </p>
         <div className="flex gap-3">
           <Link
@@ -193,7 +197,7 @@ export default function ClicksPage() {
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Просматривать клики могут только администраторы и менеджеры.
+          Просматривать транзакции могут только администраторы и менеджеры.
         </p>
         <Link
           href="/"
@@ -210,7 +214,7 @@ export default function ClicksPage() {
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Клики
+          Транзакции
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Последние события ядра: clickId и основные параметры для дебага.
@@ -227,13 +231,13 @@ export default function ClicksPage() {
 
         {error ? (
           <div className="px-6 py-6">
-            <InlineAlert variant="error" title="Не удалось загрузить клики">
+            <InlineAlert variant="error" title="Не удалось загрузить транзакции">
               {error}
             </InlineAlert>
           </div>
         ) : clicks.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет кликов.
+            Пока нет транзакций.
           </div>
         ) : (
           <div className="overflow-x-auto">

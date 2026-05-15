@@ -12,11 +12,11 @@ import {
 } from "@/lib/auth/roles";
 
 const ADMIN_LINKS = [
-  { href: "/dashboard/stats", label: "Статистика" },
-  { href: "/dashboard/clicks", label: "Клики" },
+  { href: "/dashboard", label: "Главная" },
+  { href: "/dashboard/clicks", label: "Транзакции" },
   { href: "/dashboard/conversions", label: "Конверсии" },
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
-  { href: "/dashboard/affiliates", label: "Аффилиаты" },
+  { href: "/dashboard/affiliates", label: "Партнёры" },
   { href: "/dashboard/offers", label: "Офферы" },
   { href: "/dashboard/managers", label: "Менеджеры", adminOnly: true },
 ];
@@ -135,7 +135,9 @@ export function AppNavbar() {
               {navLinks.map((link) => {
                 const isActive =
                   pathname === link.href ||
-                  (link.href !== "/" && pathname.startsWith(link.href));
+                  (link.href !== "/" &&
+                    link.href !== "/dashboard" &&
+                    pathname.startsWith(link.href));
                 return (
                   <Link
                     key={link.href}

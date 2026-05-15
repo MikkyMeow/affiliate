@@ -25,7 +25,7 @@ type SummaryCardConfig = {
 const SUMMARY_CARDS: SummaryCardConfig[] = [
   {
     key: 'clicks',
-    label: 'Клики',
+    label: 'Транзакции',
     hint: 'Все зафиксированные переходы',
     mode: 'count',
     gradient: 'from-blue-500/10 to-blue-500/5',

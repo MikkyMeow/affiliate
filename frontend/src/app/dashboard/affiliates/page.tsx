@@ -41,6 +41,10 @@ export default function AffiliatesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Партнёры';
+  }, []);
+
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? '/dashboard/affiliates');
     return {
@@ -83,7 +87,7 @@ export default function AffiliatesPage() {
           return;
         }
         const apiError = fetchError as ApiError;
-        setError(apiError.message ?? 'Не удалось загрузить аффилиатов');
+        setError(apiError.message ?? 'Не удалось загрузить партнёров');
         setAffiliates([]);
       } finally {
         if (!active) {
@@ -136,7 +140,7 @@ export default function AffiliatesPage() {
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы увидеть список аффилиатов.
+          Войдите, чтобы увидеть список партнёров.
         </p>
         <div className="flex gap-3">
           <Link
@@ -183,14 +187,14 @@ export default function AffiliatesPage() {
             Dashboard
           </p>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Аффилиаты
+            Партнёры
           </h1>
         </div>
         <Link
           href="/dashboard/affiliates/create"
           className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
         >
-          Создать аффилиата
+          Создать партнёра
         </Link>
       </div>
 
@@ -200,7 +204,7 @@ export default function AffiliatesPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">
-                  Аффилиат «{highlightedAffiliate.publicId ?? highlightedAffiliate.name}» создан.
+                  Партнёр «{highlightedAffiliate.publicId ?? highlightedAffiliate.name}» создан.
                 </p>
                 <p className="text-amber-800 dark:text-amber-200">
                   {highlightedAffiliate.publicId ? `${highlightedAffiliate.publicId} · ` : ''}
@@ -217,7 +221,7 @@ export default function AffiliatesPage() {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <span>Созданный аффилиат ещё подгружается…</span>
+              <span>Созданный партнёр ещё подгружается…</span>
               <Link
                 href="/dashboard/affiliates"
                 className="text-xs font-semibold uppercase tracking-wide text-amber-700 underline-offset-4 hover:underline dark:text-amber-200"
@@ -263,13 +267,13 @@ export default function AffiliatesPage() {
 
         {error ? (
           <div className="px-6 py-6">
-            <InlineAlert variant="error" title="Не удалось загрузить аффилиатов">
+            <InlineAlert variant="error" title="Не удалось загрузить партнёров">
               {error}
             </InlineAlert>
           </div>
         ) : affiliates.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет аффилиатов.
+            Пока нет партнёров.
           </div>
         ) : (
           <div className="overflow-x-auto">

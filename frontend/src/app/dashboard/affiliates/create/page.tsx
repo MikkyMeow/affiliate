@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -26,6 +26,10 @@ export default function CreateAffiliatePage() {
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Создать партнёра';
+  }, []);
 
   const isFormValid = useMemo(() => {
     const hasName = form.name.trim().length > 0;
@@ -78,7 +82,7 @@ export default function CreateAffiliatePage() {
       router.push(`/dashboard/affiliates?highlight=${affiliate.id}`);
     } catch (error) {
       const message =
-        (error as { message?: string } | null)?.message ?? 'Не удалось создать аффилиата';
+        (error as { message?: string } | null)?.message ?? 'Не удалось создать партнёра';
       setErrors({ form: message });
     } finally {
       setSubmitting(false);
@@ -100,7 +104,7 @@ export default function CreateAffiliatePage() {
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы создавать аффилиатов.
+          Войдите, чтобы создавать партнёров.
         </p>
         <div className="flex gap-3">
           <Link
@@ -127,7 +131,7 @@ export default function CreateAffiliatePage() {
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Создавать аффилиатов могут только администраторы и менеджеры.
+          Создавать партнёров могут только администраторы и менеджеры.
         </p>
         <Link
           href="/"
@@ -144,7 +148,7 @@ export default function CreateAffiliatePage() {
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Создать аффилиата
+          Создать партнёра
         </h1>
       </div>
 
@@ -172,7 +176,7 @@ export default function CreateAffiliatePage() {
             onChange={(event) =>
               setForm((prev) => ({ ...prev, name: event.target.value.slice(0, 200) }))
             }
-            placeholder="Например, Affiliate Team #1"
+            placeholder="Например, Partner Team #1"
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}

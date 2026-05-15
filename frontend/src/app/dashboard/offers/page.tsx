@@ -205,7 +205,7 @@ export default function OffersPage() {
       setAffiliateOptions(data);
     } catch (affError) {
         const apiError = affError as ApiError;
-        setAffiliateError(apiError.message ?? 'Не удалось загрузить аффилиатов');
+        setAffiliateError(apiError.message ?? 'Не удалось загрузить партнёров');
       setAffiliateOptions([]);
     } finally {
       setAffiliateLoading(false);
@@ -510,7 +510,7 @@ export default function OffersPage() {
                     : linkOffer.title}
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Укажите аффилиата и (опционально) sub1. Ссылка собирается на фронте из{' '}
+                  Укажите партнёра и (опционально) sub1. Ссылка собирается на фронте из{' '}
                   {buildTrackingUrl('/click')}.
                 </p>
               </div>
@@ -526,11 +526,11 @@ export default function OffersPage() {
 
             {affiliateLoading ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                Загружаем список аффилиатов...
+                Загружаем список партнёров...
               </div>
             ) : affiliateError ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/60 dark:bg-red-500/10 dark:text-red-200">
-                <p className="mb-2">Не удалось загрузить список аффилиатов: {affiliateError}</p>
+                <p className="mb-2">Не удалось загрузить список партнёров: {affiliateError}</p>
                 <button
                   type="button"
                   onClick={() => void loadAffiliates()}
@@ -542,13 +542,13 @@ export default function OffersPage() {
             ) : (
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                  Аффилиат
+                  Партнёр
                   <select
                     className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                     value={selectedAffiliateId}
                     onChange={(event) => setSelectedAffiliateId(event.target.value)}
                   >
-                    <option value="">Выберите аффилиата</option>
+                    <option value="">Выберите партнёра</option>
                     {affiliateOptions.map((affiliate) => (
                     <option key={affiliate.id} value={affiliate.id}>
                         {affiliate.publicId
@@ -597,7 +597,7 @@ export default function OffersPage() {
                 </div>
               ) : (
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  Выберите аффилиата, чтобы получить ссылку вида{' '}
+                  Выберите партнёра, чтобы получить ссылку вида{' '}
                   {buildTrackingUrl('/click')}?offerId=...&affiliateId=...
                 </p>
               )}

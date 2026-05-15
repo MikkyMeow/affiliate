@@ -123,7 +123,7 @@ export function DuplicateClickSettings({
             onChange={handleToggleChange}
             className="h-5 w-5 rounded border border-zinc-300 text-black focus:ring-black dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:focus:ring-white"
           />
-          <span>Запретить повторные клики</span>
+          <span>Запретить повторные транзакции</span>
         </label>
       </div>
 

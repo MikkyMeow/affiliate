@@ -58,6 +58,10 @@ export default function EditAffiliatePage() {
   const [managerError, setManagerError] = useState<string | null>(null);
   const [managerSuccess, setManagerSuccess] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Партнёр';
+  }, []);
+
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? `/dashboard/affiliates/${affiliateId ?? ''}/edit`);
     return {
@@ -77,7 +81,7 @@ export default function EditAffiliatePage() {
     }
 
     if (!affiliateId) {
-      setLoadError('Не указан аффилиат');
+      setLoadError('Не указан партнёр');
       setInitialLoading(false);
       return;
     }
@@ -108,7 +112,7 @@ export default function EditAffiliatePage() {
           return;
         }
         const message =
-          (error as { message?: string } | null)?.message ?? 'Не удалось загрузить аффилиата';
+          (error as { message?: string } | null)?.message ?? 'Не удалось загрузить партнёра';
         setLoadError(message);
       })
       .finally(() => {
@@ -166,7 +170,7 @@ export default function EditAffiliatePage() {
       router.push('/dashboard/affiliates');
     } catch (error) {
       const message =
-        (error as { message?: string } | null)?.message ?? 'Не удалось обновить аффилиата';
+        (error as { message?: string } | null)?.message ?? 'Не удалось обновить партнёра';
       setErrors({ form: message });
     } finally {
       setSubmitting(false);
@@ -223,7 +227,7 @@ export default function EditAffiliatePage() {
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы редактировать аффилиата.
+          Войдите, чтобы редактировать партнёра.
         </p>
         <div className="flex gap-3">
           <Link
@@ -250,7 +254,7 @@ export default function EditAffiliatePage() {
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Редактирование аффилиатов доступно только администраторам и менеджерам.
+          Редактирование партнёров доступно только администраторам и менеджерам.
         </p>
         <Link
           href="/"
@@ -265,7 +269,7 @@ export default function EditAffiliatePage() {
   if (initialLoading) {
     return (
       <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
-        <p className="text-sm text-zinc-500">Загружаем данные аффилиата...</p>
+        <p className="text-sm text-zinc-500">Загружаем данные партнёра...</p>
       </section>
     );
   }
@@ -290,7 +294,7 @@ export default function EditAffiliatePage() {
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Редактировать аффилиата
+          Редактировать партнёра
         </h1>
         {affiliatePublicId && (
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{affiliatePublicId}</p>
@@ -321,7 +325,7 @@ export default function EditAffiliatePage() {
             onChange={(event) =>
               setForm((prev) => ({ ...prev, name: event.target.value.slice(0, 200) }))
             }
-            placeholder="Например, Affiliate Team #1"
+            placeholder="Например, Partner Team #1"
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
