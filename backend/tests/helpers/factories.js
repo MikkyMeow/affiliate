@@ -6,6 +6,7 @@ import { createAffiliate } from '../../src/models/affiliateModel.js';
 import { createAdvertiser } from '../../src/models/advertiserModel.js';
 import { insertOfferGoal } from '../../src/models/offerGoals.model.js';
 import { upsertOfferAffiliateAccess } from '../../src/models/offerAffiliateAccess.model.js';
+import { upsertOfferAffiliateHidden } from '../../src/models/offerAffiliateHidden.model.js';
 import { insertOfferGeoRule } from '../../src/models/offerGeoRules.model.js';
 import { attachPublicId, PUBLIC_ID_PREFIXES } from '../../src/lib/public-id.js';
 
@@ -224,5 +225,19 @@ export async function addGeoRule({
     offerId,
     ruleType: ruleType.toLowerCase(),
     countryCode: countryCode.toUpperCase(),
+  });
+}
+
+export async function hideAffiliateFromOffer({
+  offerId,
+  affiliateId,
+  createdBy = null,
+  reason = null,
+}) {
+  return upsertOfferAffiliateHidden({
+    offerId,
+    affiliateId,
+    createdBy,
+    reason,
   });
 }

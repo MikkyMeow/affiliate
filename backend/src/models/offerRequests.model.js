@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const offerRequestFields = `
   id,
@@ -10,6 +11,21 @@ const offerRequestFields = `
   reviewed_at AS "reviewedAt",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
+`;
+
+const offerRequestFieldsWithAffiliate = `
+  orq.id,
+  orq.offer_id AS "offerId",
+  orq.affiliate_id AS "affiliateId",
+  orq.status,
+  orq.message,
+  orq.reviewed_by AS "reviewedBy",
+  orq.reviewed_at AS "reviewedAt",
+  orq.created_at AS "createdAt",
+  orq.updated_at AS "updatedAt",
+  a.public_id_number AS "affiliate.publicIdNumber",
+  a.name AS "affiliate.name",
+  a.email AS "affiliate.email"
 `;
 
 function getQueryable(client) {
@@ -50,6 +66,34 @@ export async function findPendingOfferRequest(
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function findPendingOfferRequestsForOffers(
+  affiliateId,
+  offerIds = [],
+  { client } = {},
+) {
+  if (!affiliateId) {
+    throw new Error('affiliateId is required to fetch pending requests');
+  }
+
+  if (!Array.isArray(offerIds) || offerIds.length === 0) {
+    return [];
+  }
+
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${offerRequestFields}
+      FROM offer_requests
+      WHERE affiliate_id = $1
+        AND offer_id = ANY($2::uuid[])
+        AND status = 'pending'
+    `,
+    [affiliateId, offerIds],
+  );
+
+  return result.rows;
 }
 
 export async function createOfferRequest({ offerId, affiliateId, message }) {
@@ -126,4 +170,61 @@ export async function updateOfferRequestReview(
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function listOfferRequestsForOffer(
+  offerId,
+  { status = 'pending', client } = {},
+) {
+  if (!offerId) {
+    throw new Error('offerId is required to list offer requests');
+  }
+
+  const queryable = getQueryable(client);
+  const params = [offerId];
+  let statusClause = '';
+
+  if (status) {
+    params.push(status);
+    statusClause = `AND orq.status = $${params.length}`;
+  }
+
+  const result = await queryable.query(
+    `
+      SELECT ${offerRequestFieldsWithAffiliate}
+      FROM offer_requests AS orq
+      INNER JOIN affiliates AS a ON a.id = orq.affiliate_id
+      WHERE orq.offer_id = $1
+      ${statusClause}
+      ORDER BY orq.created_at DESC
+    `,
+    params,
+  );
+
+  return result.rows.map((row) => {
+    const affiliates = attachPublicIds(
+      [
+        {
+          id: row.affiliateId,
+          publicIdNumber: row['affiliate.publicIdNumber'] ?? null,
+          name: row['affiliate.name'] ?? null,
+          email: row['affiliate.email'] ?? null,
+        },
+      ],
+      PUBLIC_ID_PREFIXES.affiliate,
+    );
+
+    return {
+      id: row.id,
+      offerId: row.offerId,
+      affiliateId: row.affiliateId,
+      status: row.status,
+      message: row.message ?? null,
+      reviewedBy: row.reviewedBy ?? null,
+      reviewedAt: row.reviewedAt ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      affiliate: affiliates[0],
+    };
+  });
 }

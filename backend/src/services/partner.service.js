@@ -10,14 +10,13 @@ import {
 import { listOffers, getOfferById } from './offers.service.js';
 import { OFFER_STATUSES } from '../constants/offers.js';
 import {
-  findAffiliateAccessForOffers,
-  findAffiliateAccessForOffer,
-} from '../models/offerAffiliateAccess.model.js';
-import {
   AFFILIATE_OFFER_ACCESS_LEVELS,
-  resolveAffiliateOfferAccess,
 } from './offers/affiliate-visibility.js';
 import { getQuestionnaireAnswerItemsForUser } from './questionnaires.service.js';
+import {
+  getPartnerOfferVisibilityState,
+  mapPartnerOfferVisibilityStates,
+} from './offer-visibility.service.js';
 
 export async function getPartnerProfile(userId) {
   const user = await findUserById(userId);
@@ -76,20 +75,9 @@ export async function getPartnerStatsSummary(userId) {
   return getAffiliateStats(affiliate.id);
 }
 
-function buildAccessMap(records = []) {
-  const map = new Map();
-
-  records.forEach((record) => {
-    map.set(record.offerId, record);
-  });
-
-  return map;
-}
-
 function buildRestrictedView(offer) {
   return {
     type: 'restricted',
-    previewUrl: offer.previewUrl ?? null,
   };
 }
 
@@ -98,7 +86,6 @@ function buildFullView(offer) {
     type: 'full',
     publicIdNumber: offer.publicIdNumber ?? null,
     publicId: offer.publicId ?? null,
-    advertiserId: offer.advertiserId,
     targetUrl: offer.targetUrl,
     fallbackUrl: offer.fallbackUrl ?? null,
     previewUrl: offer.previewUrl ?? null,
@@ -117,14 +104,14 @@ function serializeAffiliateOffer(
     publicId: offer.publicId ?? null,
     title: offer.title,
     category: offer.category ?? null,
-    advertiserId: offer.advertiserId,
     status: offer.status,
+    availability: offer.availability ?? offer.visibilityMode ?? 'public',
     visibilityMode: offer.visibilityMode ?? 'public',
-    targetingStrict: Boolean(offer.targetingStrict),
     accessLevel: accessResolution.accessLevel,
+    accessStatus: accessResolution.accessStatus ?? 'not_requested',
     canRequestAccess: Boolean(accessResolution.canRequestAccess),
     denyReason: accessResolution.denyReason ?? null,
-    requestStatus: null,
+    requestStatus: accessResolution.requestStatus ?? null,
   };
 
   if (includeDescription) {
@@ -137,6 +124,7 @@ function serializeAffiliateOffer(
   if (accessResolution.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL) {
     return {
       ...base,
+      targetingStrict: Boolean(offer.targetingStrict),
       view: buildFullView(offer),
     };
   }
@@ -159,29 +147,29 @@ export async function listPartnerOffers(userId, { category } = {}) {
     return [];
   }
 
-  const accessRecords = await findAffiliateAccessForOffers(
-    affiliate.id,
-    items.map((offer) => offer.id),
-  );
-  const accessMap = buildAccessMap(accessRecords);
+  const visibilityMap = await mapPartnerOfferVisibilityStates(affiliate.id, items);
 
   return items
     .map((offer) => {
-      const accessRecord = accessMap.get(offer.id) ?? null;
-      const accessResolution = resolveAffiliateOfferAccess(offer, accessRecord);
+      const accessResolution = visibilityMap.get(offer.id);
       return { offer, accessResolution };
     })
     .filter(({ accessResolution }) => accessResolution.isVisible)
     .map(({ offer, accessResolution }) =>
-      serializeAffiliateOffer(offer, accessResolution),
+      serializeAffiliateOffer(offer, accessResolution, {
+        includeDescription: true,
+      }),
     );
 }
 
 export async function getPartnerOfferDetails(userId, offerId) {
   const affiliate = await requireAffiliateForUser(userId);
   const offer = await getOfferById(offerId, { includeGoals: true });
-  const accessRecord = await findAffiliateAccessForOffer(offerId, affiliate.id);
-  const accessResolution = resolveAffiliateOfferAccess(offer, accessRecord);
+  const accessResolution = await getPartnerOfferVisibilityState(
+    affiliate.id,
+    offerId,
+    { offer },
+  );
 
   if (!accessResolution.isVisible) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {

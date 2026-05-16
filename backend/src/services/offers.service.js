@@ -117,6 +117,7 @@ function buildOfferSnapshot(offer) {
     category: offer.category ?? null,
     advertiserId: offer.advertiserId ?? null,
     status: offer.status ?? null,
+    availability: offer.availability ?? offer.visibilityMode ?? null,
     visibilityMode: offer.visibilityMode ?? null,
     targetingStrict: offer.targetingStrict ?? null,
     fallbackUrl: offer.fallbackUrl ?? null,
@@ -156,6 +157,7 @@ function diffOfferSnapshots(previous, next) {
     'title',
     'category',
     'status',
+    'availability',
     'advertiserId',
     'targetUrl',
     'payoutRub',
@@ -189,6 +191,7 @@ export async function createOffer(dto, { actor = null, requestId = null } = {}) 
 
   const offer = await createOfferModel({
     ...dto,
+    visibilityMode: dto.visibilityMode ?? dto.availability ?? 'public',
     postbackToken: generatePostbackToken(),
   });
 
@@ -227,6 +230,25 @@ export async function getOfferById(id, { includeGoals = false } = {}) {
   return { ...offer, goals };
 }
 
+export async function getAdminOfferById(id, { includeGoals = false } = {}) {
+  const offer = await getOfferById(id, { includeGoals });
+  const advertiser = offer.advertiserId
+    ? await findAdvertiserById(offer.advertiserId)
+    : null;
+
+  return {
+    ...offer,
+    advertiser: advertiser
+      ? {
+          id: advertiser.id,
+          publicId: advertiser.publicId ?? null,
+          publicIdNumber: advertiser.publicIdNumber ?? null,
+          name: advertiser.name,
+        }
+      : null,
+  };
+}
+
 export async function updateOffer(id, dto, { actor = null, requestId = null } = {}) {
   if (dto.advertiserId) {
     await ensureAdvertiserExists(dto.advertiserId);
@@ -260,7 +282,10 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
     });
   }
 
-  const offer = await updateOfferModel(id, dto);
+  const offer = await updateOfferModel(id, {
+    ...dto,
+    visibilityMode: dto.visibilityMode ?? dto.availability,
+  });
 
   if (!offer) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
@@ -283,6 +308,29 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
       requestId,
       context: {
         changes,
+      },
+    });
+  }
+
+  const previousAvailability =
+    existing.availability ?? existing.visibilityMode ?? null;
+  const nextAvailability = offer.availability ?? offer.visibilityMode ?? null;
+
+  if (previousAvailability !== nextAvailability) {
+    await writeAuditEvent({
+      entityType: 'offer',
+      entityId: offer.id,
+      action: 'availability_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: previousAvailability,
+        newValue: nextAvailability,
+        metadata: {
+          offerId: offer.id,
+          availability: nextAvailability,
+        },
       },
     });
   }

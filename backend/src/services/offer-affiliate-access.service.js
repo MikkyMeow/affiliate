@@ -5,10 +5,11 @@ import { getOfferById } from './offers.service.js';
 import { getAffiliateById } from './affiliates.service.js';
 import {
   deleteOfferAffiliateAccess,
-  listOfferAffiliateAccess,
+  listOfferAffiliateAccessWithAffiliate,
   upsertOfferAffiliateAccess,
   findAffiliateAccessForOffer,
 } from '../models/offerAffiliateAccess.model.js';
+import { findHiddenAffiliateForOffer } from '../models/offerAffiliateHidden.model.js';
 import {
   OFFER_ACCESS_SOURCES,
   OFFER_ACCESS_TYPES,
@@ -24,7 +25,7 @@ import { writeAuditEvent } from './audit.service.js';
 const supportedManualAccessTypes = new Set(Object.values(OFFER_ACCESS_TYPES));
 
 const allowedManualAccessByVisibility = {
-  [OFFER_VISIBILITY_MODES.PUBLIC]: new Set([OFFER_ACCESS_TYPES.EXCLUDED]),
+  [OFFER_VISIBILITY_MODES.PUBLIC]: new Set(),
   [OFFER_VISIBILITY_MODES.ON_REQUEST]: new Set([
     OFFER_ACCESS_TYPES.ALLOWED,
     OFFER_ACCESS_TYPES.REJECTED,
@@ -98,6 +99,24 @@ function buildAccessSnapshot(record) {
     accessType: record.accessType ?? null,
     source: record.source ?? null,
     updatedAt: record.updatedAt ?? null,
+  };
+}
+
+function buildAffiliateAccessResponse(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    offerId: record.offerId,
+    affiliateId: record.affiliateId,
+    status: record.accessType,
+    accessType: record.accessType,
+    source: record.source ?? null,
+    createdAt: record.createdAt ?? null,
+    updatedAt: record.updatedAt ?? null,
+    affiliate: record.affiliate ?? null,
   };
 }
 
@@ -200,6 +219,79 @@ export async function setManualOfferAffiliateAccess({
   }
 }
 
+export async function grantOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId || !actorId) {
+    throw new Error('offerId, affiliateId, and actorId are required to grant access');
+  }
+
+  const offer = await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAccess = await findAffiliateAccessForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    const access = await upsertOfferAffiliateAccess(
+      {
+        offerId,
+        affiliateId,
+        accessType: OFFER_ACCESS_TYPES.ALLOWED,
+        source: OFFER_ACCESS_SOURCES.MANUAL,
+      },
+      { client },
+    );
+
+    const hiddenRecord = await findHiddenAffiliateForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    await client.query('COMMIT');
+
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_granted',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      context: {
+        offerId,
+        affiliateId,
+        availability: offer.availability ?? offer.visibilityMode ?? null,
+        previousStatus: existingAccess?.accessType ?? null,
+        newStatus: access?.accessType ?? null,
+      },
+    });
+
+    return {
+      access: buildAffiliateAccessResponse(access),
+      visibilityWarning: hiddenRecord
+        ? 'Partner is hidden from this offer'
+        : null,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function removeManualOfferAffiliateAccess({
   offerId,
   affiliateId,
@@ -233,11 +325,48 @@ export async function removeManualOfferAffiliateAccess({
   }
 }
 
+export async function revokeOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId = null,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to revoke access');
+  }
+
+  await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId);
+
+  if (deleted) {
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_revoked',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      context: {
+        offerId,
+        affiliateId,
+        previousStatus: deleted.accessType ?? null,
+        newStatus: null,
+      },
+    });
+  }
+
+  return deleted;
+}
+
 export async function listOfferAffiliateAccessRecords(offerId) {
   if (!offerId) {
     throw new Error('offerId is required to list access records');
   }
 
   await getOfferById(offerId);
-  return listOfferAffiliateAccess(offerId);
+  const records = await listOfferAffiliateAccessWithAffiliate(offerId);
+  return records.map(buildAffiliateAccessResponse);
 }

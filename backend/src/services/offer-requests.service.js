@@ -12,29 +12,24 @@ import {
   OFFER_REQUEST_STATUSES,
   OFFER_VISIBILITY_MODES,
 } from '../constants/offers.js';
-import { resolveAffiliateOfferAccess } from './offers/affiliate-visibility.js';
 import {
   createOfferRequest,
   findOfferRequestById,
   findPendingOfferRequest,
   updateOfferRequestReview,
+  listOfferRequestsForOffer,
 } from '../models/offerRequests.model.js';
 import { writeAuditEvent } from './audit.service.js';
 import { offerRequestDecisionCounter } from '../lib/metrics.js';
+import { getPartnerOfferVisibilityState } from './offer-visibility.service.js';
 
 const PENDING_UNIQUE_CONSTRAINT = 'offer_requests_pending_unique';
 
 // Business rules for creating offer requests:
-// - offer must exist, be active, and visible to affiliate in restricted view
-// - visibility_mode must be on_request
-// - affiliate must have canRequestAccess=true (no allowed/rejected/excluded access)
+// - offer must exist and use on_request visibility
+// - affiliate must not be hidden from the offer
+// - affiliate must not already have allowed/rejected/excluded access or a pending request
 // - there must be no other pending request for the same offer/affiliate pair
-
-function throwOfferNotFound(offerId) {
-  throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
-    offerId,
-  });
-}
 
 function throwPendingConflict(existingRequest) {
   throw new ApiError(
@@ -53,21 +48,29 @@ export async function requestOfferAccess({ offerId, affiliateId, message }) {
   }
 
   const offer = await getOfferById(offerId);
-  const accessRecord = await findAffiliateAccessForOffer(offerId, affiliateId);
-  const accessResolution = resolveAffiliateOfferAccess(offer, accessRecord);
-
-  if (!accessResolution.isVisible) {
-    throwOfferNotFound(offerId);
-  }
+  const accessResolution = await getPartnerOfferVisibilityState(
+    affiliateId,
+    offerId,
+    { offer },
+  );
 
   const visibilityMode =
-    offer.visibilityMode ?? OFFER_VISIBILITY_MODES.PUBLIC;
+    offer.availability ?? offer.visibilityMode ?? OFFER_VISIBILITY_MODES.PUBLIC;
+
+  if (accessResolution.isHidden) {
+    throw new ApiError(
+      ERROR_CODES.FORBIDDEN,
+      403,
+      'Доступ к этому офферу запрещён',
+      { offerId },
+    );
+  }
 
   if (visibilityMode === OFFER_VISIBILITY_MODES.PUBLIC) {
     throw new ApiError(
       ERROR_CODES.VALIDATION_ERROR,
-      400,
-      'Этот оффер доступен без заявки',
+      422,
+      'Заявки доступны только для офферов on_request',
       { offerId },
     );
   }
@@ -76,7 +79,7 @@ export async function requestOfferAccess({ offerId, affiliateId, message }) {
     throw new ApiError(
       ERROR_CODES.FORBIDDEN,
       403,
-      'Заявка недоступна для приватного оффера',
+      'Заявка недоступна для этого оффера',
       { offerId },
     );
   }
@@ -88,27 +91,43 @@ export async function requestOfferAccess({ offerId, affiliateId, message }) {
   ) {
     throw new ApiError(
       ERROR_CODES.VALIDATION_ERROR,
-      400,
-      'Оффер не поддерживает запрос доступа',
+      422,
+      'Заявки доступны только для офферов on_request',
       { offerId, visibilityMode },
     );
   }
 
   if (!accessResolution.canRequestAccess) {
-    if (accessRecord?.accessType === OFFER_ACCESS_TYPES.ALLOWED) {
+    if (accessResolution.accessStatus === OFFER_ACCESS_TYPES.ALLOWED) {
       throw new ApiError(
-        ERROR_CODES.FORBIDDEN,
-        403,
+        ERROR_CODES.CONFLICT,
+        409,
         'Доступ уже открыт, заявка не требуется',
         { offerId },
       );
     }
 
-    if (accessRecord?.accessType === OFFER_ACCESS_TYPES.REJECTED) {
+    if (accessResolution.requestStatus === OFFER_REQUEST_STATUSES.PENDING) {
+      throwPendingConflict({
+        id: null,
+        status: OFFER_REQUEST_STATUSES.PENDING,
+      });
+    }
+
+    if (accessResolution.accessStatus === OFFER_ACCESS_TYPES.REJECTED) {
       throw new ApiError(
         ERROR_CODES.FORBIDDEN,
         403,
         'Предыдущая заявка отклонена, повторный запрос невозможен',
+        { offerId },
+      );
+    }
+
+    if (accessResolution.accessStatus === OFFER_ACCESS_TYPES.EXCLUDED) {
+      throw new ApiError(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'Заявка на доступ к этому офферу недоступна',
         { offerId },
       );
     }
@@ -317,4 +336,15 @@ export async function reviewOfferRequest({
   } finally {
     client.release();
   }
+}
+
+export async function listPendingOfferRequestsForOffer(offerId) {
+  if (!offerId) {
+    throw new Error('offerId is required to list offer requests');
+  }
+
+  await getOfferById(offerId);
+  return listOfferRequestsForOffer(offerId, {
+    status: OFFER_REQUEST_STATUSES.PENDING,
+  });
 }

@@ -23,6 +23,8 @@ const ENTITY_CONFIG = {
     project: (offer) => ({
       id: offer.id,
       status: offer.status,
+      availability: offer.availability ?? offer.visibilityMode ?? 'public',
+      visibilityMode: offer.visibilityMode ?? offer.availability ?? 'public',
       targetUrl: offer.targetUrl,
       targetingStrict: Boolean(offer.targetingStrict),
       fallbackUrl: offer.fallbackUrl ?? null,

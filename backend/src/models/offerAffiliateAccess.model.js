@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const accessFields = `
   id,
@@ -8,6 +9,19 @@ const accessFields = `
   source,
   created_at AS "createdAt",
   updated_at AS "updatedAt"
+`;
+
+const accessFieldsWithAffiliate = `
+  oaa.id,
+  oaa.offer_id AS "offerId",
+  oaa.affiliate_id AS "affiliateId",
+  oaa.access_type AS "accessType",
+  oaa.source,
+  oaa.created_at AS "createdAt",
+  oaa.updated_at AS "updatedAt",
+  a.public_id_number AS "affiliate.publicIdNumber",
+  a.name AS "affiliate.name",
+  a.email AS "affiliate.email"
 `;
 
 function getQueryable(client) {
@@ -135,6 +149,52 @@ export async function listOfferAffiliateAccess(offerId, { client } = {}) {
   );
 
   return result.rows;
+}
+
+export async function listOfferAffiliateAccessWithAffiliate(
+  offerId,
+  { client } = {},
+) {
+  if (!offerId) {
+    throw new Error('offerId is required to list access records');
+  }
+
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${accessFieldsWithAffiliate}
+      FROM offer_affiliate_access AS oaa
+      INNER JOIN affiliates AS a ON a.id = oaa.affiliate_id
+      WHERE oaa.offer_id = $1
+      ORDER BY oaa.updated_at DESC, oaa.created_at DESC
+    `,
+    [offerId],
+  );
+
+  return result.rows.map((row) => {
+    const affiliates = attachPublicIds(
+      [
+        {
+          id: row.affiliateId,
+          publicIdNumber: row['affiliate.publicIdNumber'] ?? null,
+          name: row['affiliate.name'] ?? null,
+          email: row['affiliate.email'] ?? null,
+        },
+      ],
+      PUBLIC_ID_PREFIXES.affiliate,
+    );
+
+    return {
+      id: row.id,
+      offerId: row.offerId,
+      affiliateId: row.affiliateId,
+      accessType: row.accessType,
+      source: row.source,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      affiliate: affiliates[0],
+    };
+  });
 }
 
 export async function deleteOfferAffiliateAccess(

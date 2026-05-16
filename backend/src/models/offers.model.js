@@ -10,6 +10,7 @@ const baseOfferColumns = [
   'target_url AS "targetUrl"',
   'payout_rub AS "payoutRub"',
   'status',
+  'visibility_mode AS availability',
   'visibility_mode AS "visibilityMode"',
   'targeting_strict AS "targetingStrict"',
   'fallback_url AS "fallbackUrl"',
@@ -41,6 +42,7 @@ export async function createOffer({
   targetUrl,
   payoutRub,
   status = 'inactive',
+  visibilityMode = 'public',
   postbackToken,
   allowDuplicateClicks = true,
   duplicateClickWindowSeconds = null,
@@ -55,12 +57,13 @@ export async function createOffer({
         target_url,
         payout_rub,
         status,
+        visibility_mode,
         postback_token,
         allow_duplicate_clicks,
         duplicate_click_window_seconds,
         description
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING ${offerDetailFields},
         postback_token AS "postbackToken";
     `,
@@ -71,6 +74,7 @@ export async function createOffer({
       targetUrl,
       payoutRub,
       status,
+      visibilityMode,
       postbackToken,
       allowDuplicateClicks,
       duplicateClickWindowSeconds,
@@ -82,7 +86,7 @@ export async function createOffer({
 }
 
 export async function listOffers(
-  { status, advertiserId, category } = {},
+  { status, advertiserId, category, availability, visibilityMode } = {},
   { limit = 20, offset = 0 } = {},
   { includePostbackToken = false } = {},
 ) {
@@ -103,6 +107,12 @@ export async function listOffers(
   if (category) {
     params.push(category);
     conditions.push(`category = $${params.length}`);
+  }
+
+  const resolvedAvailability = availability ?? visibilityMode;
+  if (resolvedAvailability) {
+    params.push(resolvedAvailability);
+    conditions.push(`visibility_mode = $${params.length}`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -168,6 +178,8 @@ export async function updateOffer(id, attrs = {}) {
     targetUrl,
     payoutRub,
     status,
+    availability,
+    visibilityMode,
     targetingStrict,
     fallbackUrl,
     allowDuplicateClicks,
@@ -201,6 +213,12 @@ export async function updateOffer(id, attrs = {}) {
   if (typeof status === 'string') {
     params.push(status);
     assignments.push(`status = $${params.length}`);
+  }
+
+  const resolvedAvailability = availability ?? visibilityMode;
+  if (typeof resolvedAvailability === 'string') {
+    params.push(resolvedAvailability);
+    assignments.push(`visibility_mode = $${params.length}`);
   }
 
   if (Object.hasOwn(attrs, 'category')) {

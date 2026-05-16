@@ -10,6 +10,7 @@ import { getOfferCategoryLabel } from "@/lib/offerCategories";
 import {
   fetchPartnerOffer,
   type PartnerOfferDetail,
+  requestPartnerOfferAccess,
 } from "@/lib/partnerOffers";
 import { buildTrackingUrl } from "@/lib/tracking";
 
@@ -66,6 +67,8 @@ export default function PartnerOfferDetailsPage() {
   const [loadingOffer, setLoadingOffer] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [requestingAccess, setRequestingAccess] = useState(false);
+  const [requestNotice, setRequestNotice] = useState<string | null>(null);
 
   const offerIdParam = params?.offerId;
   const offerId = useMemo(() => {
@@ -113,9 +116,11 @@ export default function PartnerOfferDetailsPage() {
 
   const affiliateId = user?.affiliateId ?? null;
   const trackingLink =
-    affiliateId && offerId
+    affiliateId && offerId && offer?.view.type === "full"
       ? `${buildTrackingUrl("/click")}?offerId=${offerId}&affiliateId=${affiliateId}`
       : null;
+  const hasFullAccess = offer?.view.type === "full";
+  const fullView = offer?.view.type === "full" ? offer.view : null;
 
   const handleCopyLink = useCallback(async () => {
     if (!trackingLink) {
@@ -141,6 +146,25 @@ export default function PartnerOfferDetailsPage() {
       setCopied(false);
     }
   }, [trackingLink]);
+
+  const handleRequestAccess = useCallback(async () => {
+    if (!accessToken || !offerId) {
+      return;
+    }
+
+    setRequestingAccess(true);
+    setRequestNotice(null);
+    try {
+      await requestPartnerOfferAccess(accessToken, offerId);
+      await loadOffer();
+      setRequestNotice("Заявка отправлена");
+    } catch (error) {
+      const apiError = error as ApiError;
+      setRequestNotice(apiError.message ?? "Не удалось отправить заявку");
+    } finally {
+      setRequestingAccess(false);
+    }
+  }, [accessToken, loadOffer, offerId]);
 
   if (!offerId) {
     return (
@@ -269,6 +293,9 @@ export default function PartnerOfferDetailsPage() {
                   Категория:{" "}
                   {getOfferCategoryLabel(offer.category)}
                 </p>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  Доступность: {resolveVisibilityLabel(offer.availability)}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span
@@ -294,21 +321,53 @@ export default function PartnerOfferDetailsPage() {
                   {resolveVisibilityLabel(offer.visibilityMode)}
                 </dd>
               </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
-                  targeting
-                </dt>
-                <dd className="text-sm text-zinc-800 dark:text-zinc-200">
-                  {offer.targetingStrict
-                    ? "Только согласованные GEO"
-                    : "Свободный трафик"}
-                </dd>
-              </div>
+              {hasFullAccess && (
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                    targeting
+                  </dt>
+                  <dd className="text-sm text-zinc-800 dark:text-zinc-200">
+                    {offer.targetingStrict
+                      ? "Только согласованные GEO"
+                      : "Свободный трафик"}
+                  </dd>
+                </div>
+              )}
             </dl>
             {offer.denyReason && (
               <p className="mt-4 text-xs text-red-600 dark:text-red-300">
                 Ограничение: {offer.denyReason}
               </p>
+            )}
+            {!hasFullAccess && (
+              <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 px-4 py-4 text-sm dark:border-zinc-700">
+                <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                  Полный доступ ещё не открыт
+                </p>
+                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                  Пока доступно только общее описание. После одобрения откроются цели, выплаты и трекинг.
+                </p>
+                {offer.requestStatus === "pending" && (
+                  <p className="mt-3 text-xs uppercase tracking-wide text-amber-600 dark:text-amber-300">
+                    Заявка ожидает рассмотрения
+                  </p>
+                )}
+                {offer.canRequestAccess && offer.availability === "on_request" && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestAccess()}
+                    disabled={requestingAccess}
+                    className="mt-4 rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
+                  >
+                    {requestingAccess ? "Отправляем..." : "Запросить доступ"}
+                  </button>
+                )}
+                {requestNotice && (
+                  <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+                    {requestNotice}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -325,93 +384,89 @@ export default function PartnerOfferDetailsPage() {
             </div>
           )}
 
-          <div className={sectionCardStyles}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Ссылки и выплата
-                </p>
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  Доступные URL
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Target, fallback и превью ссылки для проверки посадочной.
-                </p>
-              </div>
-              {offer.view.type === "full" && (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                  Выплата: {formatMoney(offer.view.payoutRub)}
-                </span>
-              )}
-            </div>
-            <div className="mt-6 space-y-3 text-sm">
-              <InfoRow
-                label="Target URL"
-                value={offer.view.type === "full" ? offer.view.targetUrl : null}
-              />
-              <InfoRow
-                label="Fallback URL"
-                value={
-                  offer.view.type === "full"
-                    ? offer.view.fallbackUrl
-                    : null
-                }
-              />
-              <InfoRow
-                label="Preview URL"
-                value={offer.view.previewUrl}
-              />
-            </div>
-            {offer.view.type === "restricted" && (
-              <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-                Полные ссылки и выплаты станут доступны после одобрения доступа.
-              </p>
-            )}
-          </div>
-
-          <div className={sectionCardStyles}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Трекер
-                </p>
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  Личная ссылка
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Используйте готовый шаблон для редиректа трафика.
-                </p>
-              </div>
-              {trackingLink && (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleCopyLink()}
-                    className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    {copied ? "Скопировано" : "Скопировать"}
-                  </button>
-                  <a
-                    href={trackingLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
-                  >
-                    Открыть
-                  </a>
+          {hasFullAccess && (
+            <>
+              <div className={sectionCardStyles}>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                      Ссылки и выплата
+                    </p>
+                    <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                      Доступные URL
+                    </h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Target, fallback и превью ссылки для проверки посадочной.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                    Выплата:{" "}
+                    {fullView
+                      ? formatMoney(fullView.payoutRub)
+                      : "—"}
+                  </span>
                 </div>
-              )}
-            </div>
-            {trackingLink ? (
-              <code className="mt-4 block break-all rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
-                {trackingLink}
-              </code>
-            ) : (
-              <p className="mt-4 text-xs text-red-600 dark:text-red-300">
-                Нет affiliateId — обновите профиль, чтобы получить трекинг ссылку.
-              </p>
-            )}
-          </div>
+                <div className="mt-6 space-y-3 text-sm">
+                  <InfoRow
+                    label="Target URL"
+                    value={fullView?.targetUrl ?? null}
+                  />
+                  <InfoRow
+                    label="Fallback URL"
+                    value={fullView?.fallbackUrl ?? null}
+                  />
+                  <InfoRow
+                    label="Preview URL"
+                    value={fullView?.previewUrl ?? null}
+                  />
+                </div>
+              </div>
+
+              <div className={sectionCardStyles}>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                      Трекер
+                    </p>
+                    <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                      Личная ссылка
+                    </h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Используйте готовый шаблон для редиректа трафика.
+                    </p>
+                  </div>
+                  {trackingLink && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyLink()}
+                        className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        {copied ? "Скопировано" : "Скопировать"}
+                      </button>
+                      <a
+                        href={trackingLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+                      >
+                        Открыть
+                      </a>
+                    </div>
+                  )}
+                </div>
+                {trackingLink ? (
+                  <code className="mt-4 block break-all rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+                    {trackingLink}
+                  </code>
+                ) : (
+                  <p className="mt-4 text-xs text-red-600 dark:text-red-300">
+                    Нет affiliateId — обновите профиль, чтобы получить трекинг ссылку.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
 
           <div className={sectionCardStyles}>
             <div className="flex flex-col gap-2">

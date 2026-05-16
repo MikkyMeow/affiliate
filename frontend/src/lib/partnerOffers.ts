@@ -4,12 +4,10 @@ import type { OfferCategoryValue } from "./offerCategories";
 
 export type PartnerOfferViewRestricted = {
   type: "restricted";
-  previewUrl: string | null;
 };
 
 export type PartnerOfferViewFull = {
   type: "full";
-  advertiserId: string;
   targetUrl: string;
   fallbackUrl: string | null;
   previewUrl: string | null;
@@ -18,16 +16,19 @@ export type PartnerOfferViewFull = {
 
 export type PartnerOffer = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   title: string;
   category: OfferCategoryValue | null;
-  advertiserId: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | string;
+  availability: "public" | "on_request" | "private" | string;
   visibilityMode: string;
-  targetingStrict: boolean;
   accessLevel: "none" | "restricted" | "full" | string;
+  accessStatus: string;
   canRequestAccess: boolean;
   denyReason: string | null;
   requestStatus: string | null;
+  targetingStrict?: boolean;
   view: PartnerOfferViewRestricted | PartnerOfferViewFull;
   description?: string | null;
 };
@@ -95,4 +96,21 @@ export async function fetchPartnerOffer(
     { token },
   );
   return mapOfferResponse(response.offer);
+}
+
+export async function requestPartnerOfferAccess(
+  token: string,
+  offerId: string,
+  message?: string,
+) {
+  return apiFetch<{ request: { id: string; status: string } }>(
+    `/partner/offers/${offerId}/request`,
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        message: message?.trim() ? message.trim() : undefined,
+      }),
+    },
+  );
 }

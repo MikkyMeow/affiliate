@@ -12,7 +12,7 @@ import {
 } from '../validators/offers.js';
 import {
   createOffer,
-  getOfferById,
+  getAdminOfferById,
   listOffers,
   updateOffer,
 } from '../services/offers.service.js';
@@ -117,7 +117,7 @@ router.get(
       );
     }
 
-    const offer = await getOfferById(offerId, { includeGoals: true });
+    const offer = await getAdminOfferById(offerId, { includeGoals: true });
     return sendSuccess(res, { offer });
   }),
 );

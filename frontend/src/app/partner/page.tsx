@@ -15,7 +15,10 @@ import {
   type OfferCategoryValue,
   getOfferCategoryLabel,
 } from "@/lib/offerCategories";
-import type { PartnerOffer } from "@/lib/partnerOffers";
+import {
+  requestPartnerOfferAccess,
+  type PartnerOffer,
+} from "@/lib/partnerOffers";
 
 const PARTNER_NAV_LINKS = [
   { href: "/partner", label: "Офферы" },
@@ -64,6 +67,7 @@ export default function PartnerDashboardPage() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [loadingOffers, setLoadingOffers] = useState(false);
   const [copiedOfferId, setCopiedOfferId] = useState<string | null>(null);
+  const [requestingOfferId, setRequestingOfferId] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? "/partner");
@@ -183,6 +187,27 @@ export default function PartnerDashboardPage() {
       setCopiedOfferId(null);
     }
   }, []);
+
+  const handleRequestAccess = useCallback(
+    async (offerId: string) => {
+      if (!accessToken) {
+        return;
+      }
+
+      setRequestingOfferId(offerId);
+      setOffersError(null);
+      try {
+        await requestPartnerOfferAccess(accessToken, offerId);
+        await loadOffers();
+      } catch (error) {
+        const apiError = error as ApiError;
+        setOffersError(apiError.message ?? "Не удалось отправить заявку");
+      } finally {
+        setRequestingOfferId((current) => (current === offerId ? null : current));
+      }
+    },
+    [accessToken, loadOffers],
+  );
 
   const affiliateId = profile?.affiliate.id ?? user?.affiliateId ?? null;
   const trackingHint = affiliateId
@@ -517,15 +542,8 @@ export default function PartnerDashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {offers.map((offer) => {
               const hasFullAccess = offer.view.type === "full";
-              const targetUrl =
-                offer.view.type === "full"
-                  ? offer.view.targetUrl
-                  : offer.view.previewUrl;
-              const payoutText =
-                offer.view.type === "full"
-                  ? formatMoney(offer.view.payoutRub)
-                  : null;
-              const trackingLink = affiliateId
+              const fullView = offer.view.type === "full" ? offer.view : null;
+              const trackingLink = affiliateId && hasFullAccess
                 ? `${buildTrackingUrl("/click")}?offerId=${offer.id}&affiliateId=${affiliateId}`
                 : null;
               return (
@@ -559,34 +577,64 @@ export default function PartnerDashboardPage() {
                   <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     {getOfferCategoryLabel(offer.category ?? undefined)}
                   </p>
-                  <p className="text-zinc-600 dark:text-zinc-400">
-                    Целевая:{" "}
-                    {targetUrl ? (
-                      <a
-                        href={targetUrl}
-                        className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {targetUrl}
-                      </a>
-                    ) : (
-                      <span className="text-zinc-500 dark:text-zinc-400">
-                        Недоступно
-                      </span>
-                    )}
+                  <p className="mt-2 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {offer.availability === "on_request"
+                      ? "По запросу"
+                      : offer.availability === "private"
+                        ? "Приватный"
+                        : "Публичный"}
                   </p>
-                  <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                    Выплата:{" "}
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      {payoutText ?? "Недоступно"}
-                    </span>
-                  </p>
-                  {!hasFullAccess && (
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Запросите доступ к офферу, чтобы увидеть полные условия.
+                  {offer.description && (
+                    <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                      {offer.description}
                     </p>
+                  )}
+                  {hasFullAccess && (
+                    <>
+                      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                        Целевая:{" "}
+                        <a
+                          href={fullView?.targetUrl ?? "#"}
+                          className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {fullView?.targetUrl}
+                        </a>
+                      </p>
+                      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                        Выплата:{" "}
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                          {fullView ? formatMoney(fullView.payoutRub) : "—"}
+                        </span>
+                      </p>
+                    </>
+                  )}
+                  {!hasFullAccess && (
+                    <div className="mt-3 rounded-lg border border-dashed border-zinc-300 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                      <p>Запросите доступ к офферу, чтобы увидеть цели, выплаты и трекинг.</p>
+                      {offer.requestStatus === "pending" && (
+                        <p className="mt-2 font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300">
+                          Заявка ожидает рассмотрения
+                        </p>
+                      )}
+                      {offer.canRequestAccess && offer.availability === "on_request" && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleRequestAccess(offer.id);
+                          }}
+                          disabled={requestingOfferId === offer.id}
+                          className="mt-3 rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
+                        >
+                          {requestingOfferId === offer.id
+                            ? "Отправляем..."
+                            : "Запросить доступ"}
+                        </button>
+                      )}
+                    </div>
                   )}
                   {trackingLink ? (
                     <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
@@ -618,11 +666,11 @@ export default function PartnerDashboardPage() {
                         </a>
                       </div>
                     </div>
-                  ) : (
+                  ) : hasFullAccess ? (
                     <p className="mt-3 text-xs text-red-600 dark:text-red-300">
                       Нет affiliateId — обновите профиль.
                     </p>
-                  )}
+                  ) : null}
                 </div>
               );
             })}

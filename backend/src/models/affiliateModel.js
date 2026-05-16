@@ -163,6 +163,29 @@ export async function findAffiliateByUserId(userId, { client } = {}) {
   return attachPublicId(normalizeAffiliate(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.affiliate);
 }
 
+export async function findAffiliatesByIds(ids = [], { client } = {}) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return [];
+  }
+
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${affiliateFields}
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.id = ANY($1::uuid[])
+      ORDER BY a.created_at DESC
+    `,
+    [ids],
+  );
+
+  return attachPublicIds(
+    result.rows.map(normalizeAffiliate),
+    PUBLIC_ID_PREFIXES.affiliate,
+  );
+}
+
 export async function linkAffiliateToUser(id, userId, { client } = {}) {
   const queryable = getQueryable(client);
   const result = await queryable.query(

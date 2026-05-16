@@ -231,6 +231,13 @@ function validateVisibilityMode(
   return { value: normalized, errors: [] };
 }
 
+export function validateOfferAvailability(
+  value,
+  { allowMissing = true, field = 'availability' } = {},
+) {
+  return validateVisibilityMode(value, { allowMissing, field });
+}
+
 function normalizeGeoInput(value) {
   if (Array.isArray(value)) {
     return value;
@@ -695,6 +702,22 @@ export function validateCreateOfferDto(payload) {
     }
   }
 
+  const rawAvailability = Object.hasOwn(source, 'availability')
+    ? source.availability
+    : source.visibilityMode;
+  const { value: availability, errors: availabilityErrors } =
+    validateOfferAvailability(rawAvailability, {
+      allowMissing: true,
+      field: Object.hasOwn(source, 'availability')
+        ? 'availability'
+        : 'visibilityMode',
+    });
+  errors.push(...availabilityErrors);
+  if (availability) {
+    dto.availability = availability;
+    dto.visibilityMode = availability;
+  }
+
   // TODO: (offer-domain-v2) Подключить доменную часть DTO к createOffer.
   const { draft: domainDraft, errors: domainDraftErrors } =
     validateOfferDomainDraft(source);
@@ -796,6 +819,29 @@ export function validateUpdateOfferDto(payload) {
       const trimmedDescription = source.description.trim();
       dto.description =
         trimmedDescription.length > 0 ? trimmedDescription : null;
+    }
+  }
+
+  if (
+    Object.hasOwn(source, 'availability') ||
+    Object.hasOwn(source, 'visibilityMode')
+  ) {
+    hasAtLeastOneField = true;
+    const field = Object.hasOwn(source, 'availability')
+      ? 'availability'
+      : 'visibilityMode';
+    const rawAvailability = Object.hasOwn(source, 'availability')
+      ? source.availability
+      : source.visibilityMode;
+    const { value: availability, errors: availabilityErrors } =
+      validateOfferAvailability(rawAvailability, {
+        allowMissing: false,
+        field,
+      });
+    errors.push(...availabilityErrors);
+    if (availability) {
+      dto.availability = availability;
+      dto.visibilityMode = availability;
     }
   }
 
@@ -904,6 +950,27 @@ export function validateOfferFilters(payload = {}) {
     errors.push(...categoryErrors);
     if (typeof category === 'string') {
       filter.category = category;
+    }
+  }
+
+  if (
+    Object.hasOwn(payload, 'availability') ||
+    Object.hasOwn(payload, 'visibilityMode')
+  ) {
+    const field = Object.hasOwn(payload, 'availability')
+      ? 'availability'
+      : 'visibilityMode';
+    const rawAvailability = Object.hasOwn(payload, 'availability')
+      ? payload.availability
+      : payload.visibilityMode;
+    const { value: availability, errors: availabilityErrors } =
+      validateOfferAvailability(rawAvailability, {
+        allowMissing: false,
+        field,
+      });
+    errors.push(...availabilityErrors);
+    if (availability) {
+      filter.availability = availability;
     }
   }
 

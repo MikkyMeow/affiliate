@@ -8,6 +8,7 @@ import {
   grantAffiliateAccess,
   addGeoRule,
   createTestAffiliate,
+  hideAffiliateFromOffer,
 } from '../helpers/factories.js';
 import {
   findPendingOfferRequest,
@@ -83,10 +84,9 @@ describe('Critical path integration tests', () => {
     const excludedPublicOffer = await createTestOffer({
       visibilityMode: 'public',
     });
-    await grantAffiliateAccess({
+    await hideAffiliateFromOffer({
       offerId: excludedPublicOffer.id,
       affiliateId: affiliate.id,
-      accessType: 'excluded',
     });
 
     const allowedOnRequest = await createTestOffer({

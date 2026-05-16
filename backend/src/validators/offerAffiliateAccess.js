@@ -32,3 +32,42 @@ export function validateManualAccessPayload(payload) {
 
   return { dto, errors };
 }
+
+export function validateOfferAccessGrantPayload(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (typeof source.affiliateId !== 'string' || source.affiliateId.trim().length === 0) {
+    errors.push(buildError('affiliateId', 'affiliateId обязателен'));
+  } else {
+    dto.affiliateId = source.affiliateId.trim();
+  }
+
+  return { dto, errors };
+}
+
+export function validateOfferHidePayload(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (typeof source.affiliateId !== 'string' || source.affiliateId.trim().length === 0) {
+    errors.push(buildError('affiliateId', 'affiliateId обязателен'));
+  } else {
+    dto.affiliateId = source.affiliateId.trim();
+  }
+
+  if (Object.hasOwn(source, 'reason')) {
+    if (source.reason === null) {
+      dto.reason = null;
+    } else if (typeof source.reason !== 'string') {
+      errors.push(buildError('reason', 'reason должен быть строкой'));
+    } else {
+      const normalized = source.reason.trim();
+      dto.reason = normalized.length > 0 ? normalized : null;
+    }
+  }
+
+  return { dto, errors };
+}

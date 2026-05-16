@@ -8,6 +8,7 @@ import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
 import { buildTrackingUrl } from '@/lib/tracking';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import type { OfferAvailability } from '@/lib/offers';
 import {
   getOfferCategoryLabel,
   type OfferCategoryValue,
@@ -23,6 +24,7 @@ type Offer = {
   targetUrl: string;
   payoutRub: number;
   status: 'active' | 'inactive';
+  availability: OfferAvailability;
   createdAt: string;
   updatedAt: string;
 };
@@ -63,6 +65,7 @@ export default function OffersPage() {
   const [copyState, setCopyState] = useState<CopyState>('idle');
 
   const pageParam = searchParams?.get('page') ?? '1';
+  const availabilityFilter = searchParams?.get('availability') ?? '';
   const pageFromQuery = Number.parseInt(pageParam, 10);
   const page = Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
   const offset = (page - 1) * PAGE_SIZE;
@@ -87,8 +90,14 @@ export default function OffersPage() {
       setError(null);
 
       try {
+        const availabilityQuery =
+          availabilityFilter === 'public' ||
+          availabilityFilter === 'on_request' ||
+          availabilityFilter === 'private'
+            ? `&availability=${availabilityFilter}`
+            : '';
         const { data, meta } = await apiFetch<Offer[], OffersMeta>(
-          `/offers?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/offers?limit=${PAGE_SIZE}&offset=${offset}${availabilityQuery}`,
           {
             token: accessToken,
             withMeta: true,
@@ -132,7 +141,7 @@ export default function OffersPage() {
     return () => {
       active = false;
     };
-  }, [accessToken, authLoading, offset]);
+  }, [accessToken, authLoading, availabilityFilter, offset]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
@@ -152,6 +161,24 @@ export default function OffersPage() {
       router.push(qs ? `${targetPath}?${qs}` : targetPath);
     },
     [page, pathname, router, searchParams],
+  );
+
+  const handleAvailabilityFilterChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      params.delete('page');
+
+      if (value) {
+        params.set('availability', value);
+      } else {
+        params.delete('availability');
+      }
+
+      const qs = params.toString();
+      const targetPath = pathname ?? '/dashboard/offers';
+      router.push(qs ? `${targetPath}?${qs}` : targetPath);
+    },
+    [pathname, router, searchParams],
   );
 
   const formatter = useMemo(
@@ -352,6 +379,19 @@ export default function OffersPage() {
         </Link>
       </div>
 
+      <div className="mb-6 flex justify-end">
+        <select
+          value={availabilityFilter}
+          onChange={(event) => handleAvailabilityFilterChange(event.target.value)}
+          className="min-w-[220px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+        >
+          <option value="">Все доступности</option>
+          <option value="public">Open / public</option>
+          <option value="on_request">On request / on_request</option>
+          <option value="private">Private / private</option>
+        </select>
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-col gap-3 border-b border-zinc-200 px-6 py-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -392,6 +432,7 @@ export default function OffersPage() {
                     <th className="px-6 py-3 font-medium">Название</th>
                     <th className="px-6 py-3 font-medium">Категория</th>
                     <th className="px-6 py-3 font-medium">Рекламодатель</th>
+                    <th className="px-6 py-3 font-medium">Доступность</th>
                     <th className="px-6 py-3 font-medium">Выплата</th>
                     <th className="px-6 py-3 font-medium">Статус</th>
                     <th className="px-6 py-3 font-medium">Создан</th>
@@ -421,6 +462,9 @@ export default function OffersPage() {
                         ) : (
                           '—'
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                        {offer.availability}
                       </td>
                       <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100">
                         {payoutFormatter.format(offer.payoutRub)}

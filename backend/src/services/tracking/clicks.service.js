@@ -24,6 +24,8 @@ import {
   isDuplicateClickProtectionEnabled,
   resolveDuplicateClick,
 } from './click-dedup.service.js';
+import { getPartnerOfferVisibilityState } from '../offer-visibility.service.js';
+import { canPartnerAccessOffer } from '../offers/affiliate-visibility.js';
 
 const DESTINATION_TYPES = {
   TARGET: 'target',
@@ -157,6 +159,25 @@ export async function prepareClick(input, options = {}) {
     findActiveAffiliate(input.affiliateId),
     getOfferGeoRuleSets(input.offerId),
   ]);
+
+  const visibilityState = await getPartnerOfferVisibilityState(
+    affiliate.id,
+    offer.id,
+    { offer },
+  );
+
+  if (!canPartnerAccessOffer(visibilityState)) {
+    throw new ApiError(
+      ERROR_CODES.FORBIDDEN,
+      403,
+      'Оффер недоступен для этого партнёра',
+      {
+        offerId: offer.id,
+        affiliateId: affiliate.id,
+        denyReason: visibilityState.denyReason ?? null,
+      },
+    );
+  }
 
   const clickId = input.clickId ?? generateClickId();
   let redirectUrl;

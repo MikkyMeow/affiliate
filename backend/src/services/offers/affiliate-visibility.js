@@ -1,6 +1,7 @@
 import {
   LEGACY_OFFER_STATUS_INACTIVE,
   OFFER_ACCESS_TYPES,
+  OFFER_REQUEST_STATUSES,
   OFFER_STATUSES,
   OFFER_VISIBILITY_MODES,
 } from '../../constants/offers.js';
@@ -12,6 +13,7 @@ export const AFFILIATE_OFFER_ACCESS_LEVELS = Object.freeze({
 });
 
 export const AFFILIATE_OFFER_DENY_REASONS = Object.freeze({
+  HIDDEN: 'hidden',
   EXCLUDED: 'excluded',
   PRIVATE: 'private',
   REJECTED: 'rejected',
@@ -35,12 +37,51 @@ function hasActiveStatus(offer) {
   return false;
 }
 
-export function resolveAffiliateOfferAccess(offer, accessRecord) {
+function normalizeVisibilityMode(offer) {
+  return (
+    offer?.availability ??
+    offer?.visibilityMode ??
+    OFFER_VISIBILITY_MODES.PUBLIC
+  );
+}
+
+function normalizeRequestStatus(pendingRequest) {
+  if (!pendingRequest?.status) {
+    return null;
+  }
+
+  return pendingRequest.status;
+}
+
+function normalizeAccessStatus(accessRecord, pendingRequest) {
+  if (accessRecord?.accessType) {
+    return accessRecord.accessType;
+  }
+
+  if (pendingRequest?.status === OFFER_REQUEST_STATUSES.PENDING) {
+    return OFFER_REQUEST_STATUSES.PENDING;
+  }
+
+  return 'not_requested';
+}
+
+export function resolveAffiliateOfferAccess(
+  offer,
+  {
+    accessRecord = null,
+    hiddenRecord = null,
+    pendingRequest = null,
+  } = {},
+) {
   const result = {
     isVisible: false,
+    isAccessible: false,
+    isHidden: false,
     accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.NONE,
     canRequestAccess: false,
     denyReason: null,
+    accessStatus: normalizeAccessStatus(accessRecord, pendingRequest),
+    requestStatus: normalizeRequestStatus(pendingRequest),
   };
 
   if (!offer || !hasActiveStatus(offer)) {
@@ -50,37 +91,38 @@ export function resolveAffiliateOfferAccess(offer, accessRecord) {
     };
   }
 
-  const visibilityMode =
-    offer.visibilityMode ?? OFFER_VISIBILITY_MODES.PUBLIC;
-  const accessType = accessRecord?.accessType ?? null;
-
-  if (accessType === OFFER_ACCESS_TYPES.EXCLUDED) {
+  if (hiddenRecord) {
     return {
       ...result,
-      denyReason: AFFILIATE_OFFER_DENY_REASONS.EXCLUDED,
+      isHidden: true,
+      denyReason: AFFILIATE_OFFER_DENY_REASONS.HIDDEN,
     };
   }
 
-  if (visibilityMode === OFFER_VISIBILITY_MODES.PUBLIC) {
-    if (accessType === OFFER_ACCESS_TYPES.REJECTED) {
-      return {
-        ...result,
-        denyReason: AFFILIATE_OFFER_DENY_REASONS.REJECTED,
-      };
-    }
+  const visibilityMode = normalizeVisibilityMode(offer);
+  const accessType = accessRecord?.accessType ?? null;
+  const hasAllowedAccess = accessType === OFFER_ACCESS_TYPES.ALLOWED;
+  const hasRejectedAccess = accessType === OFFER_ACCESS_TYPES.REJECTED;
+  const hasExcludedAccess = accessType === OFFER_ACCESS_TYPES.EXCLUDED;
+  const hasPendingRequest =
+    pendingRequest?.status === OFFER_REQUEST_STATUSES.PENDING;
 
+  if (visibilityMode === OFFER_VISIBILITY_MODES.PUBLIC) {
     return {
       ...result,
       isVisible: true,
+      isAccessible: true,
       accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.FULL,
+      accessStatus: hasAllowedAccess ? OFFER_ACCESS_TYPES.ALLOWED : 'allowed',
     };
   }
 
   if (visibilityMode === OFFER_VISIBILITY_MODES.PRIVATE) {
-    if (accessType === OFFER_ACCESS_TYPES.ALLOWED) {
+    if (hasAllowedAccess) {
       return {
         ...result,
         isVisible: true,
+        isAccessible: true,
         accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.FULL,
       };
     }
@@ -91,31 +133,62 @@ export function resolveAffiliateOfferAccess(offer, accessRecord) {
     };
   }
 
-  // on_request flow.
-  if (accessType === OFFER_ACCESS_TYPES.ALLOWED) {
+  if (hasAllowedAccess) {
     return {
       ...result,
       isVisible: true,
+      isAccessible: true,
       accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.FULL,
     };
   }
 
-  if (accessType === OFFER_ACCESS_TYPES.REJECTED) {
-    return {
-      ...result,
-      isVisible: true,
-      accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.RESTRICTED,
-      canRequestAccess: false,
-      // В этом релизе придерживаемся варианта A: rejected видит restricted,
-      // но повторно запросить доступ нельзя.
-      denyReason: AFFILIATE_OFFER_DENY_REASONS.REJECTED,
-    };
-  }
+  const denyReason = hasRejectedAccess
+    ? AFFILIATE_OFFER_DENY_REASONS.REJECTED
+    : hasExcludedAccess
+      ? AFFILIATE_OFFER_DENY_REASONS.EXCLUDED
+      : null;
 
   return {
     ...result,
     isVisible: true,
     accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.RESTRICTED,
-    canRequestAccess: true,
+    canRequestAccess: !hasRejectedAccess && !hasExcludedAccess && !hasPendingRequest,
+    denyReason,
+  };
+}
+
+export function canPartnerSeeOffer(resolution) {
+  return Boolean(resolution?.isVisible);
+}
+
+export function canPartnerAccessOffer(resolution) {
+  return Boolean(
+    resolution?.isVisible &&
+      resolution?.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL &&
+      resolution?.isAccessible,
+  );
+}
+
+export function getPartnerVisibilityStateSummary(resolution) {
+  if (!resolution) {
+    return {
+      isVisible: false,
+      isAccessible: false,
+      accessLevel: AFFILIATE_OFFER_ACCESS_LEVELS.NONE,
+      canRequestAccess: false,
+      accessStatus: 'not_requested',
+      requestStatus: null,
+      denyReason: null,
+    };
+  }
+
+  return {
+    isVisible: resolution.isVisible,
+    isAccessible: resolution.isAccessible,
+    accessLevel: resolution.accessLevel,
+    canRequestAccess: resolution.canRequestAccess,
+    accessStatus: resolution.accessStatus,
+    requestStatus: resolution.requestStatus,
+    denyReason: resolution.denyReason,
   };
 }
