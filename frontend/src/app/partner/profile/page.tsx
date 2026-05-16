@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
+import type { QuestionnaireAnswerItem } from "@/lib/questionnaires";
 import { buildTelegramHref, normalizeTelegramHandle } from "@/lib/telegram";
 
 type PartnerProfileResponse = {
@@ -19,10 +21,7 @@ type PartnerProfileResponse = {
     email: string;
     status: "active" | "inactive";
     telegram: string | null;
-    questionnaireAnswers: Array<{
-      question: string;
-      answer: string;
-    }>;
+    questionnaireAnswers: QuestionnaireAnswerItem[];
     createdAt: string;
     updatedAt: string;
     manager: {
@@ -220,9 +219,17 @@ export default function PartnerProfilePage() {
               )}
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
-              <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Ответы анкеты
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Ответы анкеты
+                </p>
+                <Link
+                  href="/partner/questionnaire"
+                  className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+                >
+                  Редактировать анкету
+                </Link>
+              </div>
               {profile.affiliate.questionnaireAnswers.length > 0 ? (
                 <div className="mt-3 space-y-3">
                   {profile.affiliate.questionnaireAnswers.map((item, index) => (
@@ -239,7 +246,7 @@ export default function PartnerProfilePage() {
                 </div>
               ) : (
                 <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                  No questionnaire answers yet
+                  Анкета ещё не заполнена
                 </p>
               )}
             </div>

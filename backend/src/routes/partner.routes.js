@@ -25,6 +25,7 @@ import {
   validateUuid,
 } from '../validators/offers.js';
 import { validateOfferRequestPayload } from '../validators/offerRequests.js';
+import { requireQuestionnaireCompletion } from '../middleware/requireQuestionnaireCompletion.js';
 
 const router = express.Router();
 
@@ -74,6 +75,8 @@ router.patch(
     return sendSuccess(res, result);
   }),
 );
+
+router.use(requireQuestionnaireCompletion());
 
 router.get(
   '/stats',

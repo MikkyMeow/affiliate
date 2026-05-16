@@ -4,6 +4,7 @@ import {
   getAdvertiserById,
   requireAdvertiserForUser,
 } from '../advertisers.service.js';
+import { getQuestionnaireAnswerItemsForUser } from '../questionnaires.service.js';
 
 export async function getAdvertiserProfileByUser(user) {
   if (!user) {
@@ -29,6 +30,10 @@ export async function getAdvertiserProfileByUser(user) {
     user.advertiserId != null
       ? await getAdvertiserById(user.advertiserId)
       : await requireAdvertiserForUser(userId);
+  const questionnaireAnswers = await getQuestionnaireAnswerItemsForUser(
+    userId,
+    'advertiser',
+  );
 
   return {
     id: advertiser.id,
@@ -38,7 +43,7 @@ export async function getAdvertiserProfileByUser(user) {
     email: advertiser.email ?? null,
     status: advertiser.status ?? null,
     telegram: advertiser.telegram ?? null,
-    questionnaireAnswers: [],
+    questionnaireAnswers,
     createdAt: advertiser.createdAt ?? null,
     updatedAt: advertiser.updatedAt ?? null,
     manager: advertiser.manager

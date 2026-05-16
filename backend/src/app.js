@@ -29,6 +29,8 @@ import advertiserOffersRouter from './routes/advertiser-offers.routes.js';
 import advertiserStatsRouter from './routes/advertiser-stats.routes.js';
 import advertiserPostbacksRouter from './routes/advertiser-postbacks.routes.js';
 import advertiserFinanceRouter from './routes/advertiser-finance.routes.js';
+import adminQuestionnairesRouter from './routes/admin-questionnaires.routes.js';
+import meQuestionnaireRouter from './routes/me-questionnaire.routes.js';
 import { requestMetrics } from './middleware/requestMetrics.js';
 import { register as metricsRegister } from './lib/metrics.js';
 import { verifyDatabaseConnection } from './db.js';
@@ -129,7 +131,9 @@ export function createApp() {
   app.use(`${API_PREFIX}/admin/offers`, adminOfferGeoTargetingRouter);
   app.use(`${API_PREFIX}/admin/offers`, adminOfferAccessRouter);
   app.use(`${API_PREFIX}/admin/managers`, adminManagersRouter);
+  app.use(`${API_PREFIX}/admin/questionnaires`, adminQuestionnairesRouter);
   app.use(`${API_PREFIX}/stats`, statsRouter);
+  app.use(`${API_PREFIX}/me`, meQuestionnaireRouter);
   app.use(`${API_PREFIX}/partner`, partnerRouter);
   app.use(`${API_PREFIX}/users`, usersRouter);
   app.use(`${API_PREFIX}/advertiser/offers`, advertiserOffersRouter);

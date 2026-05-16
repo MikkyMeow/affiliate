@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
 import { requireAffiliateForUser } from '../affiliates.service.js';
 import { getAdvertiserProfileByUser } from '../advertisers/advertiser-profile.service.js';
+import { getQuestionnaireCompletionStateForUser } from '../questionnaires.service.js';
 
 function serializeAuthUser(user) {
   return {
@@ -69,9 +70,17 @@ export async function getAuthContext(userId) {
   }
 
   const profile = await resolveProfile(user);
+  const questionnaire = await getQuestionnaireCompletionStateForUser({
+    userId,
+    role: user.role,
+  });
 
   return {
     user: serializeAuthUser(user),
     profile,
+    questionnaire: {
+      required: questionnaire.required,
+      completed: questionnaire.completed,
+    },
   };
 }

@@ -6,6 +6,11 @@ import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getHomePathByRole } from "@/lib/auth/routes";
 
+const ALLOWED_WHILE_INCOMPLETE = new Set([
+  "/advertiser/questionnaire",
+  "/advertiser/profile",
+]);
+
 const NAV_LINKS = [
   { href: "/advertiser", label: "Обзор" },
   { href: "/advertiser/stats", label: "Статистика" },
@@ -20,7 +25,7 @@ export default function AdvertiserLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, questionnaire, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,10 +42,30 @@ export default function AdvertiserLayout({
 
     if (user.role !== "advertiser") {
       router.replace(getHomePathByRole(user));
+      return;
     }
-  }, [loading, pathname, router, user]);
 
-  const canRender = !loading && user?.role === "advertiser";
+    if (
+      questionnaire?.completed === false &&
+      !ALLOWED_WHILE_INCOMPLETE.has(pathname ?? "")
+    ) {
+      router.replace("/advertiser/questionnaire");
+    }
+  }, [loading, pathname, questionnaire?.completed, router, user]);
+
+  const canRender =
+    !loading &&
+    user?.role === "advertiser" &&
+    (questionnaire?.completed !== false ||
+      ALLOWED_WHILE_INCOMPLETE.has(pathname ?? ""));
+
+  const navLinks =
+    questionnaire?.completed === false
+      ? [
+          { href: "/advertiser/questionnaire", label: "Анкета" },
+          { href: "/advertiser/profile", label: "Профиль" },
+        ]
+      : NAV_LINKS;
 
   if (!canRender) {
     return (
@@ -66,7 +91,7 @@ export default function AdvertiserLayout({
           </p>
         </div>
         <nav className="mt-6 flex flex-col gap-1">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const isActive =
               pathname === link.href ||
               (link.href !== "/advertiser" && pathname.startsWith(link.href));
@@ -87,11 +112,14 @@ export default function AdvertiserLayout({
         </nav>
         <div className="mt-6 rounded-xl border border-dashed border-zinc-200 p-4 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
           <p className="font-semibold text-zinc-700 dark:text-zinc-200">
-            Нужны изменения?
+            {questionnaire?.completed === false
+              ? "Доступ ограничен"
+              : "Нужны изменения?"}
           </p>
           <p>
-            Свяжитесь с менеджером или саппортом, если нужно обновить настройки
-            офферов.
+            {questionnaire?.completed === false
+              ? "Сначала заполните обязательную анкету. После отправки откроются остальные разделы кабинета."
+              : "Свяжитесь с менеджером или саппортом, если нужно обновить настройки офферов."}
           </p>
           <p className="mt-3 font-semibold text-zinc-700 dark:text-zinc-100">
             support@mikilead.io

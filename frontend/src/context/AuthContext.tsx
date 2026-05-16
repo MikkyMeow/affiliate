@@ -43,6 +43,11 @@ export type AuthProfile =
     }
   | null;
 
+export type QuestionnaireStatus = {
+  required: boolean;
+  completed: boolean;
+};
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -56,6 +61,7 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   profile: AuthProfile;
+  questionnaire: QuestionnaireStatus | null;
   accessToken: string | null;
   loading: boolean;
   login(credentials: { email: string; password: string }): Promise<AuthUser>;
@@ -76,6 +82,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<AuthProfile>(null);
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireStatus | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -119,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!tokenToUse) {
         setUser(null);
         setProfile(null);
+        setQuestionnaire(null);
         return;
       }
 
@@ -127,11 +135,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await apiFetch<{
             user: AuthUser;
             profile: AuthProfile;
+            questionnaire: QuestionnaireStatus;
           }>("/auth/me", {
             token,
           });
           setUser(data.user);
           setProfile(data.profile ?? null);
+          setQuestionnaire(data.questionnaire ?? null);
         } catch (error) {
           const status = (error as ApiError).status;
 
@@ -149,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             persistAccessToken(null);
             setUser(null);
             setProfile(null);
+            setQuestionnaire(null);
           }
 
           throw error;
@@ -197,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         persistAccessToken(null);
         setUser(null);
         setProfile(null);
+        setQuestionnaire(null);
       } finally {
         settleLoading();
       }
@@ -223,9 +235,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persistAccessToken(data.token);
       setUser(data.user);
       setProfile(null);
+      setQuestionnaire(null);
+      await fetchProfile({ tokenOverride: data.token, retryOnUnauthorized: false });
       return data.user;
     },
-    [persistAccessToken],
+    [fetchProfile, persistAccessToken],
   );
 
   const register = useCallback(
@@ -247,15 +261,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persistAccessToken(data.token);
       setUser(data.user);
       setProfile(null);
+      setQuestionnaire(null);
+      await fetchProfile({ tokenOverride: data.token, retryOnUnauthorized: false });
       return data.user;
     },
-    [persistAccessToken],
+    [fetchProfile, persistAccessToken],
   );
 
   const logout = useCallback(() => {
     persistAccessToken(null);
     setUser(null);
     setProfile(null);
+    setQuestionnaire(null);
 
     void apiFetch("/auth/logout", {
       method: "POST",
@@ -273,6 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       profile,
+      questionnaire,
       accessToken,
       loading,
       login,
@@ -280,7 +298,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       refreshProfile,
     }),
-    [user, profile, accessToken, loading, login, register, logout, refreshProfile],
+    [
+      user,
+      profile,
+      questionnaire,
+      accessToken,
+      loading,
+      login,
+      register,
+      logout,
+      refreshProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

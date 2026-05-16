@@ -16,13 +16,18 @@ import { ERROR_CODES } from '../utils/response.js';
 import { requireAssignableManagerUser } from './managers.service.js';
 import { writeAuditEvent } from './audit.service.js';
 import { generateTemporaryPassword } from './managers.service.js';
+import { getQuestionnaireAnswerItemsForUser } from './questionnaires.service.js';
 
 const PASSWORD_SALT_ROUNDS = 10;
 
-function withAdvertiserInfo(advertiser) {
+async function withAdvertiserInfo(advertiser) {
+  const questionnaireAnswers = advertiser?.userId
+    ? await getQuestionnaireAnswerItemsForUser(advertiser.userId, 'advertiser')
+    : [];
+
   return {
     ...advertiser,
-    questionnaireAnswers: [],
+    questionnaireAnswers,
   };
 }
 
@@ -151,7 +156,7 @@ export async function createAdvertiser(
     await client.query('COMMIT');
 
     return {
-      advertiser: withAdvertiserInfo(advertiser),
+      advertiser: await withAdvertiserInfo(advertiser),
       temporaryPassword,
     };
   } catch (error) {

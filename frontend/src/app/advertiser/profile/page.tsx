@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { advertiserApi, type AdvertiserProfile } from "@/lib/advertiser.api";
@@ -280,9 +281,17 @@ export default function AdvertiserProfilePage() {
             )}
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
-            <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Ответы анкеты
-            </dt>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Ответы анкеты
+              </dt>
+              <Link
+                href="/advertiser/questionnaire"
+                className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Редактировать анкету
+              </Link>
+            </div>
             {profile.questionnaireAnswers.length > 0 ? (
               <dd className="mt-3 space-y-3 text-sm text-zinc-900 dark:text-zinc-100">
                 {profile.questionnaireAnswers.map((item, index) => (
@@ -296,7 +305,7 @@ export default function AdvertiserProfilePage() {
               </dd>
             ) : (
               <dd className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                No questionnaire answers yet
+                Анкета ещё не заполнена
               </dd>
             )}
             </div>

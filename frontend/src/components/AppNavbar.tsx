@@ -10,6 +10,7 @@ import {
   getProfilePathForRole,
   isAdminRole,
 } from "@/lib/auth/roles";
+import { getQuestionnaireRouteByRole } from "@/lib/questionnaires";
 
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Главная" },
@@ -18,6 +19,7 @@ const ADMIN_LINKS = [
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
   { href: "/dashboard/affiliates", label: "Партнёры" },
   { href: "/dashboard/offers", label: "Офферы" },
+  { href: "/dashboard/questionnaires", label: "Анкеты", adminOnly: true },
   { href: "/dashboard/managers", label: "Менеджеры", adminOnly: true },
 ];
 
@@ -44,7 +46,7 @@ const LINK_STYLES =
 export function AppNavbar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { user, profile, loading, logout } = useAuth();
+  const { user, profile, questionnaire, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navLinks = useMemo(() => {
     if (!user) {
@@ -56,15 +58,27 @@ export function AppNavbar() {
     }
 
     if (user.role === "affiliate") {
+      if (questionnaire?.completed === false) {
+        return [
+          { href: "/partner/questionnaire", label: "Анкета" },
+          { href: "/partner/profile", label: "Профиль" },
+        ];
+      }
       return AFFILIATE_LINKS;
     }
 
     if (user.role === "advertiser") {
+      if (questionnaire?.completed === false) {
+        return [
+          { href: "/advertiser/questionnaire", label: "Анкета" },
+          { href: "/advertiser/profile", label: "Профиль" },
+        ];
+      }
       return ADVERTISER_LINKS;
     }
 
     return [];
-  }, [user]);
+  }, [questionnaire?.completed, user]);
 
   const authLinks = useMemo(() => {
     const redirect = encodeURIComponent(pathname);
@@ -109,12 +123,24 @@ export function AppNavbar() {
       return;
     }
 
+    if (
+      (user.role === "affiliate" || user.role === "advertiser") &&
+      questionnaire?.completed === false
+    ) {
+      const questionnaireRoute = getQuestionnaireRouteByRole(user.role);
+
+      if (questionnaireRoute) {
+        router.replace(questionnaireRoute);
+        return;
+      }
+    }
+
     const target = getHomePathByRole(user);
 
     if (target && target !== pathname) {
       router.replace(target);
     }
-  }, [loading, pathname, router, user]);
+  }, [loading, pathname, questionnaire?.completed, router, user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/70">

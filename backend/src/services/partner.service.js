@@ -17,6 +17,7 @@ import {
   AFFILIATE_OFFER_ACCESS_LEVELS,
   resolveAffiliateOfferAccess,
 } from './offers/affiliate-visibility.js';
+import { getQuestionnaireAnswerItemsForUser } from './questionnaires.service.js';
 
 export async function getPartnerProfile(userId) {
   const user = await findUserById(userId);
@@ -39,6 +40,10 @@ export async function getPartnerProfile(userId) {
   }
 
   const affiliate = await requireAffiliateForUser(user.id);
+  const questionnaireAnswers = await getQuestionnaireAnswerItemsForUser(
+    user.id,
+    'affiliate',
+  );
 
   return {
     user: {
@@ -55,7 +60,7 @@ export async function getPartnerProfile(userId) {
       telegram: affiliate.telegram ?? null,
       createdAt: affiliate.createdAt,
       updatedAt: affiliate.updatedAt,
-      questionnaireAnswers: [],
+      questionnaireAnswers,
       manager: affiliate.manager
         ? {
             name: affiliate.manager.displayName ?? null,

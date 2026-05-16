@@ -15,6 +15,7 @@ export const ERROR_CODES = {
   FORBIDDEN: 'FORBIDDEN',
   AFFILIATE_NOT_LINKED: 'AFFILIATE_NOT_LINKED',
   CACHE_UNAVAILABLE: 'CACHE_UNAVAILABLE',
+  QUESTIONNAIRE_REQUIRED: 'QUESTIONNAIRE_REQUIRED',
 };
 
 export function sendSuccess(res, data, { status = 200, meta = null } = {}) {

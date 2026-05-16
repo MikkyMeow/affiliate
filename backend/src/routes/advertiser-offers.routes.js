@@ -11,11 +11,13 @@ import {
 import { validateUuid } from '../validators/offers.js';
 import { validateAdvertiserOfferListQuery } from '../validators/advertiserOffers.js';
 import { resolveAdvertiserIdFromUser } from '../services/advertisers/advertiser-context.service.js';
+import { requireQuestionnaireCompletion } from '../middleware/requireQuestionnaireCompletion.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 router.use(authorizeRole('advertiser'));
+router.use(requireQuestionnaireCompletion());
 
 router.get(
   '/',

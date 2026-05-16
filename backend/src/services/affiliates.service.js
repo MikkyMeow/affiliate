@@ -14,6 +14,7 @@ import { ERROR_CODES } from '../utils/response.js';
 import { invalidateAffiliateCache } from './tracking/cache-invalidation.service.js';
 import { requireAssignableManagerUser } from './managers.service.js';
 import { writeAuditEvent } from './audit.service.js';
+import { getQuestionnaireAnswerItemsForUser } from './questionnaires.service.js';
 
 function handleAffiliateDbConflict(error) {
   if (error?.code === '23505') {
@@ -28,16 +29,20 @@ function handleAffiliateDbConflict(error) {
   throw error;
 }
 
-function withAffiliateInfo(affiliate) {
+async function withAffiliateInfo(affiliate) {
+  const questionnaireAnswers = affiliate?.userId
+    ? await getQuestionnaireAnswerItemsForUser(affiliate.userId, 'affiliate')
+    : [];
+
   return {
     ...affiliate,
-    questionnaireAnswers: [],
+    questionnaireAnswers,
   };
 }
 
 export async function createAffiliate(dto) {
   try {
-    return await createAffiliateModel(dto);
+    return await withAffiliateInfo(await createAffiliateModel(dto));
   } catch (error) {
     handleAffiliateDbConflict(error);
   }

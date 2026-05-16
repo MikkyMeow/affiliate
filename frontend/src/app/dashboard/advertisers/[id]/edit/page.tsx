@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import type { QuestionnaireAnswerItem } from '@/lib/questionnaires';
 import { buildTelegramHref } from '@/lib/telegram';
 
 type Advertiser = {
@@ -17,10 +18,7 @@ type Advertiser = {
   status: 'active' | 'inactive';
   telegram: string | null;
   internalNote: string | null;
-  questionnaireAnswers: Array<{
-    question: string;
-    answer: string;
-  }>;
+  questionnaireAnswers: QuestionnaireAnswerItem[];
   managerUserId: string | null;
   manager: {
     id: string;
@@ -96,6 +94,10 @@ export default function EditAdvertiserPage() {
   const [internalNoteSubmitting, setInternalNoteSubmitting] = useState(false);
   const [internalNoteMessage, setInternalNoteMessage] = useState<string | null>(null);
   const telegramHref = buildTelegramHref(advertiserDetails?.telegram);
+  const activeQuestionnaireAnswers =
+    advertiserDetails?.questionnaireAnswers?.filter((item) => !item.isFallback) ?? [];
+  const fallbackQuestionnaireAnswers =
+    advertiserDetails?.questionnaireAnswers?.filter((item) => item.isFallback) ?? [];
   const [temporaryPasswordState, setTemporaryPasswordState] =
     useState<TemporaryPasswordState | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -458,9 +460,9 @@ export default function EditAdvertiserPage() {
         </div>
         <div className="space-y-3">
           <p className="text-sm uppercase tracking-wide text-zinc-500">Ответы анкеты</p>
-          {advertiserDetails?.questionnaireAnswers?.length ? (
+          {activeQuestionnaireAnswers.length > 0 ? (
             <div className="space-y-3">
-              {advertiserDetails.questionnaireAnswers.map((item, index) => (
+              {activeQuestionnaireAnswers.map((item, index) => (
                 <div
                   key={`${item.question}-${index}`}
                   className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
@@ -471,8 +473,25 @@ export default function EditAdvertiserPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-zinc-500">No questionnaire answers yet</p>
+            <p className="text-sm text-zinc-500">Анкета ещё не заполнена</p>
           )}
+
+          {fallbackQuestionnaireAnswers.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-wide text-zinc-500">
+                Saved answers
+              </p>
+              {fallbackQuestionnaireAnswers.map((item, index) => (
+                <div
+                  key={`${item.question}-fallback-${index}`}
+                  className="rounded-xl border border-dashed border-zinc-300 bg-white p-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                >
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">{item.question}</p>
+                  <p className="mt-2">{item.answer}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 

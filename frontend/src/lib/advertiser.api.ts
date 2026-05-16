@@ -1,4 +1,5 @@
 import { apiFetch } from "./api";
+import type { QuestionnaireAnswerItem } from "./questionnaires";
 import type {
   BreakdownMetrics,
   GoalBreakdownEntry,
@@ -12,10 +13,7 @@ export type AdvertiserProfile = {
   email: string | null;
   status: string | null;
   telegram: string | null;
-  questionnaireAnswers: Array<{
-    question: string;
-    answer: string;
-  }>;
+  questionnaireAnswers: QuestionnaireAnswerItem[];
   createdAt: string | null;
   updatedAt: string | null;
   manager: {

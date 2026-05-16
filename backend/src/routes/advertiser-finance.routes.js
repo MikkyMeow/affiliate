@@ -10,11 +10,13 @@ import {
   getAdvertiserFinanceBreakdown,
 } from '../services/advertisers/advertiser-finance.service.js';
 import { validateAdvertiserFinanceFilters } from '../validators/advertiserFinance.js';
+import { requireQuestionnaireCompletion } from '../middleware/requireQuestionnaireCompletion.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 router.use(authorizeRole('advertiser'));
+router.use(requireQuestionnaireCompletion());
 
 router.get(
   '/summary',
