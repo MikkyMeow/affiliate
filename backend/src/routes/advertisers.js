@@ -1,19 +1,24 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeAdminArea } from '../middleware/accessControl.js';
+import { authorizeAdminArea, authorizeAdminOnly } from '../middleware/accessControl.js';
 import {
+  validateCreateAdvertiserDto,
   validateUpdateAdvertiserDto,
   validateAssignAdvertiserManagerDto,
   validateAdvertiserListFilters,
+  validateUpdateAdvertiserInternalNoteDto,
 } from '../validators/advertisers.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
   assignAdvertiserManager,
+  createAdvertiser,
   getAdvertiserById,
   listAdvertisers,
+  resetAdvertiserPassword,
   updateAdvertiser,
+  updateAdvertiserInternalNote,
 } from '../services/advertisers.service.js';
 import { getActorContext } from '../utils/actorContext.js';
 
@@ -21,6 +26,30 @@ const router = express.Router();
 
 router.use(authenticate);
 router.use(authorizeAdminArea);
+
+router.post(
+  '/',
+  authorizeAdminOnly,
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateCreateAdvertiserDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const result = await createAdvertiser(dto, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
+    return sendSuccess(res, result, { status: 201 });
+  }),
+);
 
 router.get(
   '/',
@@ -81,6 +110,51 @@ router.patch(
     );
 
     return sendSuccess(res, { advertiser });
+  }),
+);
+
+router.patch(
+  '/:id/internal-note',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateAdvertiserInternalNoteDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const advertiser = await updateAdvertiserInternalNote(
+      req.params.id,
+      dto.internalNote,
+      {
+        actor: getActorContext(req.user),
+        requestId: req.id ?? null,
+      },
+    );
+
+    return sendSuccess(res, {
+      advertiser: {
+        id: advertiser.id,
+        internalNote: advertiser.internalNote ?? null,
+      },
+    });
+  }),
+);
+
+router.post(
+  '/:id/reset-password',
+  authorizeAdminOnly,
+  asyncHandler(async (req, res) => {
+    const result = await resetAdvertiserPassword(req.params.id, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
+    return sendSuccess(res, result);
   }),
 );
 

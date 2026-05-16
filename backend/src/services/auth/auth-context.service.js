@@ -29,7 +29,10 @@ async function resolveProfile(user) {
       publicIdNumber: affiliate.publicIdNumber ?? null,
       publicId: affiliate.publicId ?? null,
       name: affiliate.name ?? null,
+      email: affiliate.email ?? null,
       status: affiliate.status ?? null,
+      telegram: affiliate.telegram ?? null,
+      questionnaireAnswers: [],
       createdAt: affiliate.createdAt ?? null,
       updatedAt: affiliate.updatedAt ?? null,
       manager: affiliate.manager

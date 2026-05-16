@@ -7,6 +7,8 @@ const affiliateFields = `
   a.name,
   a.email,
   a.status,
+  a.telegram,
+  a.internal_note AS "internalNote",
   a.user_id AS "userId",
   a.manager_user_id AS "managerUserId",
   a.created_at AS "createdAt",
@@ -33,6 +35,8 @@ function normalizeAffiliate(row) {
     name: row.name,
     email: row.email,
     status: row.status,
+    telegram: row.telegram ?? null,
+    internalNote: row.internalNote ?? null,
     userId: row.userId ?? null,
     managerUserId: row.managerUserId ?? null,
     createdAt: row.createdAt ?? null,
@@ -51,16 +55,17 @@ export async function createAffiliate({
   name,
   email,
   status = 'active',
+  telegram = null,
   userId = null,
 }, { client } = {}) {
   const queryable = getQueryable(client);
   const result = await queryable.query(
     `
-      INSERT INTO affiliates (name, email, status, user_id)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO affiliates (name, email, status, telegram, user_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id;
     `,
-    [name, email.toLowerCase(), status, userId],
+    [name, email.toLowerCase(), status, telegram, userId],
   );
 
   return findAffiliateById(result.rows[0]?.id, { client });
@@ -173,7 +178,11 @@ export async function linkAffiliateToUser(id, userId, { client } = {}) {
   return result.rowCount > 0 ? findAffiliateById(id, { client }) : null;
 }
 
-export async function updateAffiliate(id, { name, email, status }, { client } = {}) {
+export async function updateAffiliate(
+  id,
+  { name, email, status, telegram, internalNote },
+  { client } = {},
+) {
   const queryable = getQueryable(client);
   const assignments = [];
   const params = [];
@@ -191,6 +200,16 @@ export async function updateAffiliate(id, { name, email, status }, { client } = 
   if (typeof status === 'string') {
     params.push(status);
     assignments.push(`status = $${params.length}`);
+  }
+
+  if (telegram !== undefined) {
+    params.push(telegram ?? null);
+    assignments.push(`telegram = $${params.length}`);
+  }
+
+  if (internalNote !== undefined) {
+    params.push(internalNote ?? null);
+    assignments.push(`internal_note = $${params.length}`);
   }
 
   if (assignments.length === 0) {

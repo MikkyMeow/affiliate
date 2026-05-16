@@ -28,6 +28,13 @@ function handleAffiliateDbConflict(error) {
   throw error;
 }
 
+function withAffiliateInfo(affiliate) {
+  return {
+    ...affiliate,
+    questionnaireAnswers: [],
+  };
+}
+
 export async function createAffiliate(dto) {
   try {
     return await createAffiliateModel(dto);
@@ -49,7 +56,7 @@ export async function getAffiliateById(id) {
     });
   }
 
-  return affiliate;
+  return withAffiliateInfo(affiliate);
 }
 
 export async function updateAffiliate(id, dto) {
@@ -64,9 +71,65 @@ export async function updateAffiliate(id, dto) {
 
     await invalidateAffiliateCache(id);
 
-    return affiliate;
+    return withAffiliateInfo(affiliate);
   } catch (error) {
     handleAffiliateDbConflict(error);
+  }
+}
+
+export async function updateAffiliateInternalNote(
+  affiliateId,
+  internalNote,
+  { actor = null, requestId = null } = {},
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAffiliate = await findAffiliateByIdModel(affiliateId, { client });
+
+    if (!existingAffiliate) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+        affiliateId,
+      });
+    }
+
+    const updatedAffiliate = await updateAffiliateModel(
+      affiliateId,
+      { internalNote },
+      { client },
+    );
+
+    await writeAuditEvent({
+      entityType: 'affiliate',
+      entityId: affiliateId,
+      action: 'internal_note_updated',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      client,
+      context: {
+        oldValues: {
+          internalNote: existingAffiliate.internalNote ?? null,
+        },
+        newValues: {
+          internalNote: updatedAffiliate?.internalNote ?? null,
+        },
+        metadata: {
+          updatedFields: ['internalNote'],
+        },
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return updatedAffiliate;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }
 

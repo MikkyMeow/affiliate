@@ -6,6 +6,7 @@ import {
   validateUpdateAffiliateDto,
   validateAssignAffiliateManagerDto,
   validateAffiliateListFilters,
+  validateUpdateAffiliateInternalNoteDto,
 } from '../validators/affiliates.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
@@ -16,6 +17,7 @@ import {
   listAffiliates,
   assignAffiliateManager,
   updateAffiliate,
+  updateAffiliateInternalNote,
 } from '../services/affiliates.service.js';
 import { getActorContext } from '../utils/actorContext.js';
 
@@ -98,6 +100,29 @@ router.patch(
     });
 
     return sendSuccess(res, { affiliate });
+  }),
+);
+
+router.patch(
+  '/:id/internal-note',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateAffiliateInternalNoteDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const affiliate = await updateAffiliateInternalNote(req.params.id, dto.internalNote, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
+    return sendSuccess(res, { affiliate: { id: affiliate.id, internalNote: affiliate.internalNote ?? null } });
   }),
 );
 

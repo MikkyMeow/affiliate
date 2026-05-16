@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import { buildTelegramHref } from '@/lib/telegram';
 
 type Affiliate = {
   id: string;
@@ -14,6 +15,12 @@ type Affiliate = {
   name: string;
   email: string;
   status: 'active' | 'inactive';
+  telegram: string | null;
+  internalNote: string | null;
+  questionnaireAnswers: Array<{
+    question: string;
+    answer: string;
+  }>;
   managerUserId: string | null;
   manager: {
     id: string;
@@ -57,6 +64,11 @@ export default function EditAffiliatePage() {
   const [managerSubmitting, setManagerSubmitting] = useState(false);
   const [managerError, setManagerError] = useState<string | null>(null);
   const [managerSuccess, setManagerSuccess] = useState<string | null>(null);
+  const [affiliateDetails, setAffiliateDetails] = useState<Affiliate | null>(null);
+  const [internalNote, setInternalNote] = useState('');
+  const [internalNoteSubmitting, setInternalNoteSubmitting] = useState(false);
+  const [internalNoteMessage, setInternalNoteMessage] = useState<string | null>(null);
+  const telegramHref = buildTelegramHref(affiliateDetails?.telegram);
 
   useEffect(() => {
     document.title = 'Партнёр';
@@ -103,8 +115,10 @@ export default function EditAffiliatePage() {
           return;
         }
         setAffiliatePublicId(affiliate.publicId ?? null);
+        setAffiliateDetails(affiliate);
         setForm({ name: affiliate.name, email: affiliate.email, status: affiliate.status });
         setSelectedManagerId(affiliate.managerUserId ?? '');
+        setInternalNote(affiliate.internalNote ?? '');
         setManagerOptions(lookup.items);
       })
       .catch((error) => {
@@ -200,6 +214,7 @@ export default function EditAffiliatePage() {
           }),
         },
       );
+      setAffiliateDetails(response.affiliate);
       setSelectedManagerId(response.affiliate.managerUserId ?? '');
       setManagerSuccess('Ответственный менеджер обновлён');
     } catch (error) {
@@ -209,6 +224,43 @@ export default function EditAffiliatePage() {
       setManagerError(message);
     } finally {
       setManagerSubmitting(false);
+    }
+  };
+
+  const handleInternalNoteSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setInternalNoteMessage(null);
+
+    if (!accessToken || !affiliateId) {
+      setInternalNoteMessage('Нет доступа для редактирования');
+      return;
+    }
+
+    setInternalNoteSubmitting(true);
+
+    try {
+      const response = await apiFetch<{ affiliate: { id: string; internalNote: string | null } }>(
+        `/affiliates/${affiliateId}/internal-note`,
+        {
+          method: 'PATCH',
+          token: accessToken,
+          body: JSON.stringify({ internalNote: internalNote.trim() || null }),
+        },
+      );
+      setInternalNote(response.affiliate.internalNote ?? '');
+      setAffiliateDetails((current) =>
+        current
+          ? { ...current, internalNote: response.affiliate.internalNote ?? null }
+          : current,
+      );
+      setInternalNoteMessage('Приватная информация сохранена');
+    } catch (error) {
+      const message =
+        (error as { message?: string } | null)?.message ??
+        'Не удалось сохранить приватную информацию';
+      setInternalNoteMessage(message);
+    } finally {
+      setInternalNoteSubmitting(false);
     }
   };
 
@@ -308,6 +360,54 @@ export default function EditAffiliatePage() {
         >
           ← Назад к списку
         </Link>
+      </div>
+
+      <div className="mb-6 grid gap-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:grid-cols-2">
+        <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Информация о партнёре</p>
+          <p>
+            <span className="text-zinc-500">Email:</span> {affiliateDetails?.email ?? '—'}
+          </p>
+          <p>
+            <span className="text-zinc-500">Telegram:</span>{' '}
+            {telegramHref ? (
+              <a
+                href={telegramHref}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-4 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                {telegramHref.replace(/^https?:\/\//, '')}
+              </a>
+            ) : (
+              '—'
+            )}
+          </p>
+          <p>
+            <span className="text-zinc-500">Ответственный менеджер:</span>{' '}
+            {affiliateDetails?.manager
+              ? `${affiliateDetails.manager.displayName ?? 'Без имени'} · ${affiliateDetails.manager.email ?? '—'}`
+              : 'Не назначен'}
+          </p>
+        </div>
+        <div className="space-y-3">
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Ответы анкеты</p>
+          {affiliateDetails?.questionnaireAnswers?.length ? (
+            <div className="space-y-3">
+              {affiliateDetails.questionnaireAnswers.map((item, index) => (
+                <div
+                  key={`${item.question}-${index}`}
+                  className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                >
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">{item.question}</p>
+                  <p className="mt-2">{item.answer}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No questionnaire answers yet</p>
+          )}
+        </div>
       </div>
 
       <form
@@ -436,6 +536,35 @@ export default function EditAffiliatePage() {
           className="w-full rounded-full border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           {managerSubmitting ? 'Сохраняем…' : 'Сохранить менеджера'}
+        </button>
+      </form>
+
+      <form
+        onSubmit={handleInternalNoteSubmit}
+        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <div>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Private information</p>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Visible only to admin and managers
+          </p>
+        </div>
+        <textarea
+          value={internalNote}
+          onChange={(event) => setInternalNote(event.target.value)}
+          rows={6}
+          placeholder="Внутренняя заметка для команды сети"
+          className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+        />
+        {internalNoteMessage ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{internalNoteMessage}</p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={internalNoteSubmitting}
+          className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+        >
+          {internalNoteSubmitting ? 'Сохраняем…' : 'Сохранить приватную информацию'}
         </button>
       </form>
     </section>

@@ -6,10 +6,13 @@ const advertiserFields = `
   adv.public_id_number AS "publicIdNumber",
   adv.name,
   adv.status,
+  adv.telegram,
+  adv.internal_note AS "internalNote",
   adv.user_id AS "userId",
   adv.manager_user_id AS "managerUserId",
   adv.created_at AS "createdAt",
   adv.updated_at AS "updatedAt",
+  u.email,
   mu.id AS "manager.id",
   mu.display_name AS "manager.displayName",
   mu.email AS "manager.email"
@@ -30,7 +33,10 @@ function normalizeAdvertiser(row) {
     id: row.id,
     publicIdNumber: row.publicIdNumber ?? null,
     name: row.name,
+    email: row.email ?? null,
     status: row.status,
+    telegram: row.telegram ?? null,
+    internalNote: row.internalNote ?? null,
     userId: row.userId ?? null,
     managerUserId: row.managerUserId ?? null,
     createdAt: row.createdAt ?? null,
@@ -48,16 +54,19 @@ function normalizeAdvertiser(row) {
 export async function createAdvertiser({
   name,
   status = 'active',
+  telegram = null,
+  internalNote = null,
+  managerUserId = null,
   userId = null,
 }, { client } = {}) {
   const queryable = getQueryable(client);
   const result = await queryable.query(
     `
-      INSERT INTO advertisers (name, status, user_id)
-      VALUES ($1, $2, $3)
+      INSERT INTO advertisers (name, status, telegram, internal_note, manager_user_id, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id;
     `,
-    [name, status, userId],
+    [name, status, telegram, internalNote, managerUserId, userId],
   );
 
   return findAdvertiserById(result.rows[0]?.id, { client });
@@ -95,6 +104,7 @@ export async function listAdvertisers(
     `
       SELECT ${advertiserFields}
       FROM advertisers AS adv
+      LEFT JOIN users AS u ON u.id = adv.user_id
       LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
       ${whereClause}
       ORDER BY adv.created_at DESC
@@ -116,6 +126,7 @@ export async function findAdvertiserById(id, { client } = {}) {
     `
       SELECT ${advertiserFields}
       FROM advertisers AS adv
+      LEFT JOIN users AS u ON u.id = adv.user_id
       LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
       WHERE adv.id = $1;
     `,
@@ -131,6 +142,7 @@ export async function findAdvertiserByUserId(userId, { client } = {}) {
     `
       SELECT ${advertiserFields}
       FROM advertisers AS adv
+      LEFT JOIN users AS u ON u.id = adv.user_id
       LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
       WHERE adv.user_id = $1;
     `,
@@ -140,7 +152,11 @@ export async function findAdvertiserByUserId(userId, { client } = {}) {
   return attachPublicId(normalizeAdvertiser(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.advertiser);
 }
 
-export async function updateAdvertiser(id, { name, status }, { client } = {}) {
+export async function updateAdvertiser(
+  id,
+  { name, status, telegram, internalNote },
+  { client } = {},
+) {
   const queryable = getQueryable(client);
   const assignments = [];
   const params = [];
@@ -153,6 +169,16 @@ export async function updateAdvertiser(id, { name, status }, { client } = {}) {
   if (typeof status === 'string') {
     params.push(status);
     assignments.push(`status = $${params.length}`);
+  }
+
+  if (telegram !== undefined) {
+    params.push(telegram ?? null);
+    assignments.push(`telegram = $${params.length}`);
+  }
+
+  if (internalNote !== undefined) {
+    params.push(internalNote ?? null);
+    assignments.push(`internal_note = $${params.length}`);
   }
 
   if (assignments.length === 0) {

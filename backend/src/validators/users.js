@@ -1,5 +1,5 @@
 import { ACCOUNT_TYPE_VALUES } from '../constants/accountTypes.js';
-import { validateEmail } from './affiliates.js';
+import { validateEmail, validateTelegramValue } from './affiliates.js';
 
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
@@ -346,6 +346,28 @@ export function validateChangePasswordDto(payload) {
   errors.push(...passwordErrors);
   if (newPassword) {
     dto.newPassword = newPassword;
+  }
+
+  return { dto, errors };
+}
+
+export function validateUpdateProfileDto(payload) {
+  const errors = [];
+  const source = payload ?? {};
+  const dto = {};
+
+  if (!Object.hasOwn(source, 'telegram')) {
+    errors.push(buildError('telegram', 'telegram обязателен'));
+    return { dto, errors };
+  }
+
+  const { value: telegram, errors: telegramErrors } = validateTelegramValue(
+    source.telegram,
+  );
+  errors.push(...telegramErrors);
+
+  if (telegram !== undefined) {
+    dto.telegram = telegram;
   }
 
   return { dto, errors };

@@ -35,7 +35,10 @@ export async function getAdvertiserProfileByUser(user) {
     publicIdNumber: advertiser.publicIdNumber ?? null,
     publicId: advertiser.publicId ?? null,
     name: advertiser.name ?? null,
+    email: advertiser.email ?? null,
     status: advertiser.status ?? null,
+    telegram: advertiser.telegram ?? null,
+    questionnaireAnswers: [],
     createdAt: advertiser.createdAt ?? null,
     updatedAt: advertiser.updatedAt ?? null,
     manager: advertiser.manager

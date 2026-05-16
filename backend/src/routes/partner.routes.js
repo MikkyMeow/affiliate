@@ -12,6 +12,9 @@ import {
   listPartnerConversions,
   getPartnerOfferDetails,
 } from '../services/partner.service.js';
+import { validateUpdateProfileDto } from '../validators/users.js';
+import { updateOwnProfile } from '../services/profile.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 import { requestOfferAccess } from '../services/offer-requests.service.js';
 import {
   validatePartnerClicksQuery,
@@ -46,6 +49,29 @@ router.get(
   asyncHandler(async (req, res) => {
     const profile = await getPartnerProfile(req.user.userId);
     return sendSuccess(res, profile);
+  }),
+);
+
+router.patch(
+  '/profile',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateProfileDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const result = await updateOwnProfile(req.user, dto, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
+    return sendSuccess(res, result);
   }),
 );
 

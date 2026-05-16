@@ -34,6 +34,11 @@ import { register as metricsRegister } from './lib/metrics.js';
 import { verifyDatabaseConnection } from './db.js';
 import { verifyRedisConnection, isRedisRequired } from './lib/redis.js';
 import { getAuthContext } from './services/auth/auth-context.service.js';
+import { validateUpdateProfileDto } from './validators/users.js';
+import { updateOwnProfile } from './services/profile.service.js';
+import { getActorContext } from './utils/actorContext.js';
+import { ApiError } from './utils/apiError.js';
+import { ERROR_CODES } from './utils/response.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -140,6 +145,30 @@ export function createApp() {
     asyncHandler(async (req, res) => {
       const context = await getAuthContext(req.user.userId);
       return sendSuccess(res, context);
+    }),
+  );
+
+  app.patch(
+    `${API_PREFIX}/profile`,
+    authenticate,
+    asyncHandler(async (req, res) => {
+      const { dto, errors } = validateUpdateProfileDto(req.body);
+
+      if (errors.length) {
+        throw new ApiError(
+          ERROR_CODES.VALIDATION_ERROR,
+          400,
+          'Ошибка валидации',
+          { errors },
+        );
+      }
+
+      const result = await updateOwnProfile(req.user, dto, {
+        actor: getActorContext(req.user),
+        requestId: req.id ?? null,
+      });
+
+      return sendSuccess(res, result);
     }),
   );
 

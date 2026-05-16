@@ -42,5 +42,9 @@ export function getProfilePathForRole(
     return "/advertiser/profile";
   }
 
+  if (user.role === "affiliate") {
+    return "/partner/profile";
+  }
+
   return null;
 }

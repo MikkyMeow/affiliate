@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
-import { canAccessAdminArea } from '@/lib/auth/roles';
+import { canAccessAdminArea, isAdminRole } from '@/lib/auth/roles';
 
 type Advertiser = {
   id: string;
@@ -172,8 +172,7 @@ export default function AdvertisersPage() {
           Рекламодатели
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Новые рекламодатели теперь проходят только через self-registration, поэтому
-          админка отображает список без возможности ручного создания.
+          Список рекламодателей, включая аккаунты, созданные вручную сетью.
         </p>
       </div>
 
@@ -202,13 +201,23 @@ export default function AdvertisersPage() {
               </select>
             </div>
           </div>
-          {loading ? (
-            <span className="text-sm text-zinc-500">Загружаем...</span>
-          ) : (
-            <span className="text-sm text-zinc-500">
-              {advertisers.length} шт.
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {isAdminRole(user.role) ? (
+              <Link
+                href="/dashboard/advertisers/create"
+                className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+              >
+                Создать рекламодателя
+              </Link>
+            ) : null}
+            {loading ? (
+              <span className="text-sm text-zinc-500">Загружаем...</span>
+            ) : (
+              <span className="text-sm text-zinc-500">
+                {advertisers.length} шт.
+              </span>
+            )}
+          </div>
         </div>
 
         {error ? (
@@ -217,7 +226,7 @@ export default function AdvertisersPage() {
           </div>
         ) : advertisers.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет рекламодателей, зарегистрированных через self-service.
+            Пока нет рекламодателей.
           </div>
         ) : (
           <div className="overflow-x-auto">

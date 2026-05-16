@@ -1,3 +1,5 @@
+import { validateEmail, validateTelegramValue } from './affiliates.js';
+
 const allowedStatuses = new Set(['active', 'inactive']);
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -38,6 +40,19 @@ function parseInteger(value) {
 function normalizeName(value) {
   if (typeof value !== 'string') {
     return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeOptionalText(value) {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
   }
 
   const trimmed = value.trim();
@@ -137,6 +152,99 @@ export function validateUpdateAdvertiserDto(payload) {
     errors.push(buildError(null, 'Нужно указать поля для обновления'));
   }
 
+  return { dto, errors };
+}
+
+export function validateCreateAdvertiserDto(payload) {
+  const errors = [];
+  const source = payload ?? {};
+  const dto = {};
+
+  const normalizedName = normalizeName(source.name);
+  if (!normalizedName) {
+    errors.push(buildError('name', 'Название обязательно и должно быть строкой'));
+  } else {
+    dto.name = normalizedName;
+  }
+
+  const { value: email, errors: emailErrors } = validateEmail(source.email, {
+    allowMissing: false,
+  });
+  errors.push(...emailErrors);
+  if (email) {
+    dto.email = email;
+  }
+
+  const { value: status, errors: statusErrors } = validateStatus(source.status);
+  errors.push(...statusErrors);
+  if (status) {
+    dto.status = status;
+  }
+
+  if (Object.hasOwn(source, 'telegram')) {
+    const { value: telegram, errors: telegramErrors } = validateTelegramValue(
+      source.telegram,
+    );
+    errors.push(...telegramErrors);
+    if (telegram !== undefined) {
+      dto.telegram = telegram;
+    }
+  }
+
+  if (Object.hasOwn(source, 'internalNote') || Object.hasOwn(source, 'internal_note')) {
+    const rawValue = Object.hasOwn(source, 'internalNote')
+      ? source.internalNote
+      : source.internal_note;
+
+    if (rawValue !== null && typeof rawValue !== 'string') {
+      errors.push(
+        buildError('internalNote', 'internalNote должен быть строкой или null'),
+      );
+    } else {
+      dto.internalNote = normalizeOptionalText(rawValue);
+    }
+  }
+
+  if (Object.hasOwn(source, 'managerUserId') || Object.hasOwn(source, 'manager_id')) {
+    const {
+      value: managerUserId,
+      errors: managerErrors,
+    } = validateManagerUserId(
+      Object.hasOwn(source, 'managerUserId') ? source.managerUserId : source.manager_id,
+      {
+        allowNull: true,
+        field: Object.hasOwn(source, 'manager_id') ? 'manager_id' : 'managerUserId',
+      },
+    );
+    errors.push(...managerErrors);
+    if (managerUserId !== undefined) {
+      dto.managerUserId = managerUserId;
+    }
+  }
+
+  return { dto, errors };
+}
+
+export function validateUpdateAdvertiserInternalNoteDto(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (!Object.hasOwn(source, 'internalNote') && !Object.hasOwn(source, 'internal_note')) {
+    errors.push(buildError('internalNote', 'internalNote обязателен'));
+    return { dto, errors };
+  }
+
+  const rawValue = Object.hasOwn(source, 'internalNote')
+    ? source.internalNote
+    : source.internal_note;
+
+  if (rawValue !== null && typeof rawValue !== 'string') {
+    errors.push(buildError('internalNote', 'internalNote должен быть строкой или null'));
+    return { dto, errors };
+  }
+
+  dto.internalNote = normalizeOptionalText(rawValue);
   return { dto, errors };
 }
 

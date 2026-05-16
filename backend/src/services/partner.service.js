@@ -46,7 +46,16 @@ export async function getPartnerProfile(userId) {
       affiliateId: affiliate.id,
     },
     affiliate: {
-      ...affiliate,
+      id: affiliate.id,
+      publicId: affiliate.publicId ?? null,
+      publicIdNumber: affiliate.publicIdNumber ?? null,
+      name: affiliate.name,
+      email: affiliate.email,
+      status: affiliate.status,
+      telegram: affiliate.telegram ?? null,
+      createdAt: affiliate.createdAt,
+      updatedAt: affiliate.updatedAt,
+      questionnaireAnswers: [],
       manager: affiliate.manager
         ? {
             name: affiliate.manager.displayName ?? null,

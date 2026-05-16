@@ -67,6 +67,19 @@ function normalizeEmail(value) {
   return trimmed.length > 0 ? trimmed.toLowerCase() : null;
 }
 
+function normalizeOptionalText(value) {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -239,6 +252,43 @@ export function validateUpdateAffiliateDto(payload) {
   }
 
   return { dto, errors };
+}
+
+export function validateUpdateAffiliateInternalNoteDto(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (!Object.hasOwn(source, 'internalNote') && !Object.hasOwn(source, 'internal_note')) {
+    errors.push(buildError('internalNote', 'internalNote обязателен'));
+    return { dto, errors };
+  }
+
+  const rawValue = Object.hasOwn(source, 'internalNote')
+    ? source.internalNote
+    : source.internal_note;
+
+  if (rawValue !== null && typeof rawValue !== 'string') {
+    errors.push(buildError('internalNote', 'internalNote должен быть строкой или null'));
+    return { dto, errors };
+  }
+
+  dto.internalNote = normalizeOptionalText(rawValue);
+  return { dto, errors };
+}
+
+export function validateTelegramValue(value, { field = 'telegram' } = {}) {
+  if (value !== null && typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой или null`)],
+    };
+  }
+
+  return {
+    value: normalizeOptionalText(value),
+    errors: [],
+  };
 }
 
 export function validateAffiliateStatusFilter(value) {

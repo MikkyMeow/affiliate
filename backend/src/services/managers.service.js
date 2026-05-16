@@ -38,8 +38,8 @@ function getActorMeta(actor) {
   };
 }
 
-function generateTemporaryPassword() {
-  return `Mgr-${crypto.randomBytes(9).toString('base64url')}`;
+export function generateTemporaryPassword(prefix = 'Pwd') {
+  return `${prefix}-${crypto.randomBytes(9).toString('base64url')}`;
 }
 
 function isUniqueViolation(error) {
@@ -119,7 +119,7 @@ export async function requireAssignableManagerUser(id, { client } = {}) {
 export async function createManager(dto, { actor = null, requestId = null } = {}) {
   await ensureEmailIsUnique(dto.email);
 
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = generateTemporaryPassword('Mgr');
   const passwordHash = await bcrypt.hash(temporaryPassword, PASSWORD_SALT_ROUNDS);
 
   let createdUser;
@@ -227,7 +227,7 @@ export async function resetManagerPassword(
   { actor = null, requestId = null } = {},
 ) {
   const manager = await requireManagerUser(managerId);
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = generateTemporaryPassword('Mgr');
   const passwordHash = await bcrypt.hash(temporaryPassword, PASSWORD_SALT_ROUNDS);
 
   await updateUserPasswordById(manager.id, passwordHash);
