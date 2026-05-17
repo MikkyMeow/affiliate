@@ -1,5 +1,11 @@
-import { listClicks as listClicksModel } from '../../models/clicks.model.js';
-import { listConversions as listConversionsModel } from '../../models/conversions.model.js';
+import {
+  listClicks as listClicksModel,
+  listAdminClicks as listAdminClicksModel,
+} from '../../models/clicks.model.js';
+import {
+  listConversions as listConversionsModel,
+  listAdminConversions as listAdminConversionsModel,
+} from '../../models/conversions.model.js';
 import { getHourlyDashboardSeries } from '../../models/admin-dashboard.model.js';
 import {
   getStatsSummary as getRawStatsSummary,
@@ -172,6 +178,14 @@ export async function listClicks(filter, pagination) {
 
 export async function listConversions(filter, pagination) {
   return listConversionsModel(filter, pagination);
+}
+
+export async function listAdminClicks(filter, pagination) {
+  return listAdminClicksModel(filter, pagination);
+}
+
+export async function listAdminConversions(filter, pagination) {
+  return listAdminConversionsModel(filter, pagination);
 }
 
 export async function getSummary(filter = {}, options = {}) {

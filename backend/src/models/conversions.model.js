@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { COUNTED_CONVERSION_STATUSES } from '../constants/conversions.js';
+import { formatPublicId, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const conversionFields = `
   id,
@@ -31,6 +32,121 @@ const conversionListFields = `
   payout_rub AS "payoutRub",
   created_at AS "createdAt"
 `;
+
+const adminConversionListFields = `
+  c.id,
+  c.click_id AS "clickId",
+  c.offer_id AS "offerId",
+  o.public_id_number AS "offerPublicIdNumber",
+  o.title AS "offerName",
+  c.goal_id AS "goalId",
+  COALESCE(c.goal_name, og.name) AS "goalName",
+  c.affiliate_id AS "affiliateId",
+  a.public_id_number AS "affiliatePublicIdNumber",
+  a.name AS "affiliateName",
+  adv.id AS "advertiserId",
+  adv.public_id_number AS "advertiserPublicIdNumber",
+  adv.name AS "advertiserName",
+  c.status,
+  c.external_transaction_id AS "externalTransactionId",
+  c.revenue_amount AS "revenueAmount",
+  c.payout_amount AS "payoutAmount",
+  c.payout_rub AS "payoutRub",
+  c.created_at AS "createdAt"
+`;
+
+function addUuidOrPublicIdCondition({
+  value,
+  idColumn,
+  publicIdColumn,
+  conditions,
+  params,
+}) {
+  if (!value) {
+    return;
+  }
+
+  params.push(value.value);
+  conditions.push(
+    value.type === 'publicId'
+      ? `${publicIdColumn} = $${params.length}`
+      : `${idColumn} = $${params.length}`,
+  );
+}
+
+function addPartialMatchCondition({ value, column, conditions, params }) {
+  if (!value) {
+    return;
+  }
+
+  params.push(`%${value}%`);
+  conditions.push(`${column} ILIKE $${params.length}`);
+}
+
+function normalizeMoneyValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? Number(normalized.toFixed(2)) : null;
+}
+
+function normalizeAdminConversionRow(row) {
+  const revenue = normalizeMoneyValue(row.revenueAmount);
+  const payout = normalizeMoneyValue(row.payoutAmount ?? row.payoutRub);
+  const profit =
+    revenue !== null && payout !== null
+      ? Number((revenue - payout).toFixed(2))
+      : null;
+
+  return {
+    id: row.id,
+    clickId: row.clickId,
+    offerId: row.offerId,
+    offer: {
+      id: row.offerId,
+      publicId: formatPublicId(
+        PUBLIC_ID_PREFIXES.offer,
+        Number(row.offerPublicIdNumber ?? 0),
+      ),
+      name: row.offerName ?? null,
+    },
+    goalId: row.goalId ?? null,
+    goal: row.goalId
+      ? {
+          id: row.goalId,
+          name: row.goalName ?? null,
+        }
+      : null,
+    affiliateId: row.affiliateId,
+    affiliate: {
+      id: row.affiliateId,
+      publicId: formatPublicId(
+        PUBLIC_ID_PREFIXES.affiliate,
+        Number(row.affiliatePublicIdNumber ?? 0),
+      ),
+      name: row.affiliateName ?? null,
+    },
+    advertiserId: row.advertiserId ?? null,
+    advertiser: row.advertiserId
+      ? {
+          id: row.advertiserId,
+          publicId: formatPublicId(
+            PUBLIC_ID_PREFIXES.advertiser,
+            Number(row.advertiserPublicIdNumber ?? 0),
+          ),
+          name: row.advertiserName ?? null,
+        }
+      : null,
+    status: row.status,
+    externalTransactionId: row.externalTransactionId ?? null,
+    revenue,
+    payout,
+    profit,
+    createdAt: row.createdAt,
+  };
+}
 
 export async function createConversion({
   clickId,
@@ -246,6 +362,144 @@ export async function listConversions(
 
   return {
     items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
+}
+
+export async function listAdminConversions(
+  {
+    dateFrom,
+    dateTo,
+    offerId,
+    goalId,
+    affiliateId,
+    advertiserId,
+    status,
+    clickId,
+    conversionId,
+    externalTransactionId,
+    revenueMin,
+    revenueMax,
+    payoutMin,
+    payoutMax,
+  } = {},
+  { limit = 20, offset = 0, order = 'desc' } = {},
+) {
+  const conditions = [];
+  const params = [];
+  const normalizedOrder = typeof order === 'string' && order.toLowerCase() === 'asc'
+    ? 'ASC'
+    : 'DESC';
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`c.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`c.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  addUuidOrPublicIdCondition({
+    value: offerId,
+    idColumn: 'o.id',
+    publicIdColumn: 'o.public_id_number',
+    conditions,
+    params,
+  });
+
+  if (goalId) {
+    params.push(goalId);
+    conditions.push(`c.goal_id = $${params.length}`);
+  }
+
+  addUuidOrPublicIdCondition({
+    value: affiliateId,
+    idColumn: 'a.id',
+    publicIdColumn: 'a.public_id_number',
+    conditions,
+    params,
+  });
+
+  addUuidOrPublicIdCondition({
+    value: advertiserId,
+    idColumn: 'adv.id',
+    publicIdColumn: 'adv.public_id_number',
+    conditions,
+    params,
+  });
+
+  if (status) {
+    params.push(status);
+    conditions.push(`c.status = $${params.length}`);
+  }
+
+  if (conversionId) {
+    params.push(conversionId);
+    conditions.push(`c.id = $${params.length}`);
+  }
+
+  addPartialMatchCondition({ value: clickId, column: 'c.click_id', conditions, params });
+  addPartialMatchCondition({
+    value: externalTransactionId,
+    column: 'c.external_transaction_id',
+    conditions,
+    params,
+  });
+
+  if (revenueMin !== undefined) {
+    params.push(revenueMin);
+    conditions.push(`c.revenue_amount >= $${params.length}`);
+  }
+
+  if (revenueMax !== undefined) {
+    params.push(revenueMax);
+    conditions.push(`c.revenue_amount <= $${params.length}`);
+  }
+
+  if (payoutMin !== undefined) {
+    params.push(payoutMin);
+    conditions.push(`COALESCE(c.payout_amount, c.payout_rub) >= $${params.length}`);
+  }
+
+  if (payoutMax !== undefined) {
+    params.push(payoutMax);
+    conditions.push(`COALESCE(c.payout_amount, c.payout_rub) <= $${params.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const fromClause = `
+    FROM conversions AS c
+    INNER JOIN offers AS o ON o.id = c.offer_id
+    INNER JOIN affiliates AS a ON a.id = c.affiliate_id
+    LEFT JOIN advertisers AS adv ON adv.id = o.advertiser_id
+    LEFT JOIN offer_goals AS og ON og.id = c.goal_id
+  `;
+
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      ${fromClause}
+      ${whereClause};
+    `,
+    params,
+  );
+
+  const result = await pool.query(
+    `
+      SELECT ${adminConversionListFields}
+      ${fromClause}
+      ${whereClause}
+      ORDER BY c.created_at ${normalizedOrder}, c.id ${normalizedOrder}
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
+    `,
+    [...params, limit, offset],
+  );
+
+  return {
+    items: result.rows.map(normalizeAdminConversionRow),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }

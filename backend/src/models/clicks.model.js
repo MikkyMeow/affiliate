@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { formatPublicId, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const clickFields = `
   id,
@@ -42,6 +43,108 @@ const clickListFields = `
   redirect_outcome AS "redirectOutcome",
   destination_type AS "destinationType"
 `;
+
+const adminClickListFields = `
+  c.id,
+  c.click_id AS "clickId",
+  c.offer_id AS "offerId",
+  o.public_id_number AS "offerPublicIdNumber",
+  o.title AS "offerName",
+  c.affiliate_id AS "affiliateId",
+  a.public_id_number AS "affiliatePublicIdNumber",
+  a.name AS "affiliateName",
+  adv.id AS "advertiserId",
+  adv.public_id_number AS "advertiserPublicIdNumber",
+  adv.name AS "advertiserName",
+  c.country_code AS "countryCode",
+  c.redirect_outcome AS "redirectOutcome",
+  c.sub1,
+  c.sub2,
+  c.sub3,
+  c.sub4,
+  c.sub5,
+  c.ip,
+  c.device,
+  c.canonical_click_id AS "canonicalClickId",
+  c.is_duplicate AS "isDuplicate",
+  c.created_at AS "createdAt"
+`;
+
+function addUuidOrPublicIdCondition({
+  value,
+  idColumn,
+  publicIdColumn,
+  conditions,
+  params,
+}) {
+  if (!value) {
+    return;
+  }
+
+  params.push(value.value);
+  conditions.push(
+    value.type === 'publicId'
+      ? `${publicIdColumn} = $${params.length}`
+      : `${idColumn} = $${params.length}`,
+  );
+}
+
+function addPartialMatchCondition({ value, column, conditions, params }) {
+  if (!value) {
+    return;
+  }
+
+  params.push(`%${value}%`);
+  conditions.push(`${column} ILIKE $${params.length}`);
+}
+
+function normalizeAdminClickRow(row) {
+  return {
+    id: row.id,
+    clickId: row.clickId,
+    offerId: row.offerId,
+    offer: {
+      id: row.offerId,
+      publicId: formatPublicId(
+        PUBLIC_ID_PREFIXES.offer,
+        Number(row.offerPublicIdNumber ?? 0),
+      ),
+      name: row.offerName ?? null,
+    },
+    affiliateId: row.affiliateId,
+    affiliate: {
+      id: row.affiliateId,
+      publicId: formatPublicId(
+        PUBLIC_ID_PREFIXES.affiliate,
+        Number(row.affiliatePublicIdNumber ?? 0),
+      ),
+      name: row.affiliateName ?? null,
+    },
+    advertiserId: row.advertiserId ?? null,
+    advertiser: row.advertiserId
+      ? {
+          id: row.advertiserId,
+          publicId: formatPublicId(
+            PUBLIC_ID_PREFIXES.advertiser,
+            Number(row.advertiserPublicIdNumber ?? 0),
+          ),
+          name: row.advertiserName ?? null,
+        }
+      : null,
+    countryCode: row.countryCode ?? null,
+    redirectOutcome: row.redirectOutcome ?? null,
+    sub1: row.sub1 ?? null,
+    sub2: row.sub2 ?? null,
+    sub3: row.sub3 ?? null,
+    sub4: row.sub4 ?? null,
+    sub5: row.sub5 ?? null,
+    ip: row.ip ?? null,
+    device: row.device ?? null,
+    canonicalClickId: row.canonicalClickId ?? null,
+    isDuplicate: Boolean(row.isDuplicate),
+    createdAt: row.createdAt,
+  };
+}
 
 export async function createClick(
   {
@@ -203,6 +306,118 @@ export async function listClicks(
 
   return {
     items: result.rows,
+    total: totalResult.rows[0]?.count ?? 0,
+  };
+}
+
+export async function listAdminClicks(
+  {
+    dateFrom,
+    dateTo,
+    offerId,
+    affiliateId,
+    advertiserId,
+    countryCode,
+    redirectOutcome,
+    clickId,
+    sub1,
+    sub2,
+    sub3,
+    sub4,
+    sub5,
+    ip,
+  } = {},
+  { limit = 20, offset = 0, order = 'desc' } = {},
+) {
+  const conditions = [];
+  const params = [];
+  const normalizedOrder = typeof order === 'string' && order.toLowerCase() === 'asc'
+    ? 'ASC'
+    : 'DESC';
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`c.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`c.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  addUuidOrPublicIdCondition({
+    value: offerId,
+    idColumn: 'o.id',
+    publicIdColumn: 'o.public_id_number',
+    conditions,
+    params,
+  });
+
+  addUuidOrPublicIdCondition({
+    value: affiliateId,
+    idColumn: 'a.id',
+    publicIdColumn: 'a.public_id_number',
+    conditions,
+    params,
+  });
+
+  addUuidOrPublicIdCondition({
+    value: advertiserId,
+    idColumn: 'adv.id',
+    publicIdColumn: 'adv.public_id_number',
+    conditions,
+    params,
+  });
+
+  if (countryCode) {
+    params.push(countryCode);
+    conditions.push(`UPPER(c.country_code) = UPPER($${params.length})`);
+  }
+
+  if (redirectOutcome) {
+    params.push(redirectOutcome);
+    conditions.push(`c.redirect_outcome = $${params.length}`);
+  }
+
+  addPartialMatchCondition({ value: clickId, column: 'c.click_id', conditions, params });
+  addPartialMatchCondition({ value: sub1, column: 'c.sub1', conditions, params });
+  addPartialMatchCondition({ value: sub2, column: 'c.sub2', conditions, params });
+  addPartialMatchCondition({ value: sub3, column: 'c.sub3', conditions, params });
+  addPartialMatchCondition({ value: sub4, column: 'c.sub4', conditions, params });
+  addPartialMatchCondition({ value: sub5, column: 'c.sub5', conditions, params });
+  addPartialMatchCondition({ value: ip, column: 'c.ip', conditions, params });
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const fromClause = `
+    FROM clicks AS c
+    INNER JOIN offers AS o ON o.id = c.offer_id
+    INNER JOIN affiliates AS a ON a.id = c.affiliate_id
+    LEFT JOIN advertisers AS adv ON adv.id = o.advertiser_id
+  `;
+
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      ${fromClause}
+      ${whereClause};
+    `,
+    params,
+  );
+
+  const result = await pool.query(
+    `
+      SELECT ${adminClickListFields}
+      ${fromClause}
+      ${whereClause}
+      ORDER BY c.created_at ${normalizedOrder}, c.id ${normalizedOrder}
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2};
+    `,
+    [...params, limit, offset],
+  );
+
+  return {
+    items: result.rows.map(normalizeAdminClickRow),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }

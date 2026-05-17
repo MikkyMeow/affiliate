@@ -3,50 +3,180 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { apiFetch, type ApiError } from '@/lib/api';
+import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { InlineAlert } from '@/components/InlineAlert';
+import { useAuth } from '@/context/AuthContext';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import {
+  CLICK_RESULT_OPTIONS,
+  type LookupOption,
+  type PaginationMeta,
+  type TransactionFilters,
+  type TransactionItem,
+  fetchTransactions,
+} from '@/lib/admin-lists';
+import { apiFetch, type ApiError } from '@/lib/api';
+import { COUNTRY_OPTIONS, formatCountryLabel } from '@/lib/countries';
 
-type Click = {
-  clickId: string;
-  offerId: string | null;
-  affiliateId: string | null;
-  sub1: string | null;
-  device: string | null;
-  createdAt: string;
-  ip: string | null;
-  canonicalClickId: string;
-  isDuplicate: boolean;
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+type OfferLookupResponse = {
+  id: string;
+  publicId: string | null;
+  title: string;
 };
 
-type ClicksMeta = {
-  total?: number | null;
-  limit?: number | null;
-  offset?: number | null;
-} | null;
+type NamedLookupResponse = {
+  id: string;
+  publicId: string | null;
+  name: string;
+};
 
-const PAGE_SIZE = 20;
+type TransactionFilterForm = {
+  dateFrom: string;
+  dateTo: string;
+  offerId: string;
+  affiliateId: string;
+  advertiserId: string;
+  countryCode: string;
+  redirectOutcome: string;
+  clickId: string;
+  sub1: string;
+  sub2: string;
+  sub3: string;
+  sub4: string;
+  sub5: string;
+  ip: string;
+  limit: string;
+};
+
+function parsePositiveInteger(
+  value: string | null | undefined,
+  fallback: number,
+) {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function buildFormFromSearchParams(
+  searchParams: ReadonlyURLSearchParams | null,
+): TransactionFilterForm {
+  return {
+    dateFrom: searchParams?.get('dateFrom') ?? '',
+    dateTo: searchParams?.get('dateTo') ?? '',
+    offerId: searchParams?.get('offerId') ?? '',
+    affiliateId: searchParams?.get('affiliateId') ?? '',
+    advertiserId: searchParams?.get('advertiserId') ?? '',
+    countryCode: searchParams?.get('countryCode') ?? '',
+    redirectOutcome: searchParams?.get('redirectOutcome') ?? '',
+    clickId: searchParams?.get('clickId') ?? '',
+    sub1: searchParams?.get('sub1') ?? '',
+    sub2: searchParams?.get('sub2') ?? '',
+    sub3: searchParams?.get('sub3') ?? '',
+    sub4: searchParams?.get('sub4') ?? '',
+    sub5: searchParams?.get('sub5') ?? '',
+    ip: searchParams?.get('ip') ?? '',
+    limit: String(
+      parsePositiveInteger(searchParams?.get('limit'), DEFAULT_LIMIT),
+    ),
+  };
+}
+
+function buildQueryParamsFromForm(
+  form: TransactionFilterForm,
+  { page }: { page?: number } = {},
+) {
+  const params = new URLSearchParams();
+  const normalizedLimit = parsePositiveInteger(form.limit, DEFAULT_LIMIT);
+
+  if (page && page > 1) {
+    params.set('page', String(page));
+  }
+
+  if (normalizedLimit !== DEFAULT_LIMIT) {
+    params.set('limit', String(normalizedLimit));
+  }
+
+  const entries = [
+    ['dateFrom', form.dateFrom],
+    ['dateTo', form.dateTo],
+    ['offerId', form.offerId],
+    ['affiliateId', form.affiliateId],
+    ['advertiserId', form.advertiserId],
+    ['countryCode', form.countryCode.toUpperCase()],
+    ['redirectOutcome', form.redirectOutcome],
+    ['clickId', form.clickId],
+    ['sub1', form.sub1],
+    ['sub2', form.sub2],
+    ['sub3', form.sub3],
+    ['sub4', form.sub4],
+    ['sub5', form.sub5],
+    ['ip', form.ip],
+  ] as const;
+
+  for (const [key, value] of entries) {
+    const normalized = value.trim();
+    if (normalized) {
+      params.set(key, normalized);
+    }
+  }
+
+  return params;
+}
+
+function mapOfferLookup(item: OfferLookupResponse): LookupOption {
+  return {
+    id: item.id,
+    publicId: item.publicId ?? null,
+    name: item.title,
+  };
+}
+
+function mapNamedLookup(item: NamedLookupResponse): LookupOption {
+  return {
+    id: item.id,
+    publicId: item.publicId ?? null,
+    name: item.name,
+  };
+}
+
+function formatLookupLabel(item: LookupOption) {
+  return item.publicId ? `${item.publicId} · ${item.name}` : item.name;
+}
 
 export default function ClicksPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [clicks, setClicks] = useState<Click[]>([]);
+  const [filters, setFilters] = useState<TransactionFilterForm>(() =>
+    buildFormFromSearchParams(searchParams),
+  );
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>({
+    total: 0,
+    limit: DEFAULT_LIMIT,
+    offset: 0,
+    page: DEFAULT_PAGE,
+    totalPages: 1,
+  });
+  const [offers, setOffers] = useState<LookupOption[]>([]);
+  const [affiliates, setAffiliates] = useState<LookupOption[]>([]);
+  const [advertisers, setAdvertisers] = useState<LookupOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lookupsLoading, setLookupsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [lookupsError, setLookupsError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Транзакции';
   }, []);
 
-  const pageParam = searchParams?.get('page') ?? '1';
-  const parsed = Number.parseInt(pageParam, 10);
-  const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-  const offset = (page - 1) * PAGE_SIZE;
+  useEffect(() => {
+    setFilters(buildFormFromSearchParams(searchParams));
+  }, [searchParams]);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? '/dashboard/clicks');
@@ -55,6 +185,38 @@ export default function ClicksPage() {
       register: `/auth/register?next=${next}`,
     };
   }, [pathname]);
+
+  const page = useMemo(
+    () => parsePositiveInteger(searchParams?.get('page'), DEFAULT_PAGE),
+    [searchParams],
+  );
+
+  const limit = useMemo(
+    () => parsePositiveInteger(searchParams?.get('limit'), DEFAULT_LIMIT),
+    [searchParams],
+  );
+
+  const activeFilters = useMemo<TransactionFilters>(
+    () => ({
+      page,
+      limit,
+      dateFrom: searchParams?.get('dateFrom') ?? undefined,
+      dateTo: searchParams?.get('dateTo') ?? undefined,
+      offerId: searchParams?.get('offerId') ?? undefined,
+      affiliateId: searchParams?.get('affiliateId') ?? undefined,
+      advertiserId: searchParams?.get('advertiserId') ?? undefined,
+      countryCode: searchParams?.get('countryCode') ?? undefined,
+      redirectOutcome: searchParams?.get('redirectOutcome') ?? undefined,
+      clickId: searchParams?.get('clickId') ?? undefined,
+      sub1: searchParams?.get('sub1') ?? undefined,
+      sub2: searchParams?.get('sub2') ?? undefined,
+      sub3: searchParams?.get('sub3') ?? undefined,
+      sub4: searchParams?.get('sub4') ?? undefined,
+      sub5: searchParams?.get('sub5') ?? undefined,
+      ip: searchParams?.get('ip') ?? undefined,
+    }),
+    [limit, page, searchParams],
+  );
 
   const formatter = useMemo(
     () =>
@@ -70,90 +232,158 @@ export default function ClicksPage() {
   );
 
   useEffect(() => {
-    if (authLoading || !accessToken) {
+    if (authLoading || !accessToken || !canAccessAdminArea(user)) {
       return;
     }
 
     let cancelled = false;
+    setLookupsLoading(true);
+    setLookupsError(null);
 
-    const fetchClicks = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const { data, meta } = await apiFetch<Click[], ClicksMeta>(
-          `/clicks?limit=${PAGE_SIZE}&offset=${offset}`,
-          {
-            token: accessToken,
-            withMeta: true,
-          },
-        );
-
+    Promise.allSettled([
+      apiFetch<OfferLookupResponse[]>('/offers?limit=100&offset=0', {
+        token: accessToken,
+      }),
+      apiFetch<NamedLookupResponse[]>('/affiliates?limit=100&offset=0', {
+        token: accessToken,
+      }),
+      apiFetch<NamedLookupResponse[]>('/advertisers?limit=100&offset=0', {
+        token: accessToken,
+      }),
+    ])
+      .then(([offersResult, affiliatesResult, advertisersResult]) => {
         if (cancelled) {
           return;
         }
 
-        setClicks(data);
-        const resolvedTotal =
-          meta && typeof meta === 'object' && typeof meta.total === 'number'
-            ? meta.total
-            : data.length;
-        const resolvedLimit =
-          meta && typeof meta === 'object' && typeof meta.limit === 'number'
-            ? meta.limit
-            : PAGE_SIZE;
+        if (offersResult.status === 'fulfilled') {
+          setOffers(offersResult.value.map(mapOfferLookup));
+        } else {
+          setOffers([]);
+        }
 
-        setTotal(resolvedTotal);
-        setLimit(resolvedLimit);
-      } catch (fetchError) {
+        if (affiliatesResult.status === 'fulfilled') {
+          setAffiliates(affiliatesResult.value.map(mapNamedLookup));
+        } else {
+          setAffiliates([]);
+        }
+
+        if (advertisersResult.status === 'fulfilled') {
+          setAdvertisers(advertisersResult.value.map(mapNamedLookup));
+        } else {
+          setAdvertisers([]);
+        }
+
+        const lookupFailures = [
+          offersResult,
+          affiliatesResult,
+          advertisersResult,
+        ].filter((result) => result.status === 'rejected');
+
+        if (lookupFailures.length > 0) {
+          setLookupsError('Не удалось загрузить часть справочников фильтров.');
+        }
+      })
+      .finally(() => {
         if (cancelled) {
           return;
         }
-        const apiError = fetchError as ApiError;
-        setError(apiError.message ?? 'Не удалось загрузить транзакции');
-        setClicks([]);
-        setTotal(0);
-      } finally {
-        if (cancelled) {
-          return;
-        }
-        setLoading(false);
-      }
-    };
-
-    void fetchClicks();
+        setLookupsLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, offset]);
+  }, [accessToken, authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading || !accessToken || !canAccessAdminArea(user)) {
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchTransactions(accessToken, activeFilters)
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        setTransactions(response.items);
+        setMeta(response.meta);
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+
+        const apiError = fetchError as ApiError;
+        setError(apiError.message ?? 'Не удалось загрузить транзакции');
+        setTransactions([]);
+        setMeta({
+          total: 0,
+          limit,
+          offset: Math.max(page - 1, 0) * limit,
+          page,
+          totalPages: 1,
+        });
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, activeFilters, authLoading, limit, page, user]);
+
+  const navigateWithParams = useCallback(
+    (params: URLSearchParams) => {
+      const query = params.toString();
+      const targetPath = pathname ?? '/dashboard/clicks';
+      router.push(query ? `${targetPath}?${query}` : targetPath);
+    },
+    [pathname, router],
+  );
+
+  const handleApplyFilters = useCallback(() => {
+    navigateWithParams(buildQueryParamsFromForm(filters));
+  }, [filters, navigateWithParams]);
+
+  const handleResetFilters = useCallback(() => {
+    setFilters(buildFormFromSearchParams(null));
+    navigateWithParams(new URLSearchParams());
+  }, [navigateWithParams]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
-      if (nextPage < 1 || nextPage === page) {
+      if (nextPage < 1 || nextPage === meta.page) {
         return;
       }
 
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (nextPage === 1) {
-        params.delete('page');
-      } else {
-        params.set('page', String(nextPage));
-      }
-
-      const qs = params.toString();
-      const targetPath = pathname ?? '/dashboard/clicks';
-      router.push(qs ? `${targetPath}?${qs}` : targetPath);
+      navigateWithParams(buildQueryParamsFromForm(filters, { page: nextPage }));
     },
-    [page, pathname, router, searchParams],
+    [filters, meta.page, navigateWithParams],
   );
 
-  const currentLimit = limit > 0 ? limit : PAGE_SIZE;
-  const totalPages = Math.max(1, Math.ceil((total || 0) / currentLimit));
-  const canGoPrev = page > 1;
-  const canGoNext = page < totalPages;
-  const listStart = total === 0 ? 0 : offset + 1;
-  const listEnd = Math.min(total, offset + clicks.length);
+  const handleLimitChange = useCallback(
+    (nextLimit: string) => {
+      const nextFilters = { ...filters, limit: nextLimit };
+      setFilters(nextFilters);
+      navigateWithParams(buildQueryParamsFromForm(nextFilters));
+    },
+    [filters, navigateWithParams],
+  );
+
+  const listStart = meta.total === 0 ? 0 : meta.offset + 1;
+  const listEnd = Math.min(meta.total, meta.offset + transactions.length);
+  const canGoPrev = meta.page > 1;
+  const canGoNext = meta.page < meta.totalPages;
 
   if (authLoading) {
     return (
@@ -210,23 +440,249 @@ export default function ClicksPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Транзакции
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Последние события ядра: clickId и основные параметры для дебага.
+          Фильтры и пагинация выполняются на бэкенде. URL сохраняет текущее состояние списка.
         </p>
       </div>
 
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Фильтры
+            </h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              При смене фильтров список начинается с первой страницы.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleApplyFilters}
+              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            >
+              Применить
+            </button>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+
+        {lookupsError ? (
+          <div className="mb-4">
+            <InlineAlert variant="error">{lookupsError}</InlineAlert>
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Дата от
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  dateFrom: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            />
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Дата до
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  dateTo: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            />
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Оффер
+            <select
+              value={filters.offerId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  offerId: event.target.value,
+                }))
+              }
+              disabled={lookupsLoading}
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {offers.map((offer) => (
+                <option key={offer.id} value={offer.id}>
+                  {formatLookupLabel(offer)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Партнёр
+            <select
+              value={filters.affiliateId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  affiliateId: event.target.value,
+                }))
+              }
+              disabled={lookupsLoading}
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {affiliates.map((affiliate) => (
+                <option key={affiliate.id} value={affiliate.id}>
+                  {formatLookupLabel(affiliate)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Рекламодатель
+            <select
+              value={filters.advertiserId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  advertiserId: event.target.value,
+                }))
+              }
+              disabled={lookupsLoading}
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {advertisers.map((advertiser) => (
+                <option key={advertiser.id} value={advertiser.id}>
+                  {formatLookupLabel(advertiser)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Country
+            <select
+              value={filters.countryCode}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  countryCode: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {COUNTRY_OPTIONS.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {formatCountryLabel(country.code)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Result
+            <select
+              value={filters.redirectOutcome}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  redirectOutcome: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {CLICK_RESULT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Click ID
+            <input
+              type="text"
+              value={filters.clickId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  clickId: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            />
+          </label>
+
+          {['sub1', 'sub2', 'sub3', 'sub4', 'sub5', 'ip'].map((field) => (
+            <label
+              key={field}
+              className="text-sm font-medium text-zinc-700 capitalize dark:text-zinc-200"
+            >
+              {field === 'ip' ? 'IP' : field.toUpperCase()}
+              <input
+                type="text"
+                value={filters[field as keyof TransactionFilterForm]}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    [field]: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex flex-wrap items-center justify-between border-b border-zinc-200 px-6 py-4 text-sm text-zinc-500 dark:border-zinc-800">
-          <span>{loading ? 'Загружаем…' : `Всего: ${total}`}</span>
-          <span>
-            {listStart}-{listEnd} / {total}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-6 py-4 text-sm text-zinc-500 dark:border-zinc-800">
+          <span>{loading ? 'Загружаем…' : `Всего: ${meta.total}`}</span>
+          <div className="flex items-center gap-3">
+            <span>
+              {listStart}-{listEnd} / {meta.total}
+            </span>
+            <label className="flex items-center gap-2">
+              <span>На странице</span>
+              <select
+                value={filters.limit}
+                onChange={(event) => handleLimitChange(event.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              >
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={String(option)}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         {error ? (
@@ -235,64 +691,96 @@ export default function ClicksPage() {
               {error}
             </InlineAlert>
           </div>
-        ) : clicks.length === 0 ? (
+        ) : loading && transactions.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет транзакций.
+            Загружаем транзакции…
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+            По текущим фильтрам транзакции не найдены.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
-                  <th className="px-6 py-3 font-medium">clickId</th>
-                  <th className="px-6 py-3 font-medium">offerId</th>
-                  <th className="px-6 py-3 font-medium">affiliateId</th>
-                  <th className="px-6 py-3 font-medium">sub1</th>
-                  <th className="px-6 py-3 font-medium">device</th>
-                  <th className="px-6 py-3 font-medium">createdAt</th>
-                  <th className="px-6 py-3 font-medium">ip</th>
+                  <th className="px-6 py-3 font-medium">Дата</th>
+                  <th className="px-6 py-3 font-medium">Click ID</th>
+                  <th className="px-6 py-3 font-medium">Оффер</th>
+                  <th className="px-6 py-3 font-medium">Партнёр</th>
+                  <th className="px-6 py-3 font-medium">Рекламодатель</th>
+                  <th className="px-6 py-3 font-medium">Country</th>
+                  <th className="px-6 py-3 font-medium">Result</th>
+                  <th className="px-6 py-3 font-medium">Sub IDs</th>
+                  <th className="px-6 py-3 font-medium">IP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {clicks.map((click) => (
+                {transactions.map((transaction) => (
                   <tr
-                    key={click.clickId}
-                    id={`click-${click.clickId}`}
+                    key={transaction.id}
                     className="text-zinc-900 hover:bg-zinc-50 dark:text-zinc-100 dark:hover:bg-zinc-900/40"
                   >
+                    <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                      {formatter.format(new Date(transaction.createdAt))}
+                    </td>
                     <td className="px-6 py-4">
-                      <div className="font-mono text-xs text-zinc-600 dark:text-zinc-300">
-                        {click.clickId}
+                      <div className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
+                        {transaction.clickId}
                       </div>
-                      {click.isDuplicate ? (
-                        <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
-                          Дубликат →
-                          <Link
-                            href={`#click-${click.canonicalClickId}`}
-                            className="underline-offset-2 hover:underline"
-                          >
-                            {click.canonicalClickId}
-                          </Link>
+                      {transaction.isDuplicate && transaction.canonicalClickId ? (
+                        <div className="mt-2 text-xs text-amber-700 dark:text-amber-200">
+                          Duplicate of {transaction.canonicalClickId}
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {click.offerId ?? '—'}
+                    <td className="px-6 py-4">
+                      <div className="font-medium">
+                        {transaction.offer.publicId ?? '—'}
+                      </div>
+                      <div className="text-zinc-500 dark:text-zinc-400">
+                        {transaction.offer.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium">
+                        {transaction.affiliate.publicId ?? '—'}
+                      </div>
+                      <div className="text-zinc-500 dark:text-zinc-400">
+                        {transaction.affiliate.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {transaction.advertiser ? (
+                        <>
+                          <div className="font-medium">
+                            {transaction.advertiser.publicId ?? '—'}
+                          </div>
+                          <div className="text-zinc-500 dark:text-zinc-400">
+                            {transaction.advertiser.name}
+                          </div>
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {click.affiliateId ?? '—'}
+                      {transaction.countryCode
+                        ? formatCountryLabel(transaction.countryCode)
+                        : '—'}
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {click.sub1 ?? '—'}
+                      {transaction.redirectOutcome ?? '—'}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-zinc-600 dark:text-zinc-300">
+                      <div>sub1: {transaction.sub1 ?? '—'}</div>
+                      <div>sub2: {transaction.sub2 ?? '—'}</div>
+                      <div>sub3: {transaction.sub3 ?? '—'}</div>
+                      <div>sub4: {transaction.sub4 ?? '—'}</div>
+                      <div>sub5: {transaction.sub5 ?? '—'}</div>
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {click.device ?? '—'}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
-                      {formatter.format(new Date(click.createdAt))}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {click.ip ?? '—'}
+                      {transaction.ip ?? '—'}
                     </td>
                   </tr>
                 ))}
@@ -304,12 +792,12 @@ export default function ClicksPage() {
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600 dark:text-zinc-300">
         <span>
-          Страница {page} из {totalPages}
+          Страница {meta.page} из {Math.max(meta.totalPages, 1)}
         </span>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => handlePageChange(page - 1)}
+            onClick={() => handlePageChange(meta.page - 1)}
             disabled={!canGoPrev || loading}
             className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
@@ -317,7 +805,7 @@ export default function ClicksPage() {
           </button>
           <button
             type="button"
-            onClick={() => handlePageChange(page + 1)}
+            onClick={() => handlePageChange(meta.page + 1)}
             disabled={!canGoNext || loading}
             className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >

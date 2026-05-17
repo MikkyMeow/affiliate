@@ -26,18 +26,10 @@ import {
 } from './click-dedup.service.js';
 import { getPartnerOfferVisibilityState } from '../offer-visibility.service.js';
 import { canPartnerAccessOffer } from '../offers/affiliate-visibility.js';
-
-const DESTINATION_TYPES = {
-  TARGET: 'target',
-  FALLBACK: 'fallback',
-  INTERNAL: 'internal_unavailable',
-};
-
-const REDIRECT_OUTCOMES = {
-  TARGET: 'allowed_target_redirect',
-  FALLBACK: 'fallback_redirect',
-  INTERNAL: 'internal_unavailable_redirect',
-};
+import {
+  CLICK_DESTINATION_TYPES as DESTINATION_TYPES,
+  CLICK_REDIRECT_OUTCOMES as REDIRECT_OUTCOMES,
+} from '../../constants/clicks.js';
 
 const DEFAULT_INTERNAL_FALLBACK_URL =
   process.env.TRACKING_INTERNAL_FALLBACK_URL?.trim() || '/track/unavailable';
@@ -120,12 +112,12 @@ function resolveRedirectDecision({
   const strict = Boolean(offer?.targetingStrict);
 
   if (!strict || geoAccess.isAllowed) {
-    return {
-      redirectUrl: targetRedirectUrl,
-      destinationType: DESTINATION_TYPES.TARGET,
-      outcome: REDIRECT_OUTCOMES.TARGET,
-      reason: null,
-    };
+      return {
+        redirectUrl: targetRedirectUrl,
+        destinationType: DESTINATION_TYPES.TARGET,
+        outcome: REDIRECT_OUTCOMES.ALLOWED_TARGET_REDIRECT,
+        reason: null,
+      };
   }
 
   const denyReason = geoAccess.denyReason ?? GEO_DENY_REASONS.UNKNOWN_COUNTRY;
@@ -135,7 +127,7 @@ function resolveRedirectDecision({
     return {
       redirectUrl: fallbackUrl,
       destinationType: DESTINATION_TYPES.FALLBACK,
-      outcome: REDIRECT_OUTCOMES.FALLBACK,
+      outcome: REDIRECT_OUTCOMES.FALLBACK_REDIRECT,
       reason: denyReason,
     };
   }
@@ -145,8 +137,8 @@ function resolveRedirectDecision({
 
   return {
     redirectUrl: resolvedInternalFallback,
-    destinationType: DESTINATION_TYPES.INTERNAL,
-    outcome: REDIRECT_OUTCOMES.INTERNAL,
+    destinationType: DESTINATION_TYPES.INTERNAL_UNAVAILABLE,
+    outcome: REDIRECT_OUTCOMES.INTERNAL_UNAVAILABLE_REDIRECT,
     reason: denyReason,
   };
 }

@@ -4,7 +4,7 @@ import { authorizeAdminArea } from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import { listConversions } from '../services/stats/stats.service.js';
+import { listAdminConversions } from '../services/stats/stats.service.js';
 import { validateConversionsListFilters } from '../validators/stats.js';
 import { validateUuid } from '../validators/offers.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
@@ -12,6 +12,23 @@ import { updateConversionStatus as updateConversionStatusService } from '../serv
 import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
+
+function buildPaginationMeta(total, pagination) {
+  const limit = pagination.limit ?? 20;
+  const offset = pagination.offset ?? 0;
+  const page =
+    pagination.page ??
+    Math.floor(offset / Math.max(limit, 1)) + 1;
+  const totalPages = total > 0 ? Math.ceil(total / Math.max(limit, 1)) : 1;
+
+  return {
+    total,
+    limit,
+    offset,
+    page,
+    totalPages,
+  };
+}
 
 router.use(authenticate);
 router.use(authorizeAdminArea);
@@ -32,14 +49,10 @@ router.get(
       );
     }
 
-    const { items, total } = await listConversions(filter, pagination);
+    const { items, total } = await listAdminConversions(filter, pagination);
 
     return sendSuccess(res, items, {
-      meta: {
-        total,
-        limit: pagination.limit,
-        offset: pagination.offset,
-      },
+      meta: buildPaginationMeta(total, pagination),
     });
   }),
 );
