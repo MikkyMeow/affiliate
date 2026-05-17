@@ -146,6 +146,18 @@ function formatLookupLabel(item: LookupOption) {
   return item.publicId ? `${item.publicId} · ${item.name}` : item.name;
 }
 
+function renderSourceBadge(source: string) {
+  if (source !== 'manual') {
+    return null;
+  }
+
+  return (
+    <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+      Manual
+    </span>
+  );
+}
+
 export default function ClicksPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
@@ -728,6 +740,7 @@ export default function ClicksPage() {
                       <div className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
                         {transaction.clickId}
                       </div>
+                      {renderSourceBadge(transaction.source)}
                       {transaction.isDuplicate && transaction.canonicalClickId ? (
                         <div className="mt-2 text-xs text-amber-700 dark:text-amber-200">
                           Duplicate of {transaction.canonicalClickId}

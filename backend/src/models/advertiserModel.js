@@ -136,6 +136,28 @@ export async function findAdvertiserById(id, { client } = {}) {
   return attachPublicId(normalizeAdvertiser(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.advertiser);
 }
 
+export async function findAdvertiserByPublicIdNumber(
+  publicIdNumber,
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${advertiserFields}
+      FROM advertisers AS adv
+      LEFT JOIN users AS u ON u.id = adv.user_id
+      LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
+      WHERE adv.public_id_number = $1;
+    `,
+    [publicIdNumber],
+  );
+
+  return attachPublicId(
+    normalizeAdvertiser(result.rows[0] ?? null),
+    PUBLIC_ID_PREFIXES.advertiser,
+  );
+}
+
 export async function findAdvertiserByUserId(userId, { client } = {}) {
   const queryable = getQueryable(client);
   const result = await queryable.query(

@@ -16,6 +16,7 @@ const ADMIN_LINKS = [
   { href: "/dashboard", label: "Главная" },
   { href: "/dashboard/clicks", label: "Транзакции" },
   { href: "/dashboard/conversions", label: "Конверсии" },
+  { href: "/dashboard/adjustments", label: "Корректировки" },
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
   { href: "/dashboard/affiliates", label: "Партнёры" },
   { href: "/dashboard/offers", label: "Офферы" },

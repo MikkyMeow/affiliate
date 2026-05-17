@@ -6,6 +6,10 @@ const clickFields = `
   click_id AS "clickId",
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
+  goal_id AS "goalId",
+  source,
+  manual_adjustment_batch_id AS "manualAdjustmentBatchId",
+  created_by AS "createdBy",
   created_at AS "createdAt",
   ip,
   user_agent AS "userAgent",
@@ -31,6 +35,8 @@ const clickListFields = `
   click_id AS "clickId",
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
+  goal_id AS "goalId",
+  source,
   created_at AS "createdAt",
   ip,
   device,
@@ -56,6 +62,7 @@ const adminClickListFields = `
   adv.id AS "advertiserId",
   adv.public_id_number AS "advertiserPublicIdNumber",
   adv.name AS "advertiserName",
+  c.source,
   c.country_code AS "countryCode",
   c.redirect_outcome AS "redirectOutcome",
   c.sub1,
@@ -131,6 +138,7 @@ function normalizeAdminClickRow(row) {
           name: row.advertiserName ?? null,
         }
       : null,
+    source: row.source ?? 'tracking',
     countryCode: row.countryCode ?? null,
     redirectOutcome: row.redirectOutcome ?? null,
     sub1: row.sub1 ?? null,
@@ -151,6 +159,7 @@ export async function createClick(
     clickId,
     offerId,
     affiliateId,
+    goalId = null,
     ip = null,
     userAgent = null,
     device = null,
@@ -169,6 +178,10 @@ export async function createClick(
     redirectOutcome = null,
     redirectReason = null,
     destinationType = null,
+    source = 'tracking',
+    manualAdjustmentBatchId = null,
+    createdBy = null,
+    createdAt = null,
   },
   { client = pool } = {},
 ) {
@@ -178,6 +191,7 @@ export async function createClick(
         click_id,
         offer_id,
         affiliate_id,
+        goal_id,
         ip,
         user_agent,
         device,
@@ -195,7 +209,11 @@ export async function createClick(
         targeting_strict,
         redirect_outcome,
         redirect_reason,
-        destination_type
+        destination_type,
+        source,
+        manual_adjustment_batch_id,
+        created_by,
+        created_at
       )
       VALUES (
         $1,
@@ -218,7 +236,12 @@ export async function createClick(
         $18,
         $19,
         $20,
-        $21
+        $21,
+        $22,
+        $23,
+        $24,
+        $25,
+        COALESCE($26, NOW())
       )
       RETURNING ${clickFields};
     `,
@@ -226,6 +249,7 @@ export async function createClick(
       clickId,
       offerId,
       affiliateId,
+      goalId,
       ip,
       userAgent,
       device,
@@ -244,6 +268,10 @@ export async function createClick(
       redirectOutcome,
       redirectReason,
       destinationType,
+      source,
+      manualAdjustmentBatchId,
+      createdBy,
+      createdAt,
     ],
   );
 

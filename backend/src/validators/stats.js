@@ -1,11 +1,10 @@
 import { CLICK_REDIRECT_OUTCOME_VALUES } from '../constants/clicks.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
-import { PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import { parsePublicIdNumber, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const publicIdNumberRegex = /^\d+$/;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
@@ -354,25 +353,6 @@ function validateNonNegativeNumber(value, field) {
   return { value: Number(parsed.toFixed(2)), errors: [] };
 }
 
-function parsePublicId(value, prefix) {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.trim().toUpperCase();
-  if (!normalized.startsWith(prefix.toUpperCase())) {
-    return null;
-  }
-
-  const suffix = normalized.slice(prefix.length);
-  if (!publicIdNumberRegex.test(suffix)) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(suffix, 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function validateEntityIdentifier(value, { field, prefix }) {
   if (value === undefined || value === null || value === '') {
     return { value: undefined, errors: [] };
@@ -397,7 +377,7 @@ function validateEntityIdentifier(value, { field, prefix }) {
     };
   }
 
-  const publicIdNumber = parsePublicId(normalized, prefix);
+  const publicIdNumber = parsePublicIdNumber(normalized, prefix);
   if (publicIdNumber !== null) {
     return {
       value: { type: 'publicId', value: publicIdNumber },

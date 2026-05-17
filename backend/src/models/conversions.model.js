@@ -7,6 +7,9 @@ const conversionFields = `
   click_id AS "clickId",
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
+  source,
+  manual_adjustment_batch_id AS "manualAdjustmentBatchId",
+  created_by AS "createdBy",
   status,
   external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
@@ -22,6 +25,7 @@ const conversionListFields = `
   click_id AS "clickId",
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
+  source,
   status,
   external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
@@ -47,6 +51,7 @@ const adminConversionListFields = `
   adv.id AS "advertiserId",
   adv.public_id_number AS "advertiserPublicIdNumber",
   adv.name AS "advertiserName",
+  c.source,
   c.status,
   c.external_transaction_id AS "externalTransactionId",
   c.revenue_amount AS "revenueAmount",
@@ -139,6 +144,7 @@ function normalizeAdminConversionRow(row) {
           name: row.advertiserName ?? null,
         }
       : null,
+    source: row.source ?? 'tracking',
     status: row.status,
     externalTransactionId: row.externalTransactionId ?? null,
     revenue,
@@ -149,9 +155,12 @@ function normalizeAdminConversionRow(row) {
 }
 
 export async function createConversion({
-  clickId,
+  clickId = null,
   offerId,
   affiliateId,
+  source = 'tracking',
+  manualAdjustmentBatchId = null,
+  createdBy = null,
   status,
   payoutRub,
   externalTransactionId = null,
@@ -160,6 +169,7 @@ export async function createConversion({
   goalType = null,
   revenueAmount = null,
   payoutAmount = null,
+  createdAt = null,
 }, { client = pool } = {}) {
   const result = await client.query(
     `
@@ -167,6 +177,9 @@ export async function createConversion({
         click_id,
         offer_id,
         affiliate_id,
+        source,
+        manual_adjustment_batch_id,
+        created_by,
         status,
         payout_rub,
         external_transaction_id,
@@ -174,15 +187,19 @@ export async function createConversion({
         goal_name,
         goal_type,
         revenue_amount,
-        payout_amount
+        payout_amount,
+        created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, NOW()))
       RETURNING ${conversionFields};
     `,
     [
       clickId,
       offerId,
       affiliateId,
+      source,
+      manualAdjustmentBatchId,
+      createdBy,
       status,
       payoutRub,
       externalTransactionId,
@@ -191,6 +208,7 @@ export async function createConversion({
       goalType,
       revenueAmount,
       payoutAmount,
+      createdAt,
     ],
   );
 

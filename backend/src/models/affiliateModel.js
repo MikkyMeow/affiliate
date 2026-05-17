@@ -133,6 +133,27 @@ export async function findAffiliateById(id, { client } = {}) {
   return attachPublicId(normalizeAffiliate(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.affiliate);
 }
 
+export async function findAffiliateByPublicIdNumber(
+  publicIdNumber,
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${affiliateFields}
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.public_id_number = $1;
+    `,
+    [publicIdNumber],
+  );
+
+  return attachPublicId(
+    normalizeAffiliate(result.rows[0] ?? null),
+    PUBLIC_ID_PREFIXES.affiliate,
+  );
+}
+
 export async function findAffiliateByEmail(email, { client } = {}) {
   const queryable = getQueryable(client);
   const result = await queryable.query(

@@ -168,6 +168,18 @@ const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
 };
 
+function renderSourceBadge(source: string) {
+  if (source !== 'manual') {
+    return null;
+  }
+
+  return (
+    <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+      Manual
+    </span>
+  );
+}
+
 export default function ConversionsPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
@@ -1311,6 +1323,7 @@ export default function ConversionsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-mono text-xs">{conversion.id}</div>
+                      {renderSourceBadge(conversion.source)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-mono text-xs">
@@ -1318,7 +1331,9 @@ export default function ConversionsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-mono text-xs">{conversion.clickId}</div>
+                      <div className="font-mono text-xs">
+                        {conversion.clickId ?? '—'}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium">

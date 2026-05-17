@@ -159,6 +159,26 @@ export async function findOfferById(id, { includePostbackToken = false } = {}) {
   return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
 }
 
+export async function findOfferByPublicIdNumber(
+  publicIdNumber,
+  { includePostbackToken = false } = {},
+) {
+  const fields = includePostbackToken
+    ? offerDetailFieldsWithPostbackToken
+    : offerDetailFields;
+
+  const result = await pool.query(
+    `
+      SELECT ${fields}
+      FROM offers
+      WHERE public_id_number = $1;
+    `,
+    [publicIdNumber],
+  );
+
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
+}
+
 export async function findOfferForPostback(id) {
   const result = await pool.query(
     `

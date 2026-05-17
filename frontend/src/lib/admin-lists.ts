@@ -31,6 +31,7 @@ export type TransactionItem = {
   affiliate: LookupOption;
   advertiserId: string | null;
   advertiser: LookupOption | null;
+  source: string;
   countryCode: string | null;
   redirectOutcome: string | null;
   sub1: string | null;
@@ -66,7 +67,7 @@ export type TransactionFilters = {
 
 export type ConversionItem = {
   id: string;
-  clickId: string;
+  clickId: string | null;
   offerId: string;
   offer: LookupOption;
   goalId: string | null;
@@ -78,6 +79,7 @@ export type ConversionItem = {
   affiliate: LookupOption;
   advertiserId: string | null;
   advertiser: LookupOption | null;
+  source: string;
   status: string;
   externalTransactionId: string | null;
   revenue: number | null;

@@ -21,6 +21,7 @@ import adminOfferAccessRouter from './routes/admin-offer-access.routes.js';
 import adminOfferGoalsRouter from './routes/admin-offer-goals.routes.js';
 import adminOfferGeoTargetingRouter from './routes/admin-offer-geo-targeting.routes.js';
 import adminManagersRouter from './routes/admin-managers.routes.js';
+import adminAdjustmentsRouter from './routes/admin-adjustments.routes.js';
 import statsRouter from './routes/stats.routes.js';
 import partnerRouter from './routes/partner.routes.js';
 import usersRouter from './routes/users.routes.js';
@@ -74,7 +75,7 @@ export function createApp() {
       origin: allowedOrigins.length ? allowedOrigins : true,
     }),
   );
-  app.use(express.json());
+  app.use(express.json({ limit: '3mb' }));
   app.use(cookieParser());
 
   app.get(
@@ -131,6 +132,7 @@ export function createApp() {
   app.use(`${API_PREFIX}/admin/offers`, adminOfferGeoTargetingRouter);
   app.use(`${API_PREFIX}/admin/offers`, adminOfferAccessRouter);
   app.use(`${API_PREFIX}/admin/managers`, adminManagersRouter);
+  app.use(`${API_PREFIX}/admin/adjustments`, adminAdjustmentsRouter);
   app.use(`${API_PREFIX}/admin/questionnaires`, adminQuestionnairesRouter);
   app.use(`${API_PREFIX}/stats`, statsRouter);
   app.use(`${API_PREFIX}/me`, meQuestionnaireRouter);
