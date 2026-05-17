@@ -1,286 +1,298 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { apiFetch } from '@/lib/api';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import {
+  getCalendarDateString,
+  getDashboardStats,
+  getPreferredTimeZone,
+  type DashboardMetricKey,
+  type DashboardStatsResponse,
+  type DashboardTotals,
+} from '@/lib/dashboard';
+import { formatCount, formatMoney, formatPercent } from '@/lib/format';
+import { DashboardMetricCard } from './DashboardMetricCard';
+import { DashboardMetricChart } from './DashboardMetricChart';
 
-type StatsSummary = {
-  clicksTotal: number;
-  conversionsTotal: number;
-  conversionsPending: number;
-  conversionsApproved: number;
-  conversionsRejected: number;
-  pendingPayout: number;
-  approvedPayout: number;
-  rejectedPayout: number;
-  pendingRevenue: number;
-  approvedRevenue: number;
-  rejectedRevenue: number;
-};
-
-const CARD_LAYOUT: Array<{
-  key: keyof StatsSummary;
+type MetricDefinition = {
+  key: DashboardMetricKey;
   label: string;
   description: string;
-  gradient: string;
-  valueColor: string;
-  isCurrency?: boolean;
-}> = [
+  chartDescription: string;
+  accentClassName: string;
+  stroke: string;
+  fill: string;
+  formatValue: (value: number) => string;
+};
+
+const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
-    key: 'clicksTotal',
-    label: 'Всего транзакций',
-    description: 'Все зафиксированные переходы',
-    gradient: 'from-blue-500/10 to-blue-500/5',
-    valueColor: 'text-blue-900 dark:text-blue-100',
+    key: 'transactions',
+    label: 'Транзакции',
+    description: 'Все click-события за выбранный календарный день.',
+    chartDescription: 'Почасовое распределение транзакций.',
+    accentClassName: 'text-sky-700 dark:text-sky-300',
+    stroke: '#0284c7',
+    fill: '#38bdf8',
+    formatValue: (value) => formatCount(value),
   },
   {
-    key: 'conversionsTotal',
-    label: 'Всего конверсий',
-    description: 'Любые заказы и события',
-    gradient: 'from-indigo-500/10 to-indigo-500/5',
-    valueColor: 'text-indigo-900 dark:text-indigo-100',
+    key: 'conversions',
+    label: 'Конверсии',
+    description: 'Все нетестовые конверсии за выбранный день.',
+    chartDescription: 'Почасовая динамика конверсий.',
+    accentClassName: 'text-violet-700 dark:text-violet-300',
+    stroke: '#7c3aed',
+    fill: '#a78bfa',
+    formatValue: (value) => formatCount(value),
   },
   {
-    key: 'conversionsPending',
-    label: 'Ожидают',
-    description: 'Конверсии в статусе Pending',
-    gradient: 'from-amber-500/10 to-amber-500/5',
-    valueColor: 'text-amber-900 dark:text-amber-100',
+    key: 'cr',
+    label: 'CR',
+    description: 'Conversions / clicks * 100, рассчитывается на backend.',
+    chartDescription: 'Почасовой conversion rate.',
+    accentClassName: 'text-cyan-700 dark:text-cyan-300',
+    stroke: '#0891b2',
+    fill: '#22d3ee',
+    formatValue: (value) => formatPercent(value),
   },
   {
-    key: 'conversionsApproved',
-    label: 'Одобренные',
-    description: 'Конверсии в статусе Approved',
-    gradient: 'from-emerald-500/10 to-emerald-500/5',
-    valueColor: 'text-emerald-900 dark:text-emerald-100',
+    key: 'revenue',
+    label: 'Revenue',
+    description: 'Сумма revenue по финансово учитываемым конверсиям.',
+    chartDescription: 'Почасовой revenue в RUB.',
+    accentClassName: 'text-emerald-700 dark:text-emerald-300',
+    stroke: '#059669',
+    fill: '#34d399',
+    formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'conversionsRejected',
-    label: 'Отклонённые',
-    description: 'Конверсии в статусе Rejected',
-    gradient: 'from-rose-500/10 to-rose-500/5',
-    valueColor: 'text-rose-900 dark:text-rose-100',
+    key: 'payout',
+    label: 'Payout',
+    description: 'Сумма payout по финансово учитываемым конверсиям.',
+    chartDescription: 'Почасовой payout в RUB.',
+    accentClassName: 'text-amber-700 dark:text-amber-300',
+    stroke: '#d97706',
+    fill: '#fbbf24',
+    formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'approvedPayout',
-    label: 'Подтв. выплаты, ₽',
-    description: 'Сумма готова к выплате',
-    gradient: 'from-emerald-500/10 to-emerald-500/5',
-    valueColor: 'text-emerald-900 dark:text-emerald-100',
-    isCurrency: true,
+    key: 'profit',
+    label: 'Profit',
+    description: 'Revenue - payout, рассчитывается на backend.',
+    chartDescription: 'Почасовой profit в RUB.',
+    accentClassName: 'text-teal-700 dark:text-teal-300',
+    stroke: '#0f766e',
+    fill: '#2dd4bf',
+    formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'pendingPayout',
-    label: 'Ожидают выплату, ₽',
-    description: 'Pending выплаты для партнёров',
-    gradient: 'from-amber-500/10 to-amber-500/5',
-    valueColor: 'text-amber-900 dark:text-amber-100',
-    isCurrency: true,
+    key: 'epc',
+    label: 'EPC',
+    description: 'Revenue / clicks, рассчитывается на backend.',
+    chartDescription: 'Почасовой earnings per click.',
+    accentClassName: 'text-fuchsia-700 dark:text-fuchsia-300',
+    stroke: '#c026d3',
+    fill: '#e879f9',
+    formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'approvedRevenue',
-    label: 'Подтв. revenue, ₽',
-    description: 'Revenue из approved конверсий',
-    gradient: 'from-indigo-500/10 to-indigo-500/5',
-    valueColor: 'text-indigo-900 dark:text-indigo-100',
-    isCurrency: true,
-  },
-  {
-    key: 'pendingRevenue',
-    label: 'Ожидаемая revenue, ₽',
-    description: 'Revenue из pending конверсий',
-    gradient: 'from-blue-500/10 to-blue-500/5',
-    valueColor: 'text-blue-900 dark:text-blue-100',
-    isCurrency: true,
+    key: 'approveRate',
+    label: 'Approve Rate',
+    description: 'Approved conversions / total conversions * 100.',
+    chartDescription: 'Почасовой approve rate.',
+    accentClassName: 'text-rose-700 dark:text-rose-300',
+    stroke: '#e11d48',
+    fill: '#fb7185',
+    formatValue: (value) => formatPercent(value),
   },
 ];
 
+const EMPTY_TOTALS: DashboardTotals = {
+  clicks: 0,
+  transactions: 0,
+  conversions: 0,
+  approvedConversions: 0,
+  cr: 0,
+  revenue: 0,
+  payout: 0,
+  profit: 0,
+  epc: 0,
+  approveRate: 0,
+};
+
 export function DashboardMainPageContent() {
   const { user, accessToken, loading: authLoading } = useAuth();
-  const pathname = usePathname();
-  const [summary, setSummary] = useState<StatsSummary | null>(null);
+  const canAccess = canAccessAdminArea(user);
+  const [timezone, setTimezone] = useState('UTC');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [stats, setStats] = useState<DashboardStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Главная';
+    const preferredTimeZone = getPreferredTimeZone();
+    setTimezone(preferredTimeZone);
+    setSelectedDate((currentDate) => {
+      if (currentDate) {
+        return currentDate;
+      }
+
+      return getCalendarDateString(new Date(), preferredTimeZone);
+    });
   }, []);
 
-  const authLinks = useMemo(() => {
-    const next = encodeURIComponent(pathname ?? '/dashboard');
-    return {
-      login: `/auth/login?next=${next}`,
-      register: `/auth/register?next=${next}`,
-    };
-  }, [pathname]);
-
-  const numberFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('ru-RU', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }),
-    [],
-  );
-
-  const currencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        maximumFractionDigits: 2,
-      }),
-    [],
-  );
-
-  const fetchSummary = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiFetch<StatsSummary>('/stats/summary', {
-        token: accessToken,
-      });
-      setSummary(data);
-    } catch (requestError) {
-      setError((requestError as Error).message);
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken]);
-
   useEffect(() => {
-    if (authLoading || !accessToken) {
+    if (
+      authLoading ||
+      !accessToken ||
+      !user ||
+      !canAccess ||
+      !selectedDate ||
+      !timezone
+    ) {
       return;
     }
 
-    void fetchSummary();
-  }, [accessToken, authLoading, fetchSummary]);
+    let cancelled = false;
 
-  if (authLoading) {
-    return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
-        <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
-      </section>
-    );
+    const loadStats = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await getDashboardStats(accessToken, {
+          date: selectedDate,
+          timezone,
+          bucket: 'hour',
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setStats(response);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+
+        setStats(null);
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Не удалось загрузить главную страницу',
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, canAccess, selectedDate, timezone, user]);
+
+  if (authLoading || !user || !accessToken || !canAccess) {
+    return null;
   }
 
-  if (!user || !accessToken) {
-    return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Нужна авторизация
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы увидеть главную страницу платформы.
-        </p>
-        <div className="flex gap-3">
-          <Link
-            href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
-          >
-            Войти
-          </Link>
-          <Link
-            href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            Зарегистрироваться
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  if (!canAccessAdminArea(user)) {
-    return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Нет доступа
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Этот раздел предназначен только для администраторов и менеджеров.
-        </p>
-        <Link
-          href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
-        >
-          На главную
-        </Link>
-      </section>
-    );
-  }
-
-  const renderValue = (cardKey: keyof StatsSummary, isCurrency?: boolean) => {
-    if (loading && !summary) {
-      return 'Загружаем...';
-    }
-
-    if (!summary) {
-      return '—';
-    }
-
-    const value = summary[cardKey];
-    return isCurrency ? currencyFormatter.format(value) : numberFormatter.format(value);
-  };
+  const totals = stats?.totals ?? EMPTY_TOTALS;
+  const series = stats?.series ?? [];
+  const hasLoadedStats = stats !== null;
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Главная
-          </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Проверяйте транзакции, конверсии и выплаты без прыжков между curl и БД.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void fetchSummary()}
-          disabled={loading}
-          className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-        >
-          {loading ? 'Обновляем…' : 'Обновить'}
-        </button>
-      </div>
+    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+      <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/60 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-400">
+              Admin Main
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Главная
+            </h1>
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              Админский срез за календарный день: транзакции, конверсии,
+              CR, деньги и approve rate без клиентского пересчёта сырого
+              трафика.
+            </p>
+          </div>
 
-      {error && (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 shadow-sm dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-100">
-          Не удалось загрузить главную страницу: {error}
-        </div>
-      )}
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_auto]">
+            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Дата
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+            </label>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {CARD_LAYOUT.map((card) => (
-          <div
-            key={card.key}
-            className="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient}`} aria-hidden />
-            <div className="relative">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                {card.label}
-              </p>
-              <h2 className={`mt-4 text-4xl font-semibold ${card.valueColor}`}>
-                {renderValue(card.key, card.isCurrency)}
-              </h2>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                {card.description}
-              </p>
+            <div className="flex items-end">
+              <div className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+                <span className="block text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Timezone
+                </span>
+                <span className="mt-1 block font-medium text-zinc-900 dark:text-zinc-100">
+                  {timezone}
+                </span>
+              </div>
             </div>
           </div>
+        </div>
+
+        {loading && !hasLoadedStats ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-5 py-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-300">
+            Загружаем агрегированную статистику за выбранный день...
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+            Не удалось загрузить дашборд: {error}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {METRIC_DEFINITIONS.map((metric) => (
+          <DashboardMetricCard
+            key={metric.key}
+            label={metric.label}
+            description={metric.description}
+            value={metric.formatValue(totals[metric.key])}
+            accentClassName={metric.accentClassName}
+          />
         ))}
       </div>
+
+      <div className="mt-8 grid gap-5 xl:grid-cols-2">
+        {METRIC_DEFINITIONS.map((metric) => (
+          <DashboardMetricChart
+            key={metric.key}
+            title={`${metric.label} по часам`}
+            description={metric.chartDescription}
+            metricKey={metric.key}
+            data={series}
+            stroke={metric.stroke}
+            fill={metric.fill}
+            formatValue={metric.formatValue}
+          />
+        ))}
+      </div>
+
+      {!loading && !error && hasLoadedStats && series.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-zinc-200 px-5 py-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          Backend вернул пустую серию. Ожидалось 24 почасовых бакета.
+        </div>
+      ) : null}
     </section>
   );
 }

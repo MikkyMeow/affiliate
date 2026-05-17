@@ -4,6 +4,7 @@ const countFormatter = new Intl.NumberFormat('ru-RU', {
 });
 
 const currencyFormatterCache = new Map<string, Intl.NumberFormat>();
+const percentFormatterCache = new Map<number, Intl.NumberFormat>();
 
 function getCurrencyFormatter(currency: string) {
   if (currencyFormatterCache.has(currency)) {
@@ -40,6 +41,25 @@ export function formatCount(value: unknown): string {
 export function formatMoney(value: unknown, currency = 'RUB'): string {
   const formatter = getCurrencyFormatter(currency);
   return formatter.format(toNumeric(value));
+}
+
+function getPercentFormatter(maxFractionDigits: number) {
+  if (percentFormatterCache.has(maxFractionDigits)) {
+    return percentFormatterCache.get(maxFractionDigits)!;
+  }
+
+  const formatter = new Intl.NumberFormat('ru-RU', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits,
+  });
+
+  percentFormatterCache.set(maxFractionDigits, formatter);
+  return formatter;
+}
+
+export function formatPercent(value: unknown, maxFractionDigits = 2): string {
+  const formatter = getPercentFormatter(maxFractionDigits);
+  return `${formatter.format(toNumeric(value))}%`;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {

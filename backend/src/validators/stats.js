@@ -7,6 +7,7 @@ const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const DASHBOARD_BUCKET_VALUES = new Set(['hour']);
 
 function isValidDateString(value) {
   if (!dateRegex.test(value)) {
@@ -92,6 +93,56 @@ function validateDate(value, field) {
     return {
       value: undefined,
       errors: [buildError(field, 'Дата должна быть в формате YYYY-MM-DD')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateTimezone(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'timezone должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim();
+
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: normalized }).format(new Date());
+  } catch {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'timezone должен быть корректным IANA timezone')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateBucket(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: 'hour', errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'bucket должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!DASHBOARD_BUCKET_VALUES.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Поддерживается только bucket=hour')],
     };
   }
 
@@ -375,6 +426,37 @@ export function validateDailySummaryFilters(payload = {}) {
   filter.dateTo = dateTo;
 
   return { filter, errors };
+}
+
+export function validateDashboardStatsQuery(payload = {}) {
+  const errors = [];
+  const query = {};
+
+  const { value: date, errors: dateErrors } = validateDate(payload.date, 'date');
+  errors.push(...dateErrors);
+  if (date) {
+    query.date = date;
+  }
+
+  const { value: timezone, errors: timezoneErrors } = validateTimezone(
+    payload.timezone,
+    'timezone',
+  );
+  errors.push(...timezoneErrors);
+  if (timezone) {
+    query.timezone = timezone;
+  }
+
+  const { value: bucket, errors: bucketErrors } = validateBucket(
+    payload.bucket,
+    'bucket',
+  );
+  errors.push(...bucketErrors);
+  if (bucket) {
+    query.bucket = bucket;
+  }
+
+  return { query, errors };
 }
 
 function sanitizeAdvertiserFilter(filter = {}, errors = []) {

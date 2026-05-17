@@ -230,7 +230,7 @@ export default function PartnerOfferDetailsPage() {
           Вы авторизованы как администратор. Перейдите в админ-панель.
         </p>
         <Link
-          href="/dashboard/stats"
+          href="/dashboard"
           className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           В админку
