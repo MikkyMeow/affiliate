@@ -204,7 +204,6 @@ export default function AdvertiserOffersPage() {
                 <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   <th className="px-4 py-3">Название</th>
                   <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3 text-right">Payout</th>
                   <th className="px-4 py-3 text-right">Revenue</th>
                   <th className="px-4 py-3 text-right">Создан</th>
                   <th className="px-4 py-3 text-right">Обновлён</th>
@@ -225,11 +224,6 @@ export default function AdvertiserOffersPage() {
                     <td className="px-4 py-4 capitalize">
                       {STATUS_LABELS[offer.status ?? ""] ??
                         (offer.status ?? "—")}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      {offer.payoutRub != null
-                        ? formatMoney(offer.payoutRub)
-                        : "—"}
                     </td>
                     <td className="px-4 py-4 text-right">
                       {offer.revenueRub != null

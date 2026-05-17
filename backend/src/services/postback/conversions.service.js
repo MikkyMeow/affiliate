@@ -1,12 +1,12 @@
 import crypto from 'crypto';
-import { createConversion, findByClickId } from '../../models/conversions.model.js';
+import { findByClickId } from '../../models/conversions.model.js';
 import { findOfferForPostback } from '../../models/offers.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
 import { dispatchAsyncJob } from '../async-jobs.service.js';
 import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
 import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
-import { resolveOfferGoalForPostback } from './offer-goals.service.js';
+import { createConversionWithResolvedGoal } from '../offer-goals.service.js';
 import { logError, logInfo, logWarn } from '../../lib/structuredLogger.js';
 
 async function publishConversionCreatedJob(conversion) {
@@ -242,6 +242,7 @@ function resolveStatusForError(code) {
   if (
     code === ERROR_CODES.INVALID_POSTBACK_TOKEN ||
     code === ERROR_CODES.NOT_FOUND ||
+    code === ERROR_CODES.GOAL_LIMIT_REACHED ||
     code === ERROR_CODES.VALIDATION_ERROR ||
     code === ERROR_CODES.UNAUTHORIZED
   ) {
@@ -372,44 +373,40 @@ export async function registerConversion(
       );
     }
 
-    const goalSnapshot = await resolveOfferGoalForPostback({
-      offerId: click.offerId,
-      goalId,
-    });
-    logContext.resolvedGoalId = goalSnapshot.id ?? logContext.resolvedGoalId;
-
-    await updatePostbackLifecycleLog(postbackLog, {
-      offerId: logContext.offerId,
-      affiliateId: logContext.affiliateId,
-      resolvedGoalId: goalSnapshot.id ?? null,
-      resolvedGoalName: goalSnapshot.name ?? null,
-      goalError: null,
-    });
-
-    logInfo('postback_goal_resolved', {
-      requestId,
-      clickId,
-      offerId: logContext.offerId,
-      affiliateId: logContext.affiliateId,
-      goalId: goalSnapshot.id ?? null,
-      goalName: goalSnapshot.name ?? null,
-    });
-
-    const payoutAmount = goalSnapshot.payout ?? 0;
-    const revenueAmount = goalSnapshot.revenue ?? 0;
+    let resolvedGoalSnapshot = null;
 
     try {
-      const conversion = await createConversion({
+      const { conversion, goalSnapshot } = await createConversionWithResolvedGoal(
+        {
+          clickId,
+          offerId: click.offerId,
+          affiliateId: click.affiliateId,
+          status: normalizedStatus,
+          goalId,
+        },
+        {
+          requestId,
+        },
+      );
+      resolvedGoalSnapshot = goalSnapshot;
+      logContext.resolvedGoalId = goalSnapshot.id ?? logContext.resolvedGoalId;
+
+      await updatePostbackLifecycleLog(postbackLog, {
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        resolvedGoalId: goalSnapshot.id ?? null,
+        resolvedGoalName: goalSnapshot.name ?? null,
+        goalError: null,
+      });
+
+      logInfo('postback_goal_resolved', {
+        requestId,
         clickId,
-        offerId: click.offerId,
-        affiliateId: click.affiliateId,
-        status: normalizedStatus,
-        payoutRub: payoutAmount,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
         goalId: goalSnapshot.id ?? null,
         goalName: goalSnapshot.name ?? null,
-        goalType: goalSnapshot.type ?? null,
-        revenueAmount,
-        payoutAmount,
+        goalRateSource: goalSnapshot.source ?? 'base',
       });
 
       await updatePostbackLifecycleLog(postbackLog, {
@@ -445,7 +442,7 @@ export async function registerConversion(
           affiliateId: logContext.affiliateId,
           clickId,
           resolvedGoalId: logContext.resolvedGoalId ?? null,
-          resolvedGoalName: goalSnapshot?.name ?? null,
+          resolvedGoalName: resolvedGoalSnapshot?.name ?? null,
           goalError: null,
         });
 
@@ -457,6 +454,7 @@ export async function registerConversion(
             clickId,
             offerId: click.offerId,
             affiliateId: click.affiliateId,
+            goalId: error.details?.goalId ?? goalId ?? null,
           },
         );
       }
@@ -483,6 +481,8 @@ export async function registerConversion(
 
       if (logContext.resolvedGoalId) {
         patch.resolvedGoalId = logContext.resolvedGoalId;
+      } else if (error.details?.goalId) {
+        patch.resolvedGoalId = error.details.goalId;
       }
 
       if (error.details?.goalError) {

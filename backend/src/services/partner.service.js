@@ -8,6 +8,7 @@ import {
   listConversions,
 } from './stats/stats.service.js';
 import { listOffers, getOfferById } from './offers.service.js';
+import { listPartnerOfferGoals } from './offer-goals.service.js';
 import { OFFER_STATUSES } from '../constants/offers.js';
 import {
   AFFILIATE_OFFER_ACCESS_LEVELS,
@@ -89,7 +90,6 @@ function buildFullView(offer) {
     targetUrl: offer.targetUrl,
     fallbackUrl: offer.fallbackUrl ?? null,
     previewUrl: offer.previewUrl ?? null,
-    payoutRub: offer.payoutRub,
   };
 }
 
@@ -182,7 +182,7 @@ export async function getPartnerOfferDetails(userId, offerId) {
   });
 
   if (accessResolution.accessLevel === AFFILIATE_OFFER_ACCESS_LEVELS.FULL) {
-    serialized.goals = Array.isArray(offer.goals) ? offer.goals : [];
+    serialized.goals = await listPartnerOfferGoals(offer.id, affiliate.id);
   }
 
   return serialized;

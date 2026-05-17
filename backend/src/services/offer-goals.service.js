@@ -1,14 +1,34 @@
 import pool from '../db.js';
-import { ApiError } from '../utils/apiError.js';
-import { ERROR_CODES } from '../utils/response.js';
-import { findOfferById } from '../models/offers.model.js';
+import { findAffiliatesByIds, findAffiliateById } from '../models/affiliateModel.js';
 import {
+  createConversion,
+  findByClickIdForUpdate,
+  getCountedConversionCountByGoalId,
+  getCountedConversionCountsByGoalIds,
+} from '../models/conversions.model.js';
+import {
+  deleteOfferGoalAffiliateRate as deleteOfferGoalAffiliateRateModel,
+  findOfferGoalAffiliateRate,
+  listOfferGoalAffiliateRatesByGoalId,
+  listOfferGoalAffiliateRatesByGoalIds,
+  upsertOfferGoalAffiliateRate as upsertOfferGoalAffiliateRateModel,
+} from '../models/offerGoalAffiliateRates.model.js';
+import {
+  findDefaultGoalByOfferId,
   findOfferGoalById,
   insertOfferGoal,
   listOfferGoalsByOfferId,
   unsetDefaultOfferGoals,
   updateOfferGoal as updateOfferGoalModel,
 } from '../models/offerGoals.model.js';
+import { findOfferById } from '../models/offers.model.js';
+import { COUNTED_CONVERSION_STATUSES } from '../constants/conversions.js';
+import {
+  OFFER_GOAL_CURRENCY,
+  OFFER_GOAL_LIMIT_TYPES,
+} from '../constants/offers.js';
+import { ApiError } from '../utils/apiError.js';
+import { ERROR_CODES } from '../utils/response.js';
 import { writeAuditEvent } from './audit.service.js';
 
 function throwOfferNotFound(offerId) {
@@ -24,6 +44,38 @@ function throwGoalNotFound(offerId, goalId) {
   });
 }
 
+function throwAffiliateNotFound(affiliateId) {
+  throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Партнёр не найден', {
+    affiliateId,
+  });
+}
+
+function throwGoalAffiliateRateNotFound(offerId, goalId, affiliateId) {
+  throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Переопределение ставки не найдено', {
+    offerId,
+    goalId,
+    affiliateId,
+  });
+}
+
+function throwGoalLimitReached(offerId, goalId) {
+  throw new ApiError(
+    ERROR_CODES.GOAL_LIMIT_REACHED,
+    409,
+    'Goal limit has been reached',
+    {
+      offerId,
+      goalId,
+    },
+  );
+}
+
+function throwValidationError(errors) {
+  throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
+    errors,
+  });
+}
+
 async function ensureOfferExists(offerId) {
   const offer = await findOfferById(offerId);
 
@@ -32,6 +84,16 @@ async function ensureOfferExists(offerId) {
   }
 
   return offer;
+}
+
+async function ensureAffiliateExists(affiliateId) {
+  const affiliate = await findAffiliateById(affiliateId);
+
+  if (!affiliate) {
+    throwAffiliateNotFound(affiliateId);
+  }
+
+  return affiliate;
 }
 
 function toNumber(value) {
@@ -43,28 +105,451 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function serializeGoal(goal) {
+function formatGoalType(value) {
+  if (typeof value !== 'string') {
+    return value ?? null;
+  }
+
+  const normalized = value.trim();
+  return normalized ? normalized.toUpperCase() : null;
+}
+
+function calculateProfit(revenue, payout) {
+  if (typeof revenue !== 'number' || typeof payout !== 'number') {
+    return null;
+  }
+
+  return Number((revenue - payout).toFixed(2));
+}
+
+function normalizeLimitValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function buildLimitPayload(goal, limitUsed = 0) {
+  const limitEnabled = Boolean(goal.limitEnabled);
+  const limitValue = normalizeLimitValue(goal.limitValue);
+  const normalizedLimitUsed = Number(limitUsed ?? 0);
+
+  if (!limitEnabled || limitValue === null) {
+    return {
+      limitEnabled,
+      limitType: limitEnabled ? goal.limitType ?? null : null,
+      limitValue: limitEnabled ? limitValue : null,
+      limitUsed: normalizedLimitUsed,
+      limitRemaining: null,
+      limitReached: false,
+    };
+  }
+
+  return {
+    limitEnabled,
+    limitType: goal.limitType ?? OFFER_GOAL_LIMIT_TYPES.CONVERSIONS_COUNT,
+    limitValue,
+    limitUsed: normalizedLimitUsed,
+    limitRemaining: Math.max(limitValue - normalizedLimitUsed, 0),
+    limitReached: normalizedLimitUsed >= limitValue,
+  };
+}
+
+function serializeAdminGoal(goal, { limitUsed = 0 } = {}) {
   if (!goal) {
     return null;
   }
 
-  const type =
-    typeof goal.type === 'string'
-      ? goal.type.toUpperCase()
-      : goal.type ?? null;
+  const revenue = toNumber(goal.revenue);
+  const payout = toNumber(goal.payout);
+  const limit = buildLimitPayload(goal, limitUsed);
 
   return {
     id: goal.id,
     offerId: goal.offerId,
     name: goal.name,
-    type,
-    revenue: toNumber(goal.revenue),
-    payout: toNumber(goal.payout),
-    currency: goal.currency,
-    isDefault: goal.isDefault,
-    isActive: goal.isActive,
+    type: formatGoalType(goal.type),
+    revenue,
+    payout,
+    profit: calculateProfit(revenue, payout),
+    currency: goal.currency ?? OFFER_GOAL_CURRENCY,
+    isDefault: Boolean(goal.isDefault),
+    ...limit,
     createdAt: goal.createdAt,
     updatedAt: goal.updatedAt,
+  };
+}
+
+function serializePartnerGoal(goal, effectiveRate, { limitUsed = 0 } = {}) {
+  if (!goal || !effectiveRate) {
+    return null;
+  }
+
+  const limit = buildLimitPayload(goal, limitUsed);
+
+  return {
+    id: goal.id,
+    offerId: goal.offerId,
+    name: goal.name,
+    type: formatGoalType(goal.type),
+    payout: effectiveRate.payout,
+    currency: OFFER_GOAL_CURRENCY,
+    isDefault: Boolean(goal.isDefault),
+    limitReached: limit.limitReached,
+  };
+}
+
+function getActorMetadata(actor) {
+  if (!actor) {
+    return { actorUserId: null, actorRole: null };
+  }
+
+  return {
+    actorUserId: actor.userId ?? null,
+    actorRole: actor.role ?? null,
+  };
+}
+
+function serializeGoalAuditValue(goal) {
+  if (!goal) {
+    return null;
+  }
+
+  const revenue = toNumber(goal.revenue);
+  const payout = toNumber(goal.payout);
+  const limit = buildLimitPayload(goal, 0);
+
+  return {
+    name: goal.name ?? null,
+    type: formatGoalType(goal.type),
+    revenue,
+    payout,
+    profit: calculateProfit(revenue, payout),
+    currency: goal.currency ?? OFFER_GOAL_CURRENCY,
+    isDefault: Boolean(goal.isDefault),
+    limitEnabled: limit.limitEnabled,
+    limitType: limit.limitType,
+    limitValue: limit.limitValue,
+  };
+}
+
+function serializeRateAuditValue(rate) {
+  if (!rate) {
+    return null;
+  }
+
+  const revenue = toNumber(rate.revenue);
+  const payout = toNumber(rate.payout);
+
+  return {
+    revenue,
+    payout,
+    profit: calculateProfit(revenue, payout),
+    currency: OFFER_GOAL_CURRENCY,
+  };
+}
+
+function diffObjects(previous, next, fields) {
+  const changes = {};
+
+  for (const field of fields) {
+    const before = previous?.[field] ?? null;
+    const after = next?.[field] ?? null;
+
+    if (before !== after) {
+      changes[field] = { old: before, new: after };
+    }
+  }
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+function assertMoneyRules({ revenue, payout }) {
+  const errors = [];
+
+  if (typeof revenue !== 'number' || !Number.isFinite(revenue) || revenue < 0) {
+    errors.push({ field: 'revenue', message: 'revenue должен быть числом >= 0' });
+  }
+
+  if (typeof payout !== 'number' || !Number.isFinite(payout) || payout < 0) {
+    errors.push({ field: 'payout', message: 'payout должен быть числом >= 0' });
+  }
+
+  if (
+    typeof revenue === 'number' &&
+    Number.isFinite(revenue) &&
+    typeof payout === 'number' &&
+    Number.isFinite(payout) &&
+    payout > revenue
+  ) {
+    errors.push({ field: 'payout', message: 'payout не может быть больше revenue' });
+  }
+
+  if (errors.length > 0) {
+    throwValidationError(errors);
+  }
+}
+
+function assertGoalCurrency(currency) {
+  if (currency !== OFFER_GOAL_CURRENCY) {
+    throwValidationError([
+      {
+        field: 'currency',
+        message: `Поддерживается только ${OFFER_GOAL_CURRENCY}`,
+      },
+    ]);
+  }
+}
+
+function normalizeGoalState(goal) {
+  return {
+    name: goal.name,
+    type: typeof goal.type === 'string' ? goal.type.toLowerCase() : goal.type,
+    revenue: toNumber(goal.revenue),
+    payout: toNumber(goal.payout),
+    currency: goal.currency ?? OFFER_GOAL_CURRENCY,
+    isDefault: Boolean(goal.isDefault),
+    limitEnabled: Boolean(goal.limitEnabled),
+    limitType: goal.limitEnabled ? goal.limitType ?? null : null,
+    limitValue: goal.limitEnabled ? normalizeLimitValue(goal.limitValue) : null,
+  };
+}
+
+function assertGoalLimitState(goal) {
+  if (!goal.limitEnabled) {
+    return;
+  }
+
+  if (goal.limitType !== OFFER_GOAL_LIMIT_TYPES.CONVERSIONS_COUNT) {
+    throwValidationError([
+      {
+        field: 'limitType',
+        message: `Поддерживается только ${OFFER_GOAL_LIMIT_TYPES.CONVERSIONS_COUNT}`,
+      },
+    ]);
+  }
+
+  if (!Number.isInteger(goal.limitValue) || goal.limitValue <= 0) {
+    throwValidationError([
+      {
+        field: 'limitValue',
+        message: 'limitValue должен быть положительным целым числом',
+      },
+    ]);
+  }
+}
+
+async function ensureGoalBelongsToOffer(
+  offerId,
+  goalId,
+  { client, forUpdate = false } = {},
+) {
+  const goal = await findOfferGoalById(goalId, { client, forUpdate });
+
+  if (!goal || goal.offerId !== offerId) {
+    throwGoalNotFound(offerId, goalId);
+  }
+
+  return goal;
+}
+
+async function getGoalLimitUsageMap(goals, { client } = {}) {
+  const goalIds = goals.map((goal) => goal.id);
+  return getCountedConversionCountsByGoalIds(goalIds, { client });
+}
+
+function buildEffectiveRate(goal, overrideRate = null) {
+  const source = overrideRate ? 'affiliate_override' : 'base';
+  const revenue = toNumber(overrideRate?.revenue ?? goal.revenue);
+  const payout = toNumber(overrideRate?.payout ?? goal.payout);
+
+  assertMoneyRules({ revenue, payout });
+
+  return {
+    revenue,
+    payout,
+    profit: calculateProfit(revenue, payout),
+    currency: OFFER_GOAL_CURRENCY,
+    source,
+  };
+}
+
+export async function resolveGoalRate(
+  goalId,
+  affiliateId,
+  { client, forUpdate = false } = {},
+) {
+  const goal = await findOfferGoalById(goalId, { client, forUpdate });
+
+  if (!goal) {
+    throw new Error('Goal not found');
+  }
+
+  const overrideRate = affiliateId
+    ? await findOfferGoalAffiliateRate(goal.id, affiliateId, { client, forUpdate })
+    : null;
+
+  return buildEffectiveRate(goal, overrideRate);
+}
+
+export async function resolveGoalForConversion(
+  {
+    offerId,
+    goalId = null,
+    affiliateId,
+  },
+  {
+    client,
+    forUpdate = false,
+    enforceLimit = false,
+  } = {},
+) {
+  if (!offerId) {
+    throw new Error('offerId is required to resolve goal');
+  }
+
+  const goal = goalId
+    ? await ensureGoalBelongsToOffer(offerId, goalId, { client, forUpdate })
+    : await findDefaultGoalByOfferId(offerId, { client, forUpdate });
+
+  if (!goal) {
+    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Цель по умолчанию не найдена', {
+      offerId,
+      goalId,
+    });
+  }
+
+  const rate = await resolveGoalRate(goal.id, affiliateId, { client, forUpdate });
+  const limitUsed = await getCountedConversionCountByGoalId(goal.id, { client });
+  const limit = buildLimitPayload(goal, limitUsed);
+
+  if (enforceLimit && limit.limitReached) {
+    throwGoalLimitReached(offerId, goal.id);
+  }
+
+  return {
+    id: goal.id,
+    offerId: goal.offerId,
+    name: goal.name ?? null,
+    type: formatGoalType(goal.type),
+    revenue: rate.revenue,
+    payout: rate.payout,
+    profit: rate.profit,
+    currency: OFFER_GOAL_CURRENCY,
+    source: rate.source,
+    isDefault: Boolean(goal.isDefault),
+    ...limit,
+  };
+}
+
+async function writeGoalAuditEvents({
+  previous,
+  next,
+  actor,
+  requestId,
+}) {
+  const { actorUserId, actorRole } = getActorMetadata(actor);
+  const previousAudit = serializeGoalAuditValue(previous);
+  const nextAudit = serializeGoalAuditValue(next);
+  const trackedFields = [
+    'name',
+    'type',
+    'revenue',
+    'payout',
+    'profit',
+    'currency',
+    'isDefault',
+    'limitEnabled',
+    'limitType',
+    'limitValue',
+  ];
+
+  const changes = diffObjects(previousAudit, nextAudit, trackedFields);
+  if (!changes) {
+    return;
+  }
+
+  const metadata = {
+    offerId: next.offerId,
+    goalId: next.id,
+  };
+
+  await writeAuditEvent({
+    entityType: 'offer_goal',
+    entityId: next.id,
+    action: 'updated',
+    actorUserId,
+    actorRole,
+    requestId,
+    context: {
+      oldValue: previousAudit,
+      newValue: nextAudit,
+      changes,
+      metadata,
+    },
+  });
+
+  if (changes.revenue || changes.payout || changes.profit) {
+    await writeAuditEvent({
+      entityType: 'offer_goal',
+      entityId: next.id,
+      action: 'financial_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: previousAudit,
+        newValue: nextAudit,
+        metadata,
+      },
+    });
+  }
+
+  if (changes.limitEnabled || changes.limitType || changes.limitValue) {
+    await writeAuditEvent({
+      entityType: 'offer_goal',
+      entityId: next.id,
+      action: 'limit_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: previousAudit,
+        newValue: nextAudit,
+        metadata,
+      },
+    });
+  }
+}
+
+function serializeAffiliateRate(rate, affiliate = null) {
+  if (!rate) {
+    return null;
+  }
+
+  const revenue = toNumber(rate.revenue);
+  const payout = toNumber(rate.payout);
+
+  return {
+    id: rate.id,
+    offerGoalId: rate.offerGoalId,
+    affiliateId: rate.affiliateId,
+    revenue,
+    payout,
+    profit: calculateProfit(revenue, payout),
+    currency: OFFER_GOAL_CURRENCY,
+    createdAt: rate.createdAt,
+    updatedAt: rate.updatedAt,
+    affiliate: affiliate
+      ? {
+          id: affiliate.id,
+          publicId: affiliate.publicId ?? null,
+          name: affiliate.name ?? null,
+          email: affiliate.email ?? null,
+        }
+      : null,
   };
 }
 
@@ -81,47 +566,42 @@ export async function listOfferGoals(
   }
 
   const goals = await listOfferGoalsByOfferId(offerId);
-  return goals.map(serializeGoal);
+  const usageMap = await getGoalLimitUsageMap(goals);
+
+  return goals.map((goal) =>
+    serializeAdminGoal(goal, {
+      limitUsed: usageMap.get(goal.id) ?? 0,
+    }),
+  );
 }
 
-function getActorMetadata(actor) {
-  if (!actor) {
-    return { actorUserId: null, actorRole: null };
+export async function listPartnerOfferGoals(offerId, affiliateId) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to list partner goals');
   }
 
-  return {
-    actorUserId: actor.userId ?? null,
-    actorRole: actor.role ?? null,
-  };
-}
-
-function diffGoalSnapshots(previous, next) {
-  if (!previous || !next) {
-    return null;
+  const goals = await listOfferGoalsByOfferId(offerId);
+  if (goals.length === 0) {
+    return [];
   }
 
-  const tracked = [
-    'name',
-    'type',
-    'revenue',
-    'payout',
-    'currency',
-    'isDefault',
-    'isActive',
-  ];
+  const [usageMap, overrideRates] = await Promise.all([
+    getGoalLimitUsageMap(goals),
+    listOfferGoalAffiliateRatesByGoalIds(
+      goals.map((goal) => goal.id),
+      { affiliateId },
+    ),
+  ]);
 
-  const changes = {};
+  const overrideMap = new Map(
+    overrideRates.map((rate) => [rate.offerGoalId, rate]),
+  );
 
-  for (const field of tracked) {
-    const before = previous[field] ?? null;
-    const after = next[field] ?? null;
-
-    if (before !== after) {
-      changes[field] = { old: before, new: after };
-    }
-  }
-
-  return Object.keys(changes).length ? changes : null;
+  return goals.map((goal) =>
+    serializePartnerGoal(goal, buildEffectiveRate(goal, overrideMap.get(goal.id) ?? null), {
+      limitUsed: usageMap.get(goal.id) ?? 0,
+    }),
+  );
 }
 
 export async function createOfferGoal(offerId, dto, { actor = null, requestId = null } = {}) {
@@ -135,31 +615,44 @@ export async function createOfferGoal(offerId, dto, { actor = null, requestId = 
 
   await ensureOfferExists(offerId);
 
+  const goalState = normalizeGoalState({
+    ...dto,
+    type: typeof dto.type === 'string' ? dto.type.toLowerCase() : dto.type,
+    currency: dto.currency ?? OFFER_GOAL_CURRENCY,
+  });
+
+  assertGoalCurrency(goalState.currency);
+  assertMoneyRules(goalState);
+  assertGoalLimitState(goalState);
+
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    if (dto.isDefault) {
+    if (goalState.isDefault) {
       await unsetDefaultOfferGoals(offerId, { client });
     }
 
     const goal = await insertOfferGoal(
       {
         offerId,
-        name: dto.name,
-        type: dto.type.toLowerCase(),
-        revenue: dto.revenue,
-        payout: dto.payout,
-        currency: dto.currency ?? 'RUB',
-        isDefault: Boolean(dto.isDefault),
-        isActive: Object.hasOwn(dto, 'isActive') ? dto.isActive : true,
+        name: goalState.name,
+        type: goalState.type,
+        revenue: goalState.revenue,
+        payout: goalState.payout,
+        currency: goalState.currency,
+        isDefault: goalState.isDefault,
+        limitEnabled: goalState.limitEnabled,
+        limitType: goalState.limitEnabled ? goalState.limitType : null,
+        limitValue: goalState.limitEnabled ? goalState.limitValue : null,
       },
       { client },
     );
 
     await client.query('COMMIT');
-    const serialized = serializeGoal(goal);
+
+    const serialized = serializeAdminGoal(goal, { limitUsed: 0 });
     const { actorUserId, actorRole } = getActorMetadata(actor);
 
     await writeAuditEvent({
@@ -169,7 +662,13 @@ export async function createOfferGoal(offerId, dto, { actor = null, requestId = 
       actorUserId,
       actorRole,
       requestId,
-      context: serialized,
+      context: {
+        newValue: serializeGoalAuditValue(goal),
+        metadata: {
+          offerId: serialized.offerId,
+          goalId: serialized.id,
+        },
+      },
     });
 
     return serialized;
@@ -200,14 +699,36 @@ export async function updateOfferGoal(
   try {
     await client.query('BEGIN');
 
-    const existingGoal = await findOfferGoalById(goalId, {
+    const existingGoal = await ensureGoalBelongsToOffer(offerId, goalId, {
       client,
       forUpdate: true,
     });
 
-    if (!existingGoal || existingGoal.offerId !== offerId) {
-      throwGoalNotFound(offerId, goalId);
+    const existingState = normalizeGoalState(existingGoal);
+    const nextState = normalizeGoalState({
+      ...existingState,
+      ...dto,
+      type: typeof dto.type === 'string' ? dto.type.toLowerCase() : existingState.type,
+      currency: dto.currency ?? existingState.currency,
+      limitEnabled: Object.hasOwn(dto, 'limitEnabled')
+        ? Boolean(dto.limitEnabled)
+        : existingState.limitEnabled,
+      limitType: Object.hasOwn(dto, 'limitType')
+        ? dto.limitType
+        : existingState.limitType,
+      limitValue: Object.hasOwn(dto, 'limitValue')
+        ? dto.limitValue
+        : existingState.limitValue,
+    });
+
+    if (!nextState.limitEnabled) {
+      nextState.limitType = null;
+      nextState.limitValue = null;
     }
+
+    assertGoalCurrency(nextState.currency);
+    assertMoneyRules(nextState);
+    assertGoalLimitState(nextState);
 
     if (dto.isDefault === true) {
       await unsetDefaultOfferGoals(offerId, {
@@ -220,42 +741,280 @@ export async function updateOfferGoal(
       goalId,
       {
         name: dto.name,
-        type: dto.type ? dto.type.toLowerCase() : undefined,
-        revenue: Object.hasOwn(dto, 'revenue') ? dto.revenue : undefined,
-        payout: Object.hasOwn(dto, 'payout') ? dto.payout : undefined,
-        currency: dto.currency,
-        isDefault: Object.hasOwn(dto, 'isDefault')
-          ? Boolean(dto.isDefault)
+        type: Object.hasOwn(dto, 'type') ? nextState.type : undefined,
+        revenue: Object.hasOwn(dto, 'revenue') ? nextState.revenue : undefined,
+        payout: Object.hasOwn(dto, 'payout') ? nextState.payout : undefined,
+        currency: Object.hasOwn(dto, 'currency') ? nextState.currency : undefined,
+        isDefault: Object.hasOwn(dto, 'isDefault') ? nextState.isDefault : undefined,
+        limitEnabled: Object.hasOwn(dto, 'limitEnabled')
+          ? nextState.limitEnabled
           : undefined,
-        isActive: Object.hasOwn(dto, 'isActive') ? dto.isActive : undefined,
+        limitType:
+          Object.hasOwn(dto, 'limitType') || Object.hasOwn(dto, 'limitEnabled')
+            ? nextState.limitType
+            : undefined,
+        limitValue:
+          Object.hasOwn(dto, 'limitValue') || Object.hasOwn(dto, 'limitEnabled')
+            ? nextState.limitValue
+            : undefined,
       },
       { client },
     );
 
     await client.query('COMMIT');
-    const serialized = serializeGoal(goal);
-    const previous = serializeGoal(existingGoal);
-    const changes = diffGoalSnapshots(previous, serialized);
 
-    if (changes) {
-      const { actorUserId, actorRole } = getActorMetadata(actor);
-      await writeAuditEvent({
-        entityType: 'offer_goal',
-        entityId: serialized.id,
-        action: 'updated',
-        actorUserId,
-        actorRole,
-        requestId,
-        context: {
-          offerId: serialized.offerId,
-          changes,
-        },
-      });
-    }
+    const limitUsed = await getCountedConversionCountByGoalId(goal.id);
+    const serialized = serializeAdminGoal(goal, { limitUsed });
+
+    await writeGoalAuditEvents({
+      previous: existingGoal,
+      next: goal,
+      actor,
+      requestId,
+    });
 
     return serialized;
   } catch (error) {
     await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function listOfferGoalAffiliateRates(offerId, goalId) {
+  if (!offerId || !goalId) {
+    throw new Error('offerId and goalId are required to list affiliate rates');
+  }
+
+  await ensureOfferExists(offerId);
+  await ensureGoalBelongsToOffer(offerId, goalId);
+
+  const rates = await listOfferGoalAffiliateRatesByGoalId(goalId);
+  const affiliates = await findAffiliatesByIds(rates.map((rate) => rate.affiliateId));
+  const affiliateMap = new Map(affiliates.map((affiliate) => [affiliate.id, affiliate]));
+
+  return rates.map((rate) =>
+    serializeAffiliateRate(rate, affiliateMap.get(rate.affiliateId) ?? null),
+  );
+}
+
+export async function upsertOfferGoalAffiliateRate(
+  offerId,
+  goalId,
+  affiliateId,
+  dto,
+  { actor = null, requestId = null } = {},
+) {
+  if (!offerId || !goalId || !affiliateId) {
+    throw new Error('offerId, goalId, and affiliateId are required to upsert affiliate rate');
+  }
+
+  if (!actor?.userId) {
+    throw new Error('actor.userId is required to upsert affiliate rate');
+  }
+
+  assertMoneyRules(dto);
+  await ensureOfferExists(offerId);
+  await ensureAffiliateExists(affiliateId);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    await ensureGoalBelongsToOffer(offerId, goalId, {
+      client,
+      forUpdate: true,
+    });
+
+    const existingRate = await findOfferGoalAffiliateRate(goalId, affiliateId, {
+      client,
+      forUpdate: true,
+    });
+
+    const rate = await upsertOfferGoalAffiliateRateModel(
+      {
+        goalId,
+        affiliateId,
+        revenue: dto.revenue,
+        payout: dto.payout,
+        createdBy: existingRate?.createdBy ?? actor.userId,
+        updatedBy: actor.userId,
+      },
+      { client },
+    );
+
+    await client.query('COMMIT');
+
+    const { actorUserId, actorRole } = getActorMetadata(actor);
+    const action = existingRate ? 'updated' : 'created';
+    await writeAuditEvent({
+      entityType: 'offer_goal_affiliate_rate',
+      entityId: rate.id,
+      action,
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: serializeRateAuditValue(existingRate),
+        newValue: serializeRateAuditValue(rate),
+        metadata: {
+          offerId,
+          goalId,
+          affiliateId,
+        },
+      },
+    });
+
+    return serializeAffiliateRate(rate);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteOfferGoalAffiliateRate(
+  offerId,
+  goalId,
+  affiliateId,
+  { actor = null, requestId = null } = {},
+) {
+  if (!offerId || !goalId || !affiliateId) {
+    throw new Error('offerId, goalId, and affiliateId are required to delete affiliate rate');
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    await ensureGoalBelongsToOffer(offerId, goalId, {
+      client,
+      forUpdate: true,
+    });
+
+    const deleted = await deleteOfferGoalAffiliateRateModel(goalId, affiliateId, {
+      client,
+    });
+
+    if (!deleted) {
+      throwGoalAffiliateRateNotFound(offerId, goalId, affiliateId);
+    }
+
+    await client.query('COMMIT');
+
+    const { actorUserId, actorRole } = getActorMetadata(actor);
+    await writeAuditEvent({
+      entityType: 'offer_goal_affiliate_rate',
+      entityId: deleted.id,
+      action: 'deleted',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: serializeRateAuditValue(deleted),
+        newValue: null,
+        metadata: {
+          offerId,
+          goalId,
+          affiliateId,
+        },
+      },
+    });
+
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function createConversionWithResolvedGoal(
+  {
+    clickId,
+    offerId,
+    affiliateId,
+    status,
+    goalId = null,
+  },
+  {
+    requestId = null,
+    actor = null,
+  } = {},
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingConversion = await findByClickIdForUpdate(clickId, { client });
+    if (existingConversion) {
+      throw new ApiError(
+        ERROR_CODES.DUPLICATE_CONVERSION,
+        409,
+        'Конверсия уже существует',
+        {
+          clickId,
+          offerId: existingConversion.offerId,
+          affiliateId: existingConversion.affiliateId,
+          conversionId: existingConversion.id,
+        },
+      );
+    }
+
+    const goalSnapshot = await resolveGoalForConversion(
+      { offerId, goalId, affiliateId },
+      { client, forUpdate: true, enforceLimit: true },
+    );
+
+    const conversion = await createConversion(
+      {
+        clickId,
+        offerId,
+        affiliateId,
+        status,
+        payoutRub: goalSnapshot.payout,
+        goalId: goalSnapshot.id,
+        goalName: goalSnapshot.name,
+        goalType: goalSnapshot.type,
+        revenueAmount: goalSnapshot.revenue,
+        payoutAmount: goalSnapshot.payout,
+      },
+      { client },
+    );
+
+    await client.query('COMMIT');
+    return { conversion, goalSnapshot };
+  } catch (error) {
+    await client.query('ROLLBACK');
+
+    if (error instanceof ApiError && error.code === ERROR_CODES.GOAL_LIMIT_REACHED) {
+      const { actorUserId, actorRole } = getActorMetadata(actor);
+      const resolvedGoalId = error.details?.goalId ?? goalId ?? 'default_goal_resolution';
+      await writeAuditEvent({
+        entityType: 'offer_goal',
+        entityId: resolvedGoalId,
+        action: 'limit_rejected_conversion',
+        actorUserId,
+        actorRole,
+        requestId,
+        context: {
+          metadata: {
+            offerId,
+            goalId: error.details?.goalId ?? goalId ?? null,
+            affiliateId,
+            clickId,
+            countedStatuses: COUNTED_CONVERSION_STATUSES,
+          },
+        },
+      });
+    }
+
     throw error;
   } finally {
     client.release();

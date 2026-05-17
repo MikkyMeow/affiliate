@@ -176,10 +176,10 @@ export default function AdvertiserOfferDetailsPage() {
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Payout
+              Категория
             </p>
             <p className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {offer.payoutRub != null ? formatMoney(offer.payoutRub) : "—"}
+              {offer.category ?? "—"}
             </p>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">

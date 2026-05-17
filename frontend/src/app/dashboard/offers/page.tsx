@@ -22,7 +22,6 @@ type Offer = {
   category: OfferCategoryValue | null;
   advertiserId: string | null;
   targetUrl: string;
-  payoutRub: number;
   status: 'active' | 'inactive';
   availability: OfferAvailability;
   createdAt: string;
@@ -189,16 +188,6 @@ export default function OffersPage() {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }),
-    [],
-  );
-
-  const payoutFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        maximumFractionDigits: 2,
       }),
     [],
   );
@@ -433,7 +422,6 @@ export default function OffersPage() {
                     <th className="px-6 py-3 font-medium">Категория</th>
                     <th className="px-6 py-3 font-medium">Рекламодатель</th>
                     <th className="px-6 py-3 font-medium">Доступность</th>
-                    <th className="px-6 py-3 font-medium">Выплата</th>
                     <th className="px-6 py-3 font-medium">Статус</th>
                     <th className="px-6 py-3 font-medium">Создан</th>
                     <th className="px-6 py-3 text-right font-medium">Действия</th>
@@ -465,9 +453,6 @@ export default function OffersPage() {
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                         {offer.availability}
-                      </td>
-                      <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100">
-                        {payoutFormatter.format(offer.payoutRub)}
                       </td>
                       <td className="px-6 py-4">
                         <span

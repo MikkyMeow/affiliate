@@ -176,7 +176,6 @@ describe('Public ordered IDs', () => {
         advertiserId: advertiserOne.id,
         category: 'other',
         targetUrl: 'https://example.com/offer-one',
-        payoutRub: 1000,
         status: 'active',
       });
 
@@ -196,7 +195,6 @@ describe('Public ordered IDs', () => {
         advertiserId: advertiserOne.id,
         category: 'other',
         targetUrl: 'https://example.com/offer-two',
-        payoutRub: 1250,
         status: 'inactive',
       });
 
@@ -296,7 +294,6 @@ describe('Public ordered IDs', () => {
         advertiserId: advertiser.id,
         category: 'other',
         targetUrl: 'https://example.com/offer-route-guard',
-        payoutRub: 900,
         status: 'active',
       });
 

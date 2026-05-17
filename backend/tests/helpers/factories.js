@@ -4,6 +4,7 @@ import pool from '../../src/db.js';
 import { createUser } from '../../src/models/userModel.js';
 import { createAffiliate } from '../../src/models/affiliateModel.js';
 import { createAdvertiser } from '../../src/models/advertiserModel.js';
+import { upsertOfferGoalAffiliateRate } from '../../src/models/offerGoalAffiliateRates.model.js';
 import { insertOfferGoal } from '../../src/models/offerGoals.model.js';
 import { upsertOfferAffiliateAccess } from '../../src/models/offerAffiliateAccess.model.js';
 import { upsertOfferAffiliateHidden } from '../../src/models/offerAffiliateHidden.model.js';
@@ -106,7 +107,6 @@ export async function createTestOffer({
   title = `Offer ${randomString(4)}`,
   category = 'other',
   targetUrl = `https://offers.example.com/${randomString(6)}`,
-  payoutRub = 1000,
   status = 'active',
   visibilityMode = 'public',
   targetingStrict = false,
@@ -126,7 +126,6 @@ export async function createTestOffer({
         category,
         advertiser_id,
         target_url,
-        payout_rub,
         status,
         visibility_mode,
         targeting_strict,
@@ -136,7 +135,7 @@ export async function createTestOffer({
         allow_duplicate_clicks,
         duplicate_click_window_seconds
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING
         id,
         public_id_number AS "publicIdNumber",
@@ -144,7 +143,6 @@ export async function createTestOffer({
         category,
         advertiser_id AS "advertiserId",
         target_url AS "targetUrl",
-        payout_rub AS "payoutRub",
         status,
         visibility_mode AS "visibilityMode",
         targeting_strict AS "targetingStrict",
@@ -159,7 +157,6 @@ export async function createTestOffer({
       category,
       advertiser,
       targetUrl,
-      payoutRub,
       status,
       visibilityMode,
       targetingStrict,
@@ -183,7 +180,9 @@ export async function createTestOfferGoal(
     payout = 150,
     currency = 'RUB',
     isDefault = true,
-    isActive = true,
+    limitEnabled = false,
+    limitType = null,
+    limitValue = null,
   } = {},
 ) {
   if (!offerId) {
@@ -198,7 +197,33 @@ export async function createTestOfferGoal(
     payout,
     currency,
     isDefault,
-    isActive,
+    limitEnabled,
+    limitType,
+    limitValue,
+  });
+}
+
+export async function createTestOfferGoalAffiliateRate(
+  goalId,
+  affiliateId,
+  {
+    revenue = 300,
+    payout = 150,
+    createdBy,
+    updatedBy = null,
+  } = {},
+) {
+  if (!goalId || !affiliateId || !createdBy) {
+    throw new Error('goalId, affiliateId, and createdBy are required to create affiliate rate');
+  }
+
+  return upsertOfferGoalAffiliateRate({
+    goalId,
+    affiliateId,
+    revenue,
+    payout,
+    createdBy,
+    updatedBy,
   });
 }
 

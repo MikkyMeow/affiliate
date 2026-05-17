@@ -1,6 +1,7 @@
 import { apiFetch } from './api';
 
 export const OFFER_GOAL_TYPES = ['cpl', 'cpa', 'cpc'] as const;
+export const OFFER_GOAL_LIMIT_TYPES = ['conversions_count'] as const;
 export const OFFER_AVAILABILITY_VALUES = [
   'public',
   'on_request',
@@ -8,6 +9,7 @@ export const OFFER_AVAILABILITY_VALUES = [
 ] as const;
 
 export type OfferGoalType = (typeof OFFER_GOAL_TYPES)[number];
+export type OfferGoalLimitType = (typeof OFFER_GOAL_LIMIT_TYPES)[number];
 export type OfferAvailability = (typeof OFFER_AVAILABILITY_VALUES)[number];
 
 export type OfferGoal = {
@@ -17,9 +19,15 @@ export type OfferGoal = {
   type: OfferGoalType;
   revenue: number;
   payout: number;
+  profit: number;
   currency: string | null;
   isDefault: boolean;
-  isActive: boolean;
+  limitEnabled: boolean;
+  limitType: OfferGoalLimitType | null;
+  limitValue: number | null;
+  limitUsed: number;
+  limitRemaining: number | null;
+  limitReached: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,9 +39,15 @@ type OfferGoalResponse = {
   type: string;
   revenue: number;
   payout: number;
+  profit: number;
   currency: string | null;
   isDefault: boolean;
-  isActive: boolean;
+  limitEnabled: boolean;
+  limitType: string | null;
+  limitValue: number | null;
+  limitUsed: number;
+  limitRemaining: number | null;
+  limitReached: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -43,8 +57,10 @@ export type OfferGoalPayload = {
   type: OfferGoalType;
   revenue: number;
   payout: number;
+  limitEnabled: boolean;
+  limitType: OfferGoalLimitType | null;
+  limitValue: number | null;
   isDefault: boolean;
-  isActive: boolean;
 };
 
 const apiTypeByGoalType: Record<OfferGoalType, string> = {
@@ -69,9 +85,19 @@ function mapGoalResponse(goal: OfferGoalResponse): OfferGoal {
     type: normalizeGoalType(goal.type ?? 'cpl'),
     revenue: goal.revenue,
     payout: goal.payout,
+    profit: goal.profit,
     currency: goal.currency ?? null,
     isDefault: goal.isDefault,
-    isActive: goal.isActive,
+    limitEnabled: Boolean(goal.limitEnabled),
+    limitType:
+      goal.limitType === 'conversions_count' ? 'conversions_count' : null,
+    limitValue:
+      typeof goal.limitValue === 'number' ? goal.limitValue : null,
+    limitUsed:
+      typeof goal.limitUsed === 'number' ? goal.limitUsed : 0,
+    limitRemaining:
+      typeof goal.limitRemaining === 'number' ? goal.limitRemaining : null,
+    limitReached: Boolean(goal.limitReached),
     createdAt: goal.createdAt,
     updatedAt: goal.updatedAt,
   };
@@ -130,6 +156,99 @@ export async function updateOfferGoal(
   );
 
   return mapGoalResponse(response.goal);
+}
+
+export type OfferGoalAffiliateRate = {
+  id: string;
+  offerGoalId: string;
+  affiliateId: string;
+  revenue: number;
+  payout: number;
+  profit: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  affiliate: OfferAffiliateSummary | null;
+};
+
+type OfferGoalAffiliateRateResponse = {
+  id: string;
+  offerGoalId: string;
+  affiliateId: string;
+  revenue: number;
+  payout: number;
+  profit: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  affiliate?: OfferAffiliateSummary | null;
+};
+
+function mapOfferGoalAffiliateRateResponse(
+  rate: OfferGoalAffiliateRateResponse,
+): OfferGoalAffiliateRate {
+  return {
+    id: rate.id,
+    offerGoalId: rate.offerGoalId,
+    affiliateId: rate.affiliateId,
+    revenue: rate.revenue,
+    payout: rate.payout,
+    profit: rate.profit,
+    currency: rate.currency,
+    createdAt: rate.createdAt,
+    updatedAt: rate.updatedAt,
+    affiliate: rate.affiliate ?? null,
+  };
+}
+
+export async function fetchOfferGoalAffiliateRates(
+  token: string,
+  offerId: string,
+  goalId: string,
+) {
+  const response = await apiFetch<{ items: OfferGoalAffiliateRateResponse[] }>(
+    `/admin/offers/${offerId}/goals/${goalId}/affiliate-rates`,
+    { token },
+  );
+
+  return response.items.map(mapOfferGoalAffiliateRateResponse);
+}
+
+export async function upsertOfferGoalAffiliateRate(
+  token: string,
+  offerId: string,
+  goalId: string,
+  affiliateId: string,
+  payload: {
+    revenue: number;
+    payout: number;
+  },
+) {
+  const response = await apiFetch<{ rate: OfferGoalAffiliateRateResponse }>(
+    `/admin/offers/${offerId}/goals/${goalId}/affiliate-rates/${affiliateId}`,
+    {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return mapOfferGoalAffiliateRateResponse(response.rate);
+}
+
+export async function deleteOfferGoalAffiliateRate(
+  token: string,
+  offerId: string,
+  goalId: string,
+  affiliateId: string,
+) {
+  return apiFetch<{ ok: boolean }>(
+    `/admin/offers/${offerId}/goals/${goalId}/affiliate-rates/${affiliateId}`,
+    {
+      method: 'DELETE',
+      token,
+    },
+  );
 }
 
 export type OfferGeoRuleType = 'allow' | 'deny';

@@ -390,7 +390,7 @@ export default function PartnerOfferDetailsPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Ссылки и выплата
+                      Ссылки
                     </p>
                     <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                       Доступные URL
@@ -399,12 +399,6 @@ export default function PartnerOfferDetailsPage() {
                       Target, fallback и превью ссылки для проверки посадочной.
                     </p>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                    Выплата:{" "}
-                    {fullView
-                      ? formatMoney(fullView.payoutRub)
-                      : "—"}
-                  </span>
                 </div>
                 <div className="mt-6 space-y-3 text-sm">
                   <InfoRow
@@ -468,16 +462,16 @@ export default function PartnerOfferDetailsPage() {
             </>
           )}
 
-          <div className={sectionCardStyles}>
-            <div className="flex flex-col gap-2">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <div className={sectionCardStyles}>
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">
                 Goals
               </p>
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                 Цели и выплаты
               </h3>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Базовые выплаты по каждому событию.
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Ваша эффективная выплата по каждой цели.
               </p>
             </div>
             {offer.accessLevel !== "full" && (
@@ -508,32 +502,34 @@ export default function PartnerOfferDetailsPage() {
                               Default
                             </span>
                           )}
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              goal.isActive
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                            }`}
-                          >
-                            {goal.isActive ? "Активна" : "Выключена"}
-                          </span>
+                          {goal.limitReached && (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-200">
+                              Лимит достигнут
+                            </span>
+                          )}
                         </div>
                       </div>
                       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <dt className="text-xs uppercase tracking-wide text-zinc-500">
-                            Revenue
-                          </dt>
-                          <dd className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                            {formatGoalMoney(goal.revenue, goal.currency)}
-                          </dd>
-                        </div>
                         <div>
                           <dt className="text-xs uppercase tracking-wide text-zinc-500">
                             Payout
                           </dt>
                           <dd className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                             {formatGoalMoney(goal.payout, goal.currency)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                            Статус
+                          </dt>
+                          <dd
+                            className={`text-base font-semibold ${
+                              goal.limitReached
+                                ? "text-red-700 dark:text-red-200"
+                                : "text-zinc-900 dark:text-zinc-50"
+                            }`}
+                          >
+                            {goal.limitReached ? "Недоступна: лимит достигнут" : "Доступна"}
                           </dd>
                         </div>
                       </dl>

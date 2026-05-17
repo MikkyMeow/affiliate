@@ -604,10 +604,16 @@ export default function PartnerDashboardPage() {
                         </a>
                       </p>
                       <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                        Выплата:{" "}
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                          {fullView ? formatMoney(fullView.payoutRub) : "—"}
-                        </span>
+                        Превью:{" "}
+                        <a
+                          href={fullView?.previewUrl ?? "#"}
+                          className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {fullView?.previewUrl ?? "—"}
+                        </a>
                       </p>
                     </>
                   )}

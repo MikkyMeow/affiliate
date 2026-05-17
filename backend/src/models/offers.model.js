@@ -8,7 +8,6 @@ const baseOfferColumns = [
   'category',
   'advertiser_id AS "advertiserId"',
   'target_url AS "targetUrl"',
-  'payout_rub AS "payoutRub"',
   'status',
   'visibility_mode AS availability',
   'visibility_mode AS "visibilityMode"',
@@ -30,7 +29,6 @@ const offerFieldsWithPostbackToken = `${offerListFields},\n  postback_token AS "
 const offerPostbackFields = `
   id,
   public_id_number AS "publicIdNumber",
-  payout_rub AS "payoutRub",
   status,
   postback_token AS "postbackToken"
 `;
@@ -40,7 +38,6 @@ export async function createOffer({
   category,
   advertiserId,
   targetUrl,
-  payoutRub,
   status = 'inactive',
   visibilityMode = 'public',
   postbackToken,
@@ -55,7 +52,6 @@ export async function createOffer({
         category,
         advertiser_id,
         target_url,
-        payout_rub,
         status,
         visibility_mode,
         postback_token,
@@ -63,7 +59,7 @@ export async function createOffer({
         duplicate_click_window_seconds,
         description
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING ${offerDetailFields},
         postback_token AS "postbackToken";
     `,
@@ -72,7 +68,6 @@ export async function createOffer({
       category ?? null,
       advertiserId,
       targetUrl,
-      payoutRub,
       status,
       visibilityMode,
       postbackToken,
@@ -176,7 +171,6 @@ export async function updateOffer(id, attrs = {}) {
     category,
     advertiserId,
     targetUrl,
-    payoutRub,
     status,
     availability,
     visibilityMode,
@@ -203,11 +197,6 @@ export async function updateOffer(id, attrs = {}) {
   if (typeof targetUrl === 'string') {
     params.push(targetUrl);
     assignments.push(`target_url = $${params.length}`);
-  }
-
-  if (typeof payoutRub === 'number') {
-    params.push(payoutRub);
-    assignments.push(`payout_rub = $${params.length}`);
   }
 
   if (typeof status === 'string') {

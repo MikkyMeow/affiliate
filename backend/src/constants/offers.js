@@ -37,6 +37,12 @@ export const OFFER_GOAL_TYPES = Object.freeze({
   CPC: 'CPC',
 });
 
+export const OFFER_GOAL_LIMIT_TYPES = Object.freeze({
+  CONVERSIONS_COUNT: 'conversions_count',
+});
+
+export const OFFER_GOAL_CURRENCY = 'RUB';
+
 export const OFFER_GEO_RULE_TYPES = Object.freeze({
   ALLOW: 'allow',
   DENY: 'deny',

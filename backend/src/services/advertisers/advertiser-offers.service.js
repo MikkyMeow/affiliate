@@ -9,7 +9,6 @@ const advertiserOfferFields = `
   title,
   status,
   category,
-  payout_rub AS "payoutRub",
   preview_url AS "previewUrl",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
@@ -19,15 +18,6 @@ function ensureAdvertiserContext(advertiserId) {
   if (!advertiserId) {
     throw new Error('advertiserId is required to query offers');
   }
-}
-
-function normalizeMoney(value) {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
 }
 
 function mapOfferToAdvertiserView(offer) {
@@ -43,7 +33,6 @@ function mapOfferToAdvertiserView(offer) {
     publicId: withPublicId.publicId ?? null,
     name: withPublicId.title ?? null,
     status: withPublicId.status ?? null,
-    payoutRub: normalizeMoney(withPublicId.payoutRub),
     revenueRub: withPublicId.revenueRub ?? null,
     trackingType: withPublicId.trackingType ?? null,
     category: withPublicId.category ?? null,

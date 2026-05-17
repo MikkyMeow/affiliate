@@ -46,7 +46,6 @@ type Offer = {
     name: string;
   } | null;
   targetUrl: string;
-  payoutRub: number;
   status: 'active' | 'inactive';
   availability: OfferAvailability;
   visibilityMode: OfferAvailability;
@@ -63,7 +62,6 @@ type FormState = {
   title: string;
   category: OfferCategoryValue | '';
   targetUrl: string;
-  payoutRub: string;
   status: 'active' | 'inactive';
   availability: OfferAvailability;
   allowDuplicateClicks: boolean;
@@ -92,7 +90,6 @@ export default function EditOfferPage() {
     title: '',
     category: '',
     targetUrl: '',
-    payoutRub: '',
     status: 'inactive',
     availability: 'public',
     allowDuplicateClicks: true,
@@ -214,7 +211,6 @@ export default function EditOfferPage() {
           title: offer.title,
           category: offer.category ?? '',
           targetUrl: offer.targetUrl,
-          payoutRub: offer.payoutRub.toString(),
           status: offer.status,
           availability:
             offer.availability ?? offer.visibilityMode ?? 'public',
@@ -254,7 +250,6 @@ export default function EditOfferPage() {
   const isFormValid = useMemo(() => {
     const normalizedTitle = form.title.trim();
     const normalizedUrl = form.targetUrl.trim();
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
     const duplicateWindowSeconds = form.allowDuplicateClicks
       ? null
       : windowPartsToSeconds(
@@ -268,8 +263,6 @@ export default function EditOfferPage() {
       normalizedTitle.length > 0 &&
       form.category.length > 0 &&
       /^https?:\/\//i.test(normalizedUrl) &&
-      Number.isFinite(payoutValue) &&
-      payoutValue > 0 &&
       ['active', 'inactive'].includes(form.status) &&
       ['public', 'on_request', 'private'].includes(form.availability) &&
       duplicateSettingsValid
@@ -302,12 +295,6 @@ export default function EditOfferPage() {
       return;
     }
 
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
-    if (!Number.isFinite(payoutValue) || payoutValue <= 0) {
-      setErrors({ payoutRub: 'Введите корректную сумму больше 0' });
-      return;
-    }
-
     const duplicateWindowSeconds = form.allowDuplicateClicks
       ? null
       : windowPartsToSeconds(
@@ -336,7 +323,6 @@ export default function EditOfferPage() {
           title: normalizedTitle,
           targetUrl: normalizedUrl,
           category: form.category,
-          payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
           availability: form.availability,
           allowDuplicateClicks: form.allowDuplicateClicks,
@@ -363,7 +349,6 @@ export default function EditOfferPage() {
             case 'title':
             case 'category':
             case 'targetUrl':
-            case 'payoutRub':
             case 'status':
             case 'availability':
             case 'allowDuplicateClicks':
@@ -741,25 +726,6 @@ export default function EditOfferPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="payoutRub">
-                Выплата, ₽
-              </label>
-              <input
-                id="payoutRub"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.payoutRub}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, payoutRub: event.target.value.slice(0, 20) }))
-                }
-                placeholder="500"
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
-              />
-              {errors.payoutRub && <p className="text-sm text-red-600">{errors.payoutRub}</p>}
-            </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="status">
                 Статус

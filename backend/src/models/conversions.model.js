@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { COUNTED_CONVERSION_STATUSES } from '../constants/conversions.js';
 
 const conversionFields = `
   id,
@@ -40,8 +41,8 @@ export async function createConversion({
   goalType = null,
   revenueAmount = null,
   payoutAmount = null,
-}) {
-  const result = await pool.query(
+}, { client = pool } = {}) {
+  const result = await client.query(
     `
       INSERT INTO conversions (
         click_id,
@@ -81,6 +82,20 @@ export async function findByClickId(clickId) {
       SELECT ${conversionFields}
       FROM conversions
       WHERE click_id = $1;
+    `,
+    [clickId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findByClickIdForUpdate(clickId, { client = pool } = {}) {
+  const result = await client.query(
+    `
+      SELECT ${conversionFields}
+      FROM conversions
+      WHERE click_id = $1
+      FOR UPDATE
     `,
     [clickId],
   );
@@ -210,4 +225,49 @@ export async function getConversionTotals({ offerId, affiliateId } = {}) {
     rejected: row.rejected ?? 0,
     totalPayoutRub: Number(row.totalPayoutRub ?? 0),
   };
+}
+
+export async function getCountedConversionCountByGoalId(goalId, { client = pool } = {}) {
+  if (!goalId) {
+    throw new Error('goalId is required to count goal conversions');
+  }
+
+  const result = await client.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM conversions
+      WHERE goal_id = $1
+        AND status = ANY($2::text[])
+    `,
+    [goalId, COUNTED_CONVERSION_STATUSES],
+  );
+
+  return result.rows[0]?.count ?? 0;
+}
+
+export async function getCountedConversionCountsByGoalIds(
+  goalIds,
+  { client = pool } = {},
+) {
+  if (!Array.isArray(goalIds) || goalIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await client.query(
+    `
+      SELECT goal_id AS "goalId", COUNT(*)::int AS count
+      FROM conversions
+      WHERE goal_id = ANY($1::uuid[])
+        AND status = ANY($2::text[])
+      GROUP BY goal_id
+    `,
+    [goalIds, COUNTED_CONVERSION_STATUSES],
+  );
+
+  return new Map(
+    result.rows.map((row) => [
+      row.goalId,
+      Number.isFinite(row.count) ? row.count : Number(row.count ?? 0),
+    ]),
+  );
 }

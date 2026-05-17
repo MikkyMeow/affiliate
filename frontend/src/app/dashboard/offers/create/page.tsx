@@ -26,7 +26,6 @@ type FormState = {
   advertiserId: string;
   category: OfferCategoryValue | '';
   targetUrl: string;
-  payoutRub: string;
   status: 'active' | 'inactive';
   allowDuplicateClicks: boolean;
   duplicateClickWindowValue: string;
@@ -45,7 +44,6 @@ export default function CreateOfferPage() {
     advertiserId: '',
     category: '',
     targetUrl: '',
-    payoutRub: '',
     status: 'inactive',
     allowDuplicateClicks: true,
     duplicateClickWindowValue: '',
@@ -104,7 +102,6 @@ export default function CreateOfferPage() {
   const isFormValid = useMemo(() => {
     const normalizedTitle = form.title.trim();
     const normalizedTargetUrl = form.targetUrl.trim();
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
     const duplicateWindowSeconds = form.allowDuplicateClicks
       ? null
       : windowPartsToSeconds(
@@ -119,8 +116,6 @@ export default function CreateOfferPage() {
       form.advertiserId.length > 0 &&
       form.category.length > 0 &&
       /^https?:\/\//i.test(normalizedTargetUrl) &&
-      Number.isFinite(payoutValue) &&
-      payoutValue > 0 &&
       ['active', 'inactive'].includes(form.status) &&
       duplicateSettingsValid
     );
@@ -157,12 +152,6 @@ export default function CreateOfferPage() {
       return;
     }
 
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
-    if (!Number.isFinite(payoutValue) || payoutValue <= 0) {
-      setErrors({ payoutRub: 'Введите корректную сумму больше 0' });
-      return;
-    }
-
     const duplicateWindowSeconds = form.allowDuplicateClicks
       ? null
       : windowPartsToSeconds(
@@ -190,7 +179,6 @@ export default function CreateOfferPage() {
           advertiserId: form.advertiserId,
           category: form.category,
           targetUrl: normalizedUrl,
-          payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
           allowDuplicateClicks: form.allowDuplicateClicks,
           duplicateClickWindowSeconds: duplicateWindowSeconds,
@@ -217,7 +205,6 @@ export default function CreateOfferPage() {
             case 'advertiserId':
             case 'category':
             case 'targetUrl':
-            case 'payoutRub':
             case 'status':
             case 'allowDuplicateClicks':
             case 'description':
@@ -411,28 +398,6 @@ export default function CreateOfferPage() {
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.targetUrl && <p className="text-sm text-red-600">{errors.targetUrl}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <label
-            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
-            htmlFor="payoutRub"
-          >
-            Выплата, ₽
-          </label>
-          <input
-            id="payoutRub"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.payoutRub}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, payoutRub: event.target.value.slice(0, 20) }))
-            }
-            placeholder="500"
-            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
-          />
-          {errors.payoutRub && <p className="text-sm text-red-600">{errors.payoutRub}</p>}
         </div>
 
         <div className="space-y-2">

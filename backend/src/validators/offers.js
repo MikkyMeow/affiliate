@@ -1,6 +1,8 @@
 import {
   LEGACY_OFFER_STATUS_INACTIVE,
   OFFER_CATEGORY_VALUES,
+  OFFER_GOAL_CURRENCY,
+  OFFER_GOAL_LIMIT_TYPES,
   OFFER_GOAL_TYPES,
   OFFER_STATUSES,
   OFFER_VISIBILITY_MODES,
@@ -12,6 +14,7 @@ const allowedStatuses = new Set([
 ]);
 const allowedVisibilityModes = new Set(Object.values(OFFER_VISIBILITY_MODES));
 const allowedGoalTypes = new Set(Object.values(OFFER_GOAL_TYPES));
+const allowedGoalLimitTypes = new Set(Object.values(OFFER_GOAL_LIMIT_TYPES));
 const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -423,34 +426,6 @@ export function validateUrl(
   return { value: trimmed, errors: [] };
 }
 
-export function validatePayoutRub(value, { allowMissing = true } = {}) {
-  if (value === undefined || value === null || value === '') {
-    return allowMissing
-      ? { value: undefined, errors: [] }
-      : {
-          value: undefined,
-          errors: [buildError('payoutRub', 'Выплата обязательна')],
-        };
-  }
-
-  const normalized = normalizeMoney(value);
-  if (normalized === null) {
-    return {
-      value: undefined,
-      errors: [buildError('payoutRub', 'Некорректная сумма выплаты')],
-    };
-  }
-
-  if (normalized <= 0) {
-    return {
-      value: undefined,
-      errors: [buildError('payoutRub', 'Выплата должна быть больше 0')],
-    };
-  }
-
-  return { value: normalized, errors: [] };
-}
-
 function validateGoalsPayload(value, { allowMissing = true } = {}) {
   if (value === undefined || value === null || value === '') {
     return allowMissing
@@ -517,11 +492,11 @@ function validateGoalsPayload(value, { allowMissing = true } = {}) {
     }
 
     const revenue = normalizeMoney(rawGoal.revenue);
-    if (revenue === null || revenue <= 0) {
+    if (revenue === null || revenue < 0) {
       errors.push(
         buildError(
           `${path}.revenue`,
-          'revenue должен быть числом больше 0',
+          'revenue должен быть неотрицательным числом',
         ),
       );
     } else {
@@ -548,6 +523,13 @@ function validateGoalsPayload(value, { allowMissing = true } = {}) {
           'currency должен быть трёхбуквенным кодом ISO-4217',
         ),
       );
+    } else if (currency !== OFFER_GOAL_CURRENCY) {
+      errors.push(
+        buildError(
+          `${path}.currency`,
+          `Поддерживается только ${OFFER_GOAL_CURRENCY}`,
+        ),
+      );
     } else {
       goal.currency = currency;
     }
@@ -564,17 +546,68 @@ function validateGoalsPayload(value, { allowMissing = true } = {}) {
     }
     goal.isDefault = isDefault;
 
-    let isActive = true;
-    if (Object.hasOwn(rawGoal, 'isActive')) {
-      if (typeof rawGoal.isActive !== 'boolean') {
+    if (Object.hasOwn(rawGoal, 'isActive') || Object.hasOwn(rawGoal, 'status')) {
+      errors.push(
+        buildError(`${path}.isActive`, 'goal status удалён и больше не поддерживается'),
+      );
+    }
+
+    if (goal.revenue !== undefined && goal.payout !== undefined && goal.payout > goal.revenue) {
+      errors.push(
+        buildError(`${path}.payout`, 'payout не может быть больше revenue'),
+      );
+    }
+
+    let limitEnabled = false;
+    if (Object.hasOwn(rawGoal, 'limitEnabled')) {
+      if (typeof rawGoal.limitEnabled !== 'boolean') {
         errors.push(
-          buildError(`${path}.isActive`, 'isActive должен быть булевым значением'),
+          buildError(
+            `${path}.limitEnabled`,
+            'limitEnabled должен быть булевым значением',
+          ),
         );
       } else {
-        isActive = rawGoal.isActive;
+        limitEnabled = rawGoal.limitEnabled;
       }
     }
-    goal.isActive = isActive;
+    goal.limitEnabled = limitEnabled;
+
+    if (limitEnabled) {
+      const limitType =
+        typeof rawGoal.limitType === 'string' ? rawGoal.limitType.trim() : null;
+      if (!limitType || !allowedGoalLimitTypes.has(limitType)) {
+        errors.push(
+          buildError(
+            `${path}.limitType`,
+            `limitType должен быть одним из: ${Array.from(allowedGoalLimitTypes).join(', ')}`,
+          ),
+        );
+      } else {
+        goal.limitType = limitType;
+      }
+
+      const limitValue =
+        typeof rawGoal.limitValue === 'number'
+          ? rawGoal.limitValue
+          : typeof rawGoal.limitValue === 'string' && /^\d+$/.test(rawGoal.limitValue.trim())
+            ? Number.parseInt(rawGoal.limitValue.trim(), 10)
+            : null;
+
+      if (!Number.isInteger(limitValue) || limitValue <= 0) {
+        errors.push(
+          buildError(
+            `${path}.limitValue`,
+            'limitValue должен быть положительным целым числом',
+          ),
+        );
+      } else {
+        goal.limitValue = limitValue;
+      }
+    } else {
+      goal.limitType = null;
+      goal.limitValue = null;
+    }
 
     if (errors.length === errorsBefore) {
       goals.push(goal);
@@ -625,13 +658,13 @@ export function validateCreateOfferDto(payload) {
     dto.targetUrl = targetUrl;
   }
 
-  const { value: payoutRub, errors: payoutErrors } = validatePayoutRub(
-    source.payoutRub,
-    { allowMissing: false },
-  );
-  errors.push(...payoutErrors);
-  if (typeof payoutRub === 'number') {
-    dto.payoutRub = payoutRub;
+  if (Object.hasOwn(source, 'payoutRub')) {
+    errors.push(
+      buildError(
+        'payoutRub',
+        'offer-level payout удалён. Используйте payout на уровне goal',
+      ),
+    );
   }
 
   const { value: status, errors: statusErrors } = validateStatus(source.status);
@@ -774,14 +807,12 @@ export function validateUpdateOfferDto(payload) {
 
   if (Object.hasOwn(source, 'payoutRub')) {
     hasAtLeastOneField = true;
-    const { value: payoutRub, errors: payoutErrors } = validatePayoutRub(
-      source.payoutRub,
-      { allowMissing: false },
+    errors.push(
+      buildError(
+        'payoutRub',
+        'offer-level payout удалён. Используйте payout на уровне goal',
+      ),
     );
-    errors.push(...payoutErrors);
-    if (typeof payoutRub === 'number') {
-      dto.payoutRub = payoutRub;
-    }
   }
 
   if (Object.hasOwn(source, 'status')) {

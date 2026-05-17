@@ -9,7 +9,9 @@ const goalFields = `
   payout,
   currency,
   is_default AS "isDefault",
-  is_active AS "isActive",
+  limit_enabled AS "limitEnabled",
+  limit_type AS "limitType",
+  limit_value AS "limitValue",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `;
@@ -19,19 +21,19 @@ function getQueryable(client) {
 }
 
 function buildLockClause({ forUpdate } = {}) {
-  if (forUpdate) {
-    return 'FOR UPDATE';
-  }
-
-  return '';
+  return forUpdate ? 'FOR UPDATE' : '';
 }
 
-export async function listOfferGoalsByOfferId(offerId, { client } = {}) {
+export async function listOfferGoalsByOfferId(
+  offerId,
+  { client, forUpdate = false } = {},
+) {
   if (!offerId) {
     throw new Error('offerId is required to list goals');
   }
 
   const queryable = getQueryable(client);
+  const lockClause = buildLockClause({ forUpdate });
 
   const result = await queryable.query(
     `
@@ -39,6 +41,7 @@ export async function listOfferGoalsByOfferId(offerId, { client } = {}) {
       FROM offer_goals
       WHERE offer_id = $1
       ORDER BY is_default DESC, created_at ASC, id ASC
+      ${lockClause}
     `,
     [offerId],
   );
@@ -47,7 +50,18 @@ export async function listOfferGoalsByOfferId(offerId, { client } = {}) {
 }
 
 export async function insertOfferGoal(
-  { offerId, name, type, revenue, payout, currency, isDefault, isActive },
+  {
+    offerId,
+    name,
+    type,
+    revenue,
+    payout,
+    currency,
+    isDefault,
+    limitEnabled = false,
+    limitType = null,
+    limitValue = null,
+  },
   { client } = {},
 ) {
   if (!offerId) {
@@ -55,7 +69,6 @@ export async function insertOfferGoal(
   }
 
   const queryable = getQueryable(client);
-
   const result = await queryable.query(
     `
       INSERT INTO offer_goals (
@@ -66,12 +79,25 @@ export async function insertOfferGoal(
         payout,
         currency,
         is_default,
-        is_active
+        limit_enabled,
+        limit_type,
+        limit_value
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING ${goalFields}
     `,
-    [offerId, name, type, revenue, payout, currency, isDefault, isActive],
+    [
+      offerId,
+      name,
+      type,
+      revenue,
+      payout,
+      currency,
+      isDefault,
+      limitEnabled,
+      limitType,
+      limitValue,
+    ],
   );
 
   return result.rows[0] ?? null;
@@ -79,12 +105,24 @@ export async function insertOfferGoal(
 
 export async function updateOfferGoal(
   goalId,
-  { name, type, revenue, payout, currency, isDefault, isActive },
+  attrs = {},
   { client } = {},
 ) {
   if (!goalId) {
     throw new Error('goalId is required to update goal');
   }
+
+  const {
+    name,
+    type,
+    revenue,
+    payout,
+    currency,
+    isDefault,
+    limitEnabled,
+    limitType,
+    limitValue,
+  } = attrs;
 
   const assignments = [];
   const params = [];
@@ -119,9 +157,19 @@ export async function updateOfferGoal(
     assignments.push(`is_default = $${params.length}`);
   }
 
-  if (typeof isActive === 'boolean') {
-    params.push(isActive);
-    assignments.push(`is_active = $${params.length}`);
+  if (typeof limitEnabled === 'boolean') {
+    params.push(limitEnabled);
+    assignments.push(`limit_enabled = $${params.length}`);
+  }
+
+  if (Object.hasOwn(attrs, 'limitType')) {
+    params.push(limitType ?? null);
+    assignments.push(`limit_type = $${params.length}`);
+  }
+
+  if (Object.hasOwn(attrs, 'limitValue')) {
+    params.push(limitValue ?? null);
+    assignments.push(`limit_value = $${params.length}`);
   }
 
   if (assignments.length === 0) {
@@ -129,7 +177,6 @@ export async function updateOfferGoal(
   }
 
   const queryable = getQueryable(client);
-
   const result = await queryable.query(
     `
       UPDATE offer_goals
@@ -153,7 +200,6 @@ export async function findOfferGoalById(
 
   const queryable = getQueryable(client);
   const lockClause = buildLockClause({ forUpdate });
-
   const result = await queryable.query(
     `
       SELECT ${goalFields}
@@ -167,7 +213,7 @@ export async function findOfferGoalById(
   return result.rows[0] ?? null;
 }
 
-export async function findDefaultActiveGoalByOfferId(
+export async function findDefaultGoalByOfferId(
   offerId,
   { client, forUpdate = false } = {},
 ) {
@@ -177,14 +223,12 @@ export async function findDefaultActiveGoalByOfferId(
 
   const queryable = getQueryable(client);
   const lockClause = buildLockClause({ forUpdate });
-
   const result = await queryable.query(
     `
       SELECT ${goalFields}
       FROM offer_goals
       WHERE offer_id = $1
         AND is_default = true
-        AND is_active = true
       ORDER BY updated_at DESC, created_at DESC, id DESC
       LIMIT 1
       ${lockClause}
@@ -204,15 +248,14 @@ export async function unsetDefaultOfferGoals(
   }
 
   const params = [offerId];
-
   let excludeClause = '';
+
   if (excludeGoalId) {
     params.push(excludeGoalId);
     excludeClause = `AND id <> $${params.length}`;
   }
 
   const queryable = getQueryable(client);
-
   await queryable.query(
     `
       UPDATE offer_goals

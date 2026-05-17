@@ -1,5 +1,5 @@
 import { apiFetch } from "./api";
-import type { OfferGoal, OfferGoalType } from "./offers";
+import type { OfferGoalType } from "./offers";
 import type { OfferCategoryValue } from "./offerCategories";
 
 export type PartnerOfferViewRestricted = {
@@ -11,7 +11,6 @@ export type PartnerOfferViewFull = {
   targetUrl: string;
   fallbackUrl: string | null;
   previewUrl: string | null;
-  payoutRub: number;
 };
 
 export type PartnerOffer = {
@@ -38,11 +37,23 @@ type PartnerOfferGoalResponse = {
   offerId: string;
   name: string;
   type: string | null;
-  revenue: number;
   payout: number;
   currency: string | null;
   isDefault: boolean;
-  isActive: boolean;
+  limitReached: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PartnerOfferGoal = {
+  id: string;
+  offerId: string;
+  name: string;
+  type: OfferGoalType;
+  payout: number;
+  currency: string | null;
+  isDefault: boolean;
+  limitReached: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,7 +64,7 @@ type PartnerOfferResponse = PartnerOffer & {
 
 export type PartnerOfferDetail = PartnerOffer & {
   description: string | null;
-  goals?: OfferGoal[];
+  goals?: PartnerOfferGoal[];
 };
 
 function normalizeGoalType(value?: string | null): OfferGoalType {
@@ -64,17 +75,16 @@ function normalizeGoalType(value?: string | null): OfferGoalType {
   return "cpl";
 }
 
-function mapGoal(goal: PartnerOfferGoalResponse): OfferGoal {
+function mapGoal(goal: PartnerOfferGoalResponse): PartnerOfferGoal {
   return {
     id: goal.id,
     offerId: goal.offerId,
     name: goal.name,
     type: normalizeGoalType(goal.type),
-    revenue: goal.revenue,
     payout: goal.payout,
     currency: goal.currency ?? null,
     isDefault: Boolean(goal.isDefault),
-    isActive: Boolean(goal.isActive),
+    limitReached: Boolean(goal.limitReached),
     createdAt: goal.createdAt,
     updatedAt: goal.updatedAt,
   };

@@ -51,26 +51,6 @@ function assertValidTargetUrl(targetUrl) {
   }
 }
 
-function assertValidPayout(payoutRub) {
-  if (typeof payoutRub !== 'number' || !Number.isFinite(payoutRub)) {
-    throwValidationError([
-      {
-        field: 'payoutRub',
-        message: 'Выплата должна быть числом',
-      },
-    ]);
-  }
-
-  if (payoutRub <= 0) {
-    throwValidationError([
-      {
-        field: 'payoutRub',
-        message: 'Выплата должна быть больше 0',
-      },
-    ]);
-  }
-}
-
 const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
 
 function assertValidCategory(category) {
@@ -121,7 +101,6 @@ function buildOfferSnapshot(offer) {
     visibilityMode: offer.visibilityMode ?? null,
     targetingStrict: offer.targetingStrict ?? null,
     fallbackUrl: offer.fallbackUrl ?? null,
-    payoutRub: offer.payoutRub ?? null,
     targetUrl: offer.targetUrl ?? null,
     description: offer.description ?? null,
     allowDuplicateClicks:
@@ -160,7 +139,6 @@ function diffOfferSnapshots(previous, next) {
     'availability',
     'advertiserId',
     'targetUrl',
-    'payoutRub',
     'visibilityMode',
     'targetingStrict',
     'fallbackUrl',
@@ -186,7 +164,6 @@ function diffOfferSnapshots(previous, next) {
 export async function createOffer(dto, { actor = null, requestId = null } = {}) {
   await ensureAdvertiserExists(dto.advertiserId);
   assertValidTargetUrl(dto.targetUrl);
-  assertValidPayout(dto.payoutRub);
   assertValidCategory(dto.category);
 
   const offer = await createOfferModel({
@@ -256,10 +233,6 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
 
   if (Object.hasOwn(dto, 'targetUrl')) {
     assertValidTargetUrl(dto.targetUrl);
-  }
-
-  if (Object.hasOwn(dto, 'payoutRub')) {
-    assertValidPayout(dto.payoutRub);
   }
 
   if (Object.hasOwn(dto, 'category')) {

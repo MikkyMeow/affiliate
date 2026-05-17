@@ -33,7 +33,6 @@ export type AdvertiserOfferListItem = {
   id: string;
   name: string | null;
   status: string | null;
-  payoutRub: number | null;
   revenueRub: number | null;
   trackingType: string | null;
   category: string | null;
