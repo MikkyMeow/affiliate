@@ -7,6 +7,7 @@ const conversionFields = `
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
   status,
+  external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
   goal_name AS "goalName",
   goal_type AS "goalType",
@@ -21,6 +22,7 @@ const conversionListFields = `
   offer_id AS "offerId",
   affiliate_id AS "affiliateId",
   status,
+  external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
   goal_name AS "goalName",
   goal_type AS "goalType",
@@ -36,6 +38,7 @@ export async function createConversion({
   affiliateId,
   status,
   payoutRub,
+  externalTransactionId = null,
   goalId = null,
   goalName = null,
   goalType = null,
@@ -50,13 +53,14 @@ export async function createConversion({
         affiliate_id,
         status,
         payout_rub,
+        external_transaction_id,
         goal_id,
         goal_name,
         goal_type,
         revenue_amount,
         payout_amount
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING ${conversionFields};
     `,
     [
@@ -65,6 +69,7 @@ export async function createConversion({
       affiliateId,
       status,
       payoutRub,
+      externalTransactionId,
       goalId,
       goalName,
       goalType,
@@ -81,7 +86,9 @@ export async function findByClickId(clickId) {
     `
       SELECT ${conversionFields}
       FROM conversions
-      WHERE click_id = $1;
+      WHERE click_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT 1;
     `,
     [clickId],
   );
@@ -89,15 +96,76 @@ export async function findByClickId(clickId) {
   return result.rows[0] ?? null;
 }
 
-export async function findByClickIdForUpdate(clickId, { client = pool } = {}) {
+export async function listByClickId(clickId, { client = pool } = {}) {
   const result = await client.query(
     `
       SELECT ${conversionFields}
       FROM conversions
       WHERE click_id = $1
-      FOR UPDATE
+      ORDER BY created_at ASC, id ASC
     `,
     [clickId],
+  );
+
+  return result.rows;
+}
+
+export async function findByClickIdAndGoalId(
+  clickId,
+  goalId,
+  { client = pool } = {},
+) {
+  const result = await client.query(
+    `
+      SELECT ${conversionFields}
+      FROM conversions
+      WHERE click_id = $1
+        AND goal_id = $2
+      ORDER BY created_at DESC, id DESC
+      LIMIT 1
+    `,
+    [clickId, goalId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findByClickIdAndGoalIdForUpdate(
+  clickId,
+  goalId,
+  { client = pool } = {},
+) {
+  const result = await client.query(
+    `
+      SELECT ${conversionFields}
+      FROM conversions
+      WHERE click_id = $1
+        AND goal_id = $2
+      FOR UPDATE
+    `,
+    [clickId, goalId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findByOfferGoalAndExternalTransactionId(
+  offerId,
+  goalId,
+  externalTransactionId,
+  { client = pool, forUpdate = false } = {},
+) {
+  const lockClause = forUpdate ? 'FOR UPDATE' : '';
+  const result = await client.query(
+    `
+      SELECT ${conversionFields}
+      FROM conversions
+      WHERE offer_id = $1
+        AND goal_id = $2
+        AND external_transaction_id = $3
+      ${lockClause}
+    `,
+    [offerId, goalId, externalTransactionId],
   );
 
   return result.rows[0] ?? null;

@@ -12,6 +12,7 @@ import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
 import { trackingFetch } from '@/lib/tracking';
 import { canAccessAdminArea } from '@/lib/auth/roles';
+import { fetchOfferGoals, type OfferGoal } from '@/lib/offers';
 
 type Conversion = {
   clickId: string;
@@ -32,6 +33,15 @@ type OfferSecret = {
   id: string;
   title: string;
   postbackToken?: string | null;
+};
+
+type PostbackResponse = {
+  clickId: string;
+  status: string;
+  goal?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 const PAGE_SIZE = 20;
@@ -58,6 +68,7 @@ export default function ConversionsPage() {
     'approved',
   );
   const [postbackToken, setPostbackToken] = useState('');
+  const [postbackGoalId, setPostbackGoalId] = useState('');
   const [postbackPayout, setPostbackPayout] = useState('');
   const [postbackSending, setPostbackSending] = useState(false);
   const [postbackMessage, setPostbackMessage] = useState<string | null>(null);
@@ -67,6 +78,9 @@ export default function ConversionsPage() {
   const [offerTokensLoading, setOfferTokensLoading] = useState(false);
   const [offerTokensError, setOfferTokensError] = useState<string | null>(null);
   const [copiedTokenOfferId, setCopiedTokenOfferId] = useState<string | null>(null);
+  const [matchedOfferGoals, setMatchedOfferGoals] = useState<OfferGoal[]>([]);
+  const [matchedOfferGoalsLoading, setMatchedOfferGoalsLoading] = useState(false);
+  const [matchedOfferGoalsError, setMatchedOfferGoalsError] = useState<string | null>(null);
 
   const pageParam = searchParams?.get('page') ?? '1';
   const parsed = Number.parseInt(pageParam, 10);
@@ -103,6 +117,16 @@ export default function ConversionsPage() {
       }),
     [],
   );
+
+  const matchedOffer = useMemo(() => {
+    const trimmedToken = postbackToken.trim();
+
+    if (!trimmedToken) {
+      return null;
+    }
+
+    return offerTokens.find((offer) => offer.postbackToken?.trim() === trimmedToken) ?? null;
+  }, [offerTokens, postbackToken]);
 
   useEffect(() => {
     if (authLoading || !accessToken) {
@@ -208,6 +232,69 @@ export default function ConversionsPage() {
     };
   }, [accessToken, authLoading, user]);
 
+  useEffect(() => {
+    if (!accessToken || !matchedOffer) {
+      setMatchedOfferGoals([]);
+      setMatchedOfferGoalsLoading(false);
+      setMatchedOfferGoalsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setMatchedOfferGoalsLoading(true);
+    setMatchedOfferGoalsError(null);
+
+    fetchOfferGoals(accessToken, matchedOffer.id)
+      .then((goals) => {
+        if (cancelled) {
+          return;
+        }
+
+        setMatchedOfferGoals(goals);
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+
+        const apiError = fetchError as ApiError;
+        setMatchedOfferGoals([]);
+        setMatchedOfferGoalsError(
+          apiError.message ?? 'Не удалось загрузить цели оффера',
+        );
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setMatchedOfferGoalsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, matchedOffer]);
+
+  useEffect(() => {
+    if (!matchedOffer) {
+      return;
+    }
+
+    if (matchedOfferGoals.length === 0) {
+      setPostbackGoalId('');
+      return;
+    }
+
+    const hasCurrentGoal = matchedOfferGoals.some((goal) => goal.id === postbackGoalId);
+    if (hasCurrentGoal) {
+      return;
+    }
+
+    const defaultGoal = matchedOfferGoals.find((goal) => goal.isDefault) ?? matchedOfferGoals[0];
+    setPostbackGoalId(defaultGoal?.id ?? '');
+  }, [matchedOffer, matchedOfferGoals, postbackGoalId]);
+
   const handlePageChange = useCallback(
     (nextPage: number) => {
       if (nextPage < 1 || nextPage === page) {
@@ -290,10 +377,11 @@ export default function ConversionsPage() {
       event.preventDefault();
       const trimmedClickId = postbackClickId.trim();
       const trimmedToken = postbackToken.trim();
+      const trimmedGoalId = postbackGoalId.trim();
       const payoutInput = postbackPayout.trim();
 
-      if (!trimmedClickId || !trimmedToken) {
-        setPostbackError('clickId и token обязательны');
+      if (!trimmedClickId || !trimmedToken || !trimmedGoalId) {
+        setPostbackError('clickId, token и goalId обязательны');
         setPostbackMessage(null);
         return;
       }
@@ -326,6 +414,7 @@ export default function ConversionsPage() {
           clickId: trimmedClickId,
           status: postbackStatus,
           token: trimmedToken,
+          goalId: trimmedGoalId,
           signature,
         };
 
@@ -333,7 +422,7 @@ export default function ConversionsPage() {
           payload.payoutRub = payoutValue;
         }
 
-        const response = await trackingFetch<{ clickId: string; status: string }>(
+        const response = await trackingFetch<PostbackResponse>(
           '/postback',
           {
             method: 'POST',
@@ -342,7 +431,7 @@ export default function ConversionsPage() {
         );
 
         setPostbackMessage(
-          `Готово: ${response.clickId} → ${response.status.toUpperCase()}`,
+          `Готово: ${response.clickId} → ${response.status.toUpperCase()}${response.goal?.name ? ` (${response.goal.name})` : ''}`,
         );
       } catch (submitError) {
         const apiError = submitError as ApiError;
@@ -373,6 +462,7 @@ export default function ConversionsPage() {
     [
       computeSignature,
       postbackClickId,
+      postbackGoalId,
       postbackPayout,
       postbackStatus,
       postbackToken,
@@ -502,8 +592,8 @@ export default function ConversionsPage() {
               Отправка тестового постбека
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Минимум для дебага: clickId, статус, token. Подпись считает фронт аналогично
-              бекенду (HMAC SHA-256 от <code>clickId|status|payout</code>).
+              Минимум для дебага: clickId, статус, token и цель. Подпись считает
+              фронт аналогично бекенду (HMAC SHA-256 от <code>clickId|status|payout</code>).
             </p>
           </div>
           <button
@@ -511,6 +601,7 @@ export default function ConversionsPage() {
             onClick={() => {
               setPostbackClickId('');
               setPostbackToken('');
+              setPostbackGoalId('');
               setPostbackPayout('');
               setPostbackStatus('approved');
               setPostbackMessage(null);
@@ -563,6 +654,40 @@ export default function ConversionsPage() {
               />
             </label>
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+              goalId
+              {matchedOffer ? (
+                <select
+                  value={postbackGoalId}
+                  onChange={(event) => setPostbackGoalId(event.target.value)}
+                  disabled={matchedOfferGoalsLoading || matchedOfferGoals.length === 0}
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  required
+                >
+                  <option value="">
+                    {matchedOfferGoalsLoading
+                      ? 'Загружаем цели…'
+                      : matchedOfferGoals.length === 0
+                        ? 'Нет доступных целей'
+                        : 'Выберите цель'}
+                  </option>
+                  {matchedOfferGoals.map((goal) => (
+                    <option key={goal.id} value={goal.id}>
+                      {goal.name} {goal.isDefault ? '• default' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={postbackGoalId}
+                  onChange={(event) => setPostbackGoalId(event.target.value)}
+                  placeholder="UUID цели"
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  required
+                />
+              )}
+            </label>
+            <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
               payout (необяз.)
               <input
                 type="text"
@@ -573,6 +698,19 @@ export default function ConversionsPage() {
               />
             </label>
           </div>
+
+          {matchedOffer && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Токен распознан как оффер <span className="font-semibold">{matchedOffer.title}</span>.
+              Можно выбрать любую цель этого оффера.
+            </p>
+          )}
+
+          {matchedOfferGoalsError && (
+            <InlineAlert variant="error" title="Не удалось загрузить цели">
+              {matchedOfferGoalsError}
+            </InlineAlert>
+          )}
 
           {postbackSignature && (
             <InlineAlert variant="info" title="Последняя подпись">
@@ -607,7 +745,7 @@ export default function ConversionsPage() {
               {postbackSending ? 'Отправляем…' : 'Send test postback'}
             </button>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Запрос уходит на <code>/track/postback</code> с рассчитанной подписью.
+              Запрос уходит на <code>/track/postback</code> с рассчитанной подписью и выбранным <code>goalId</code>.
             </p>
           </div>
         </form>

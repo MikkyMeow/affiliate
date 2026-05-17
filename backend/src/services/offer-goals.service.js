@@ -2,7 +2,8 @@ import pool from '../db.js';
 import { findAffiliatesByIds, findAffiliateById } from '../models/affiliateModel.js';
 import {
   createConversion,
-  findByClickIdForUpdate,
+  findByClickIdAndGoalIdForUpdate,
+  findByOfferGoalAndExternalTransactionId,
   getCountedConversionCountByGoalId,
   getCountedConversionCountsByGoalIds,
 } from '../models/conversions.model.js';
@@ -14,7 +15,6 @@ import {
   upsertOfferGoalAffiliateRate as upsertOfferGoalAffiliateRateModel,
 } from '../models/offerGoalAffiliateRates.model.js';
 import {
-  findDefaultGoalByOfferId,
   findOfferGoalById,
   insertOfferGoal,
   listOfferGoalsByOfferId,
@@ -38,9 +38,20 @@ function throwOfferNotFound(offerId) {
 }
 
 function throwGoalNotFound(offerId, goalId) {
-  throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Цель не найдена', {
+  throw new ApiError(
+    ERROR_CODES.GOAL_NOT_FOUND_FOR_OFFER,
+    404,
+    'Goal does not belong to this offer',
+    {
+      offerId,
+      goalId,
+    },
+  );
+}
+
+function throwGoalRequired(offerId) {
+  throw new ApiError(ERROR_CODES.GOAL_REQUIRED, 400, 'goalId обязателен', {
     offerId,
-    goalId,
   });
 }
 
@@ -410,16 +421,11 @@ export async function resolveGoalForConversion(
     throw new Error('offerId is required to resolve goal');
   }
 
-  const goal = goalId
-    ? await ensureGoalBelongsToOffer(offerId, goalId, { client, forUpdate })
-    : await findDefaultGoalByOfferId(offerId, { client, forUpdate });
-
-  if (!goal) {
-    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Цель по умолчанию не найдена', {
-      offerId,
-      goalId,
-    });
+  if (!goalId) {
+    throwGoalRequired(offerId);
   }
+
+  const goal = await ensureGoalBelongsToOffer(offerId, goalId, { client, forUpdate });
 
   const rate = await resolveGoalRate(goal.id, affiliateId, { client, forUpdate });
   const limitUsed = await getCountedConversionCountByGoalId(goal.id, { client });
@@ -941,6 +947,7 @@ export async function createConversionWithResolvedGoal(
     affiliateId,
     status,
     goalId = null,
+    externalTransactionId = null,
   },
   {
     requestId = null,
@@ -952,7 +959,42 @@ export async function createConversionWithResolvedGoal(
   try {
     await client.query('BEGIN');
 
-    const existingConversion = await findByClickIdForUpdate(clickId, { client });
+    const goalSnapshot = await resolveGoalForConversion(
+      { offerId, goalId, affiliateId },
+      { client, forUpdate: true, enforceLimit: false },
+    );
+
+    if (externalTransactionId) {
+      const existingByExternalTransaction =
+        await findByOfferGoalAndExternalTransactionId(
+          offerId,
+          goalSnapshot.id,
+          externalTransactionId,
+          { client, forUpdate: true },
+        );
+
+      if (existingByExternalTransaction) {
+        throw new ApiError(
+          ERROR_CODES.DUPLICATE_CONVERSION,
+          409,
+          'Конверсия уже существует',
+          {
+            clickId: existingByExternalTransaction.clickId,
+            offerId: existingByExternalTransaction.offerId,
+            affiliateId: existingByExternalTransaction.affiliateId,
+            conversionId: existingByExternalTransaction.id,
+            goalId: existingByExternalTransaction.goalId ?? goalSnapshot.id,
+            externalTransactionId,
+          },
+        );
+      }
+    }
+
+    const existingConversion = await findByClickIdAndGoalIdForUpdate(
+      clickId,
+      goalSnapshot.id,
+      { client },
+    );
     if (existingConversion) {
       throw new ApiError(
         ERROR_CODES.DUPLICATE_CONVERSION,
@@ -963,14 +1005,16 @@ export async function createConversionWithResolvedGoal(
           offerId: existingConversion.offerId,
           affiliateId: existingConversion.affiliateId,
           conversionId: existingConversion.id,
+          goalId: existingConversion.goalId ?? goalSnapshot.id,
+          externalTransactionId:
+            existingConversion.externalTransactionId ?? externalTransactionId,
         },
       );
     }
 
-    const goalSnapshot = await resolveGoalForConversion(
-      { offerId, goalId, affiliateId },
-      { client, forUpdate: true, enforceLimit: true },
-    );
+    if (goalSnapshot.limitReached) {
+      throwGoalLimitReached(offerId, goalSnapshot.id);
+    }
 
     const conversion = await createConversion(
       {
@@ -979,6 +1023,7 @@ export async function createConversionWithResolvedGoal(
         affiliateId,
         status,
         payoutRub: goalSnapshot.payout,
+        externalTransactionId,
         goalId: goalSnapshot.id,
         goalName: goalSnapshot.name,
         goalType: goalSnapshot.type,
@@ -995,7 +1040,7 @@ export async function createConversionWithResolvedGoal(
 
     if (error instanceof ApiError && error.code === ERROR_CODES.GOAL_LIMIT_REACHED) {
       const { actorUserId, actorRole } = getActorMetadata(actor);
-      const resolvedGoalId = error.details?.goalId ?? goalId ?? 'default_goal_resolution';
+      const resolvedGoalId = error.details?.goalId ?? goalId ?? 'goal_resolution';
       await writeAuditEvent({
         entityType: 'offer_goal',
         entityId: resolvedGoalId,

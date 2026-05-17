@@ -30,6 +30,8 @@ const offerPostbackFields = `
   id,
   public_id_number AS "publicIdNumber",
   status,
+  visibility_mode AS availability,
+  visibility_mode AS "visibilityMode",
   postback_token AS "postbackToken"
 `;
 
@@ -160,6 +162,19 @@ export async function findOfferForPostback(id) {
       WHERE id = $1;
     `,
     [id],
+  );
+
+  return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);
+}
+
+export async function findOfferForPostbackByToken(token) {
+  const result = await pool.query(
+    `
+      SELECT ${offerPostbackFields}
+      FROM offers
+      WHERE postback_token = $1;
+    `,
+    [token],
   );
 
   return attachPublicId(result.rows[0] ?? null, PUBLIC_ID_PREFIXES.offer);

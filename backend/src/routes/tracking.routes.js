@@ -55,6 +55,20 @@ function resolvePostbackPayload(body) {
   return { raw: body };
 }
 
+function resolvePostbackQueryPayload(query) {
+  if (!query || typeof query !== 'object') {
+    return {};
+  }
+
+  const payload = {};
+
+  for (const [key, value] of Object.entries(query)) {
+    payload[key] = extractQueryParam(value);
+  }
+
+  return payload;
+}
+
 function extractPostbackClickId(payload) {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -69,6 +83,74 @@ function extractPostbackClickId(payload) {
   }
 
   return null;
+}
+
+async function handlePostbackRequest(req, res, rawPayload) {
+  trackingPostbackRequestsCounter.inc();
+  const payload = rawPayload && typeof rawPayload === 'object' ? rawPayload : {};
+  const rawClickId = extractPostbackClickId(payload);
+  const { dto, errors } = validatePostbackParams(payload);
+
+  if (errors.length) {
+    const goalRequiredError = errors.find(
+      (error) => error.code === ERROR_CODES.GOAL_REQUIRED,
+    );
+    const errorCode = goalRequiredError?.code ?? ERROR_CODES.VALIDATION_ERROR;
+
+    await logPostbackValidationFailure({
+      requestId: req.id ?? null,
+      payload,
+      clickId: rawClickId,
+      errorCode,
+    });
+    trackingPostbackErrorsCounter.inc({ type: 'validation_error' });
+
+    throw new ApiError(errorCode, 400, 'Ошибка валидации', {
+      errors,
+    });
+  }
+
+  try {
+    const { conversion, goalSnapshot } = await registerConversion(dto, {
+      requestId: req.id ?? null,
+      payload,
+    });
+
+    return sendSuccess(res, {
+      clickId: conversion.clickId,
+      status: conversion.status,
+      conversion: {
+        id: conversion.id,
+        offerId: conversion.offerId,
+        goalId: conversion.goalId,
+        clickId: conversion.clickId,
+        externalTransactionId: conversion.externalTransactionId ?? null,
+        status: conversion.status,
+        isTest: false,
+      },
+      goal: {
+        id: goalSnapshot.id,
+        name: goalSnapshot.name,
+      },
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      const errorType =
+        error.code === ERROR_CODES.DUPLICATE_CONVERSION
+          ? 'duplicate'
+          : 'api_error';
+
+      trackingPostbackErrorsCounter.inc({ type: errorType });
+
+      if (errorType === 'duplicate') {
+        trackingPostbackDuplicatesCounter.inc();
+      }
+    } else {
+      trackingPostbackErrorsCounter.inc({ type: 'unexpected_error' });
+    }
+
+    throw error;
+  }
 }
 
 router.get('/click', clickRateLimiter, async (req, res, next) => {
@@ -206,54 +288,14 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
 router.post(
   '/postback',
   postbackRateLimiter,
-  asyncHandler(async (req, res) => {
-    trackingPostbackRequestsCounter.inc();
-    const payload = resolvePostbackPayload(req.body);
-    const rawClickId = extractPostbackClickId(payload);
-    const { dto, errors } = validatePostbackParams(payload);
+  asyncHandler(async (req, res) => handlePostbackRequest(req, res, resolvePostbackPayload(req.body))),
+);
 
-    if (errors.length) {
-      await logPostbackValidationFailure({
-        requestId: req.id ?? null,
-        payload,
-        clickId: rawClickId,
-      });
-      trackingPostbackErrorsCounter.inc({ type: 'validation_error' });
-
-      throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
-        errors,
-      });
-    }
-
-    try {
-      const conversion = await registerConversion(dto, {
-        requestId: req.id ?? null,
-        payload,
-      });
-
-      return sendSuccess(res, {
-        clickId: conversion.clickId,
-        status: conversion.status,
-      });
-    } catch (error) {
-      if (error instanceof ApiError) {
-        const errorType =
-          error.code === ERROR_CODES.DUPLICATE_CONVERSION
-            ? 'duplicate'
-            : 'api_error';
-
-        trackingPostbackErrorsCounter.inc({ type: errorType });
-
-        if (errorType === 'duplicate') {
-          trackingPostbackDuplicatesCounter.inc();
-        }
-      } else {
-        trackingPostbackErrorsCounter.inc({ type: 'unexpected_error' });
-      }
-
-      throw error;
-    }
-  }),
+router.get(
+  '/postback',
+  postbackRateLimiter,
+  asyncHandler(async (req, res) =>
+    handlePostbackRequest(req, res, resolvePostbackQueryPayload(req.query))),
 );
 
 const FALLBACK_REASON_MESSAGES = {

@@ -277,6 +277,7 @@ describe('Critical path integration tests', () => {
     const postbackRes = await request(app).post('/track/postback').send({
       token: offer.postbackToken,
       clickId,
+      goalId: goal.id,
       signature,
     });
 
@@ -314,6 +315,7 @@ describe('Critical path integration tests', () => {
     const firstRes = await request(app).post('/track/postback').send({
       token: offer.postbackToken,
       clickId,
+      goalId: goal.id,
       signature,
     });
 
@@ -322,6 +324,7 @@ describe('Critical path integration tests', () => {
     const duplicateRes = await request(app).post('/track/postback').send({
       token: offer.postbackToken,
       clickId,
+      goalId: goal.id,
       signature,
     });
 

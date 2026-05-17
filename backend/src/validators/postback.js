@@ -1,12 +1,14 @@
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
+import { ERROR_CODES } from '../utils/response.js';
 
 const MAX_CLICK_ID_LENGTH = 255;
 const MAX_TOKEN_LENGTH = 255;
+const MAX_EXTERNAL_TRANSACTION_ID_LENGTH = 255;
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function buildError(field, message) {
-  return { field, message };
+function buildError(field, message, code = null) {
+  return { field, message, code };
 }
 
 function normalizeString(value) {
@@ -82,19 +84,23 @@ export function validatePostbackParams(source = {}) {
 
   const rawGoalId = source.goalId ?? source.goal_id ?? undefined;
 
-  if (rawGoalId !== undefined && rawGoalId !== null && rawGoalId !== '') {
-    if (typeof rawGoalId !== 'string') {
-      errors.push(buildError('goalId', 'goalId должен быть строкой'));
-    } else {
-      const goalId = rawGoalId.trim();
+  if (rawGoalId === undefined || rawGoalId === null) {
+    errors.push(
+      buildError('goalId', 'goalId обязателен', ERROR_CODES.GOAL_REQUIRED),
+    );
+  } else if (typeof rawGoalId !== 'string') {
+    errors.push(buildError('goalId', 'goalId должен быть строкой'));
+  } else {
+    const goalId = rawGoalId.trim();
 
-      if (!goalId) {
-        errors.push(buildError('goalId', 'goalId не может быть пустым'));
-      } else if (!UUID_REGEX.test(goalId)) {
-        errors.push(buildError('goalId', 'goalId должен быть UUID'));
-      } else {
-        dto.goalId = goalId.toLowerCase();
-      }
+    if (!goalId) {
+      errors.push(
+        buildError('goalId', 'goalId обязателен', ERROR_CODES.GOAL_REQUIRED),
+      );
+    } else if (!UUID_REGEX.test(goalId)) {
+      errors.push(buildError('goalId', 'goalId должен быть UUID'));
+    } else {
+      dto.goalId = goalId.toLowerCase();
     }
   }
 
@@ -128,6 +134,52 @@ export function validatePostbackParams(source = {}) {
     errors.push(buildError('payoutRub', payoutError));
   } else if (typeof payoutRub === 'number') {
     dto.payoutRub = payoutRub;
+  }
+
+  const rawExternalTransactionId =
+    source.externalTransactionId ??
+    source.externalTransactionID ??
+    source.externalId ??
+    source.external_id ??
+    source.transactionId ??
+    source.transaction_id ??
+    undefined;
+
+  if (
+    rawExternalTransactionId !== undefined &&
+    rawExternalTransactionId !== null &&
+    rawExternalTransactionId !== ''
+  ) {
+    if (typeof rawExternalTransactionId !== 'string') {
+      errors.push(
+        buildError(
+          'externalTransactionId',
+          'externalTransactionId должен быть строкой',
+        ),
+      );
+    } else {
+      const externalTransactionId = rawExternalTransactionId.trim();
+
+      if (!externalTransactionId) {
+        errors.push(
+          buildError(
+            'externalTransactionId',
+            'externalTransactionId не может быть пустым',
+          ),
+        );
+      } else if (
+        externalTransactionId.length > MAX_EXTERNAL_TRANSACTION_ID_LENGTH
+      ) {
+        errors.push(
+          buildError(
+            'externalTransactionId',
+            `externalTransactionId не должен превышать ${MAX_EXTERNAL_TRANSACTION_ID_LENGTH} символов`,
+          ),
+        );
+      } else {
+        dto.externalTransactionId = externalTransactionId;
+      }
+    }
   }
 
   const rawSignature = source.signature ?? source.sig;
