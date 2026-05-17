@@ -14,6 +14,10 @@ import {
   getGoalBreakdown as getGoalBreakdownModel,
   getStatusBreakdown as getStatusBreakdownModel,
 } from '../../models/stats-aggregator.model.js';
+import {
+  getAdminSummaryGroups as getAdminSummaryGroupsModel,
+  getAdminSummaryTotals as getAdminSummaryTotalsModel,
+} from '../../models/admin-stats-summary.model.js';
 import { getAggregatedSummary as getRollupSummary } from './rollup.service.js';
 
 const DEFAULT_DASHBOARD_BUCKET = 'hour';
@@ -306,5 +310,58 @@ export async function getAdminDashboardStats({
     bucket,
     totals,
     series,
+  };
+}
+
+export async function getAdminFilteredSummary({
+  dateFrom,
+  dateTo,
+  offerId,
+  affiliateId,
+  advertiserId,
+  groupBy,
+  responseFilters = null,
+} = {}) {
+  const filter = {
+    dateFrom,
+    dateTo,
+    offerId,
+    affiliateId,
+    advertiserId,
+  };
+  const totalsMetrics = await getAdminSummaryTotalsModel(filter);
+  const totals = buildDashboardMetricSet(totalsMetrics);
+  const groups = groupBy
+    ? (
+        await getAdminSummaryGroupsModel(filter, groupBy)
+      ).map((entry) => ({
+        key: entry.key,
+        type: entry.type,
+        ...('partner' in entry ? { partner: entry.partner } : {}),
+        ...('offer' in entry ? { offer: entry.offer } : {}),
+        ...('advertiser' in entry ? { advertiser: entry.advertiser } : {}),
+        metrics: buildDashboardMetricSet(entry.metrics),
+      }))
+    : [];
+
+  return {
+    filters:
+      responseFilters ?? {
+        dateFrom: dateFrom ?? null,
+        dateTo: dateTo ?? null,
+        offerId:
+          typeof offerId === 'string' ? offerId : offerId?.value ?? null,
+        affiliateId:
+          typeof affiliateId === 'string'
+            ? affiliateId
+            : affiliateId?.value ?? null,
+        advertiserId:
+          typeof advertiserId === 'string'
+            ? advertiserId
+            : advertiserId?.value ?? null,
+        groupBy: groupBy ?? null,
+      },
+    totals,
+    groups,
   };
 }

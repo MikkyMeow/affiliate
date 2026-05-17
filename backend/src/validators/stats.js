@@ -10,6 +10,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 const DASHBOARD_BUCKET_VALUES = new Set(['hour']);
+const ADMIN_SUMMARY_GROUP_VALUES = new Set(['partner', 'offer', 'advertiser']);
 const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const clickRedirectOutcomes = new Set(CLICK_REDIRECT_OUTCOME_VALUES);
 
@@ -167,6 +168,37 @@ function validateBucket(value, field) {
     return {
       value: undefined,
       errors: [buildError(field, 'Поддерживается только bucket=hour')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateAdminSummaryGroupBy(value, field = 'groupBy') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'groupBy должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!ADMIN_SUMMARY_GROUP_VALUES.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Поддерживаются только groupBy=${Array.from(
+            ADMIN_SUMMARY_GROUP_VALUES,
+          ).join(', ')}`,
+        ),
+      ],
     };
   }
 
@@ -922,6 +954,98 @@ export function validateDashboardStatsQuery(payload = {}) {
   if (bucket) {
     query.bucket = bucket;
   }
+
+  return { query, errors };
+}
+
+export function validateAdminStatsSummaryQuery(payload = {}) {
+  const errors = [];
+  const query = {};
+  const responseFilters = {
+    dateFrom: null,
+    dateTo: null,
+    offerId: null,
+    affiliateId: null,
+    advertiserId: null,
+    groupBy: null,
+  };
+
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(
+    getQueryValue(payload, 'dateFrom', 'date_from'),
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+  if (dateFrom) {
+    query.dateFrom = dateFrom;
+    responseFilters.dateFrom = dateFrom;
+  }
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(
+    getQueryValue(payload, 'dateTo', 'date_to'),
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+  if (dateTo) {
+    query.dateTo = dateTo;
+    responseFilters.dateTo = dateTo;
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+
+  const rawOfferId = normalizeOptionalString(
+    getQueryValue(payload, 'offerId', 'offer_id'),
+  );
+  const { value: offerId, errors: offerErrors } = validateEntityIdentifier(
+    rawOfferId,
+    { field: 'offerId', prefix: PUBLIC_ID_PREFIXES.offer },
+  );
+  errors.push(...offerErrors);
+  if (offerId) {
+    query.offerId = offerId;
+    responseFilters.offerId = rawOfferId ?? null;
+  }
+
+  const rawAffiliateId = normalizeOptionalString(
+    getQueryValue(payload, 'affiliateId', 'affiliate_id', 'partnerId', 'partner_id'),
+  );
+  const { value: affiliateId, errors: affiliateErrors } = validateEntityIdentifier(
+    rawAffiliateId,
+    { field: 'affiliateId', prefix: PUBLIC_ID_PREFIXES.affiliate },
+  );
+  errors.push(...affiliateErrors);
+  if (affiliateId) {
+    query.affiliateId = affiliateId;
+    responseFilters.affiliateId = rawAffiliateId ?? null;
+  }
+
+  const rawAdvertiserId = normalizeOptionalString(
+    getQueryValue(payload, 'advertiserId', 'advertiser_id'),
+  );
+  const { value: advertiserId, errors: advertiserErrors } = validateEntityIdentifier(
+    rawAdvertiserId,
+    { field: 'advertiserId', prefix: PUBLIC_ID_PREFIXES.advertiser },
+  );
+  errors.push(...advertiserErrors);
+  if (advertiserId) {
+    query.advertiserId = advertiserId;
+    responseFilters.advertiserId = rawAdvertiserId ?? null;
+  }
+
+  const rawGroupBy = normalizeOptionalString(
+    getQueryValue(payload, 'groupBy', 'group_by'),
+  );
+  const { value: groupBy, errors: groupByErrors } = validateAdminSummaryGroupBy(
+    rawGroupBy,
+  );
+  errors.push(...groupByErrors);
+  if (groupBy) {
+    query.groupBy = groupBy;
+    responseFilters.groupBy = groupBy;
+  }
+
+  query.responseFilters = responseFilters;
 
   return { query, errors };
 }

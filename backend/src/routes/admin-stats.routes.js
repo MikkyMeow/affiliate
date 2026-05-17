@@ -6,9 +6,13 @@ import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
 import {
   getAdminDashboardStats,
+  getAdminFilteredSummary,
   getSummary,
 } from '../services/stats/stats.service.js';
-import { validateDashboardStatsQuery } from '../validators/stats.js';
+import {
+  validateAdminStatsSummaryQuery,
+  validateDashboardStatsQuery,
+} from '../validators/stats.js';
 
 const router = express.Router();
 
@@ -31,6 +35,25 @@ router.get(
 
     const stats = await getAdminDashboardStats(query);
     return sendSuccess(res, stats);
+  }),
+);
+
+router.get(
+  '/summary',
+  asyncHandler(async (req, res) => {
+    const { query, errors } = validateAdminStatsSummaryQuery(req.query ?? {});
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const summary = await getAdminFilteredSummary(query);
+    return sendSuccess(res, summary);
   }),
 );
 
