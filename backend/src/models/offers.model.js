@@ -23,6 +23,7 @@ const baseOfferColumns = [
 const offerListFields = baseOfferColumns.map((column) => `  ${column}`).join(',\n');
 
 const offerDetailFields = `${offerListFields},\n  description`;
+const offerDetailFieldsWithPostbackToken = `${offerDetailFields},\n  postback_token AS "postbackToken"`;
 
 const offerFieldsWithPostbackToken = `${offerListFields},\n  postback_token AS "postbackToken"`;
 
@@ -141,10 +142,14 @@ export async function listOffers(
   };
 }
 
-export async function findOfferById(id) {
+export async function findOfferById(id, { includePostbackToken = false } = {}) {
+  const fields = includePostbackToken
+    ? offerDetailFieldsWithPostbackToken
+    : offerDetailFields;
+
   const result = await pool.query(
     `
-      SELECT ${offerDetailFields}
+      SELECT ${fields}
       FROM offers
       WHERE id = $1;
     `,

@@ -6,6 +6,7 @@ import { useParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { OfferGoalsSection } from './OfferGoalsSection';
+import { OfferPostbackSection } from './OfferPostbackSection';
 import { OfferStatsSection } from './OfferStatsSection';
 import { OfferGeoTargetingSection } from './OfferGeoTargetingSection';
 import {
@@ -37,6 +38,7 @@ type Offer = {
   id: string;
   publicId: string | null;
   publicIdNumber: number | null;
+  postbackToken: string | null;
   title: string;
   category: OfferCategoryValue | null;
   advertiserId: string | null;
@@ -56,6 +58,10 @@ type Offer = {
   allowDuplicateClicks: boolean;
   duplicateClickWindowSeconds: number | null;
   description: string | null;
+  goals: Array<{
+    id: string;
+    name: string;
+  }>;
 };
 
 type FormState = {
@@ -103,6 +109,8 @@ export default function EditOfferPage() {
   const [submitting, setSubmitting] = useState(false);
   const [offerPublicId, setOfferPublicId] = useState<string | null>(null);
   const [offerAdvertiser, setOfferAdvertiser] = useState<Offer['advertiser']>(null);
+  const [offerPostbackToken, setOfferPostbackToken] = useState<string | null>(null);
+  const [offerGoals, setOfferGoals] = useState<Offer['goals']>([]);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [offerTargeting, setOfferTargeting] = useState<{
     targetingStrict: boolean;
@@ -204,6 +212,15 @@ export default function EditOfferPage() {
         }
         setOfferPublicId(offer.publicId ?? null);
         setOfferAdvertiser(offer.advertiser ?? null);
+        setOfferPostbackToken(offer.postbackToken ?? null);
+        setOfferGoals(
+          Array.isArray(offer.goals)
+            ? offer.goals.map((goal) => ({
+                id: goal.id,
+                name: goal.name,
+              }))
+            : [],
+        );
         const windowParts = secondsToWindowParts(
           offer.duplicateClickWindowSeconds,
         );
@@ -1055,7 +1072,16 @@ export default function EditOfferPage() {
               setOfferTargeting((prev) => ({ ...prev, targetingStrict: value }))
             }
           />
-          <OfferGoalsSection offerId={offerId} token={accessToken} />
+          <OfferPostbackSection
+            offerPublicId={offerPublicId}
+            postbackToken={offerPostbackToken}
+            goals={offerGoals}
+          />
+          <OfferGoalsSection
+            offerId={offerId}
+            token={accessToken}
+            onGoalsChange={setOfferGoals}
+          />
         </div>
       )}
     </section>

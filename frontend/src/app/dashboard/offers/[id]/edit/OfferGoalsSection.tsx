@@ -39,6 +39,7 @@ type ModalState =
 type OfferGoalsSectionProps = {
   offerId: string;
   token: string;
+  onGoalsChange?: (goals: Array<{ id: string; name: string }>) => void;
 };
 
 type AffiliateOption = {
@@ -110,7 +111,11 @@ function formatAffiliateLabel(affiliate: {
   return parts.join(' • ');
 }
 
-export function OfferGoalsSection({ offerId, token }: OfferGoalsSectionProps) {
+export function OfferGoalsSection({
+  offerId,
+  token,
+  onGoalsChange,
+}: OfferGoalsSectionProps) {
   const [goals, setGoals] = useState<OfferGoal[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,10 +140,17 @@ export function OfferGoalsSection({ offerId, token }: OfferGoalsSectionProps) {
       try {
         const items = await fetchOfferGoals(token, offerId);
         setGoals(items);
+        onGoalsChange?.(
+          items.map((goal) => ({
+            id: goal.id,
+            name: goal.name,
+          })),
+        );
       } catch (error) {
         const apiError = error as ApiError;
         setGoalsError(apiError.message ?? 'Не удалось загрузить цели');
         setGoals([]);
+        onGoalsChange?.([]);
       } finally {
         if (silent) {
           setRefreshing(false);
@@ -147,7 +159,7 @@ export function OfferGoalsSection({ offerId, token }: OfferGoalsSectionProps) {
         }
       }
     },
-    [offerId, token],
+    [offerId, onGoalsChange, token],
   );
 
   useEffect(() => {

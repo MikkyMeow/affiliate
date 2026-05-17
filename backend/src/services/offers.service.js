@@ -190,8 +190,11 @@ export async function listOffers(filter, pagination, options = {}) {
   return listOffersModel(filter, pagination, options);
 }
 
-export async function getOfferById(id, { includeGoals = false } = {}) {
-  const offer = await findOfferByIdModel(id);
+export async function getOfferById(
+  id,
+  { includeGoals = false, includePostbackToken = false } = {},
+) {
+  const offer = await findOfferByIdModel(id, { includePostbackToken });
 
   if (!offer) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
@@ -208,7 +211,10 @@ export async function getOfferById(id, { includeGoals = false } = {}) {
 }
 
 export async function getAdminOfferById(id, { includeGoals = false } = {}) {
-  const offer = await getOfferById(id, { includeGoals });
+  const offer = await getOfferById(id, {
+    includeGoals,
+    includePostbackToken: true,
+  });
   const advertiser = offer.advertiserId
     ? await findAdvertiserById(offer.advertiserId)
     : null;

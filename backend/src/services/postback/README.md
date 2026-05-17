@@ -2,6 +2,8 @@
 
 `/track/postback` uses one token per offer. The token authenticates and resolves the offer, while `goalId`/`goal_id` selects the conversion goal inside that offer.
 
+The admin/manager offer page shows one example postback request per goal. Each example reuses the same offer token, sets a different `goal_id`, includes the required fields, and never sends trusted money values from the advertiser side.
+
 ## Request contract
 
 - `token`: required offer postback token.
@@ -30,6 +32,21 @@ GET /track/postback?token=<offer_token>&click_id=<click_id>&goal_id=<goal_uuid>&
   "status": "approved",
   "signature": "signed-value"
 }
+```
+
+### Example request pattern
+
+```bash
+curl -X POST "https://platform.example.com/track/postback" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "offer-postback-token",
+    "goal_id": "goal-uuid",
+    "click_id": "CLICK_ID",
+    "external_id": "EXTERNAL_ID",
+    "status": "approved",
+    "signature": "CALCULATED_SIGNATURE"
+  }'
 ```
 
 ## Goal resolution and money

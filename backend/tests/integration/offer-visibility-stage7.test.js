@@ -42,6 +42,22 @@ describe('Stage 7 offer visibility and access', () => {
       affiliatePassword,
     );
 
+    const createGoalResponse = await request(app)
+      .post(`/api/v1/admin/offers/${offer.id}/goals`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Lead',
+        type: 'CPL',
+        revenue: 1200,
+        payout: 800,
+        isDefault: true,
+        limitEnabled: false,
+        limitType: null,
+        limitValue: null,
+      });
+
+    expect(createGoalResponse.status).toBe(201);
+
     const adminResponse = await request(app)
       .get(`/api/v1/offers/${offer.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
@@ -60,12 +76,31 @@ describe('Stage 7 offer visibility and access', () => {
       id: advertiser.id,
       name: advertiser.name,
     });
+    expect(adminResponse.body.data.offer.postbackToken).toBe(offer.postbackToken);
+    expect(adminResponse.body.data.offer.goals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: createGoalResponse.body.data.goal.id,
+          name: 'Lead',
+        }),
+      ]),
+    );
     expect(managerResponse.body.data.offer.advertiser).toMatchObject({
       id: advertiser.id,
       name: advertiser.name,
     });
+    expect(managerResponse.body.data.offer.postbackToken).toBe(offer.postbackToken);
+    expect(managerResponse.body.data.offer.goals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: createGoalResponse.body.data.goal.id,
+          name: 'Lead',
+        }),
+      ]),
+    );
     expect(partnerResponse.body.data.offer).not.toHaveProperty('advertiser');
     expect(partnerResponse.body.data.offer).not.toHaveProperty('advertiserId');
+    expect(partnerResponse.body.data.offer).not.toHaveProperty('postbackToken');
     expect(partnerResponse.body.data.offer.view).not.toHaveProperty('advertiserId');
   });
 
