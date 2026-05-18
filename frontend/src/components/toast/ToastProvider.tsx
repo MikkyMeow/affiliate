@@ -70,12 +70,12 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
-  const timersRef = useRef<Map<string, ReturnType<typeof window.setTimeout>>>(new Map());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const dismissToast = useCallback((id: string) => {
     const timerId = timersRef.current.get(id);
     if (timerId) {
-      window.clearTimeout(timerId);
+      clearTimeout(timerId);
       timersRef.current.delete(id);
     }
 
@@ -84,7 +84,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const scheduleDismiss = useCallback(
     (id: string, duration: number) => {
-      const timerId = window.setTimeout(() => {
+      const timerId = setTimeout(() => {
         dismissToast(id);
       }, duration);
       timersRef.current.set(id, timerId);
@@ -124,7 +124,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       timers.forEach((timerId) => {
-        window.clearTimeout(timerId);
+        clearTimeout(timerId);
       });
       timers.clear();
     };
