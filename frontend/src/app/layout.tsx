@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "./providers";
+import { AppShell } from "@/components/AppShell";
 import { AppNavbar } from "@/components/AppNavbar";
 
 export const metadata: Metadata = {
@@ -19,10 +20,12 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <Providers>
-          <>
+          <div className="min-h-screen bg-white dark:bg-black">
             <AppNavbar />
-            <Suspense fallback={<AppPageFallback />}>{children}</Suspense>
-          </>
+            <AppShell>
+              <Suspense fallback={<AppPageFallback />}>{children}</Suspense>
+            </AppShell>
+          </div>
         </Providers>
       </body>
     </html>
