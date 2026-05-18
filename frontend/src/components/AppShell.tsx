@@ -12,9 +12,14 @@ function isCabinetPath(pathname: string): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
+  const cabinetMode = isCabinetPath(pathname);
 
   return (
-    <div className={isCabinetPath(pathname) ? "lg:ml-64" : undefined}>
+    <div
+      className={
+        cabinetMode ? "pb-20 lg:ml-64 lg:pb-0" : undefined
+      }
+    >
       {children}
     </div>
   );

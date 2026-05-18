@@ -75,6 +75,7 @@ export function AppNavbar() {
   const { user, profile, questionnaire, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = useMemo(() => {
     if (!user) {
@@ -139,6 +140,18 @@ export function AppNavbar() {
 
   const profileHref = useMemo(() => getProfilePathForRole(user), [user]);
   const cabinetMode = Boolean(user && isCabinetPath(pathname));
+  const activeNavLabel = useMemo(() => {
+    const activeLink =
+      navLinks.find(
+        (link) =>
+          pathname === link.href ||
+          (link.href !== "/" &&
+            link.href !== "/dashboard" &&
+            pathname.startsWith(link.href)),
+      ) ?? null;
+
+    return activeLink?.label ?? "Навигация";
+  }, [navLinks, pathname]);
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -208,115 +221,277 @@ export function AppNavbar() {
     document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
   }, []);
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   if (cabinetMode) {
     return (
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-zinc-200 bg-white lg:flex lg:flex-col dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-800">
-          <Link
-            href={getHomePathByRole(user)}
-            className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
-          >
-            affiliate
-          </Link>
-          <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
-            {getRoleBadge(user.role)}
-          </p>
-        </div>
+      <>
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-zinc-200 bg-white lg:flex lg:flex-col dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-800">
+            <Link
+              href={getHomePathByRole(user)}
+              className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
+            >
+              affiliate
+            </Link>
+            <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
+              {getRoleBadge(user.role)}
+            </p>
+          </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {navLinks.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/" &&
-                link.href !== "/dashboard" &&
-                pathname.startsWith(link.href));
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+            {navLinks.map((link) => {
+              const isActive =
+                pathname === link.href ||
+                (link.href !== "/" &&
+                  link.href !== "/dashboard" &&
+                  pathname.startsWith(link.href));
 
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-black text-white dark:bg-white dark:text-black"
-                    : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                }`}
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-black text-white dark:bg-white dark:text-black"
+                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+            <div className="flex flex-col gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900">
+              <button
+                type="button"
+                onClick={handleThemeToggle}
+                aria-label={
+                  theme === "dark"
+                    ? "Переключить на светлую тему"
+                    : "Переключить на тёмную тему"
+                }
+                title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
               >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+                <span aria-hidden="true" className="text-base leading-none">
+                  {theme === "dark" ? "☀" : "☾"}
+                </span>
+              </button>
+              {profileHref ? (
+                <Link
+                  href={profileHref}
+                  className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                    {(user.displayName ?? user.email)
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      {user.displayName ?? user.email}
+                    </span>
+                    {profilePublicId ? (
+                      <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
+                        {profilePublicId}
+                      </span>
+                    ) : null}
+                  </span>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                    {(user.displayName ?? user.email)
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      {user.displayName ?? user.email}
+                    </span>
+                    {profilePublicId ? (
+                      <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
+                        {profilePublicId}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className={`${TOP_BUTTON_STYLES} border border-zinc-300 bg-transparent text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800`}
+              >
+                {isLoggingOut ? "Выходим…" : "Выйти"}
+              </button>
+            </div>
+          </div>
+        </aside>
 
-        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
-          <div className="flex flex-col gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="min-w-0 pr-4">
+              <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                {activeNavLabel}
+              </p>
+            </div>
             <button
               type="button"
-              onClick={handleThemeToggle}
-              aria-label={
-                theme === "dark"
-                  ? "Переключить на светлую тему"
-                  : "Переключить на тёмную тему"
-              }
-              title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
+              onClick={() => setIsMobileMenuOpen((current) => !current)}
+              aria-expanded={isMobileMenuOpen}
+              aria-label={isMobileMenuOpen ? "Закрыть меню" : "Открыть меню"}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
             >
-              <span aria-hidden="true" className="text-base leading-none">
-                {theme === "dark" ? "☀" : "☾"}
+              <span aria-hidden="true" className="text-lg leading-none">
+                {isMobileMenuOpen ? "×" : "☰"}
               </span>
-            </button>
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                  {(user.displayName ?? user.email)
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase()}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    {user.displayName ?? user.email}
-                  </span>
-                  {profilePublicId ? (
-                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
-                      {profilePublicId}
-                    </span>
-                  ) : null}
-                </span>
-              </Link>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                  {(user.displayName ?? user.email)
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase()}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    {user.displayName ?? user.email}
-                  </span>
-                  {profilePublicId ? (
-                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
-                      {profilePublicId}
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className={`${TOP_BUTTON_STYLES} border border-zinc-300 bg-transparent text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800`}
-            >
-              {isLoggingOut ? "Выходим…" : "Выйти"}
             </button>
           </div>
         </div>
-      </aside>
+
+        <div
+          className={`fixed inset-0 z-50 lg:hidden ${
+            isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="Закрыть меню"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`absolute inset-0 bg-black/30 transition-opacity ${
+              isMobileMenuOpen ? "opacity-100" : "opacity-0"
+            }`}
+          />
+          <div
+            className={`absolute inset-x-0 bottom-0 flex max-h-[50vh] flex-col overflow-hidden rounded-t-3xl border-t border-zinc-200 bg-white shadow-2xl transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950 ${
+              isMobileMenuOpen ? "translate-y-0" : "translate-y-full"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-4 dark:border-zinc-800">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  {activeNavLabel}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+                  {getRoleBadge(user.role)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Закрыть меню"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
+              >
+                <span aria-hidden="true" className="text-lg leading-none">
+                  ×
+                </span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <nav className="flex flex-col gap-1">
+                {navLinks.map((link) => {
+                  const isActive =
+                    pathname === link.href ||
+                    (link.href !== "/" &&
+                      link.href !== "/dashboard" &&
+                      pathname.startsWith(link.href));
+
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+                        isActive
+                          ? "bg-black text-white dark:bg-white dark:text-black"
+                          : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900">
+                <button
+                  type="button"
+                  onClick={handleThemeToggle}
+                  aria-label={
+                    theme === "dark"
+                      ? "Переключить на светлую тему"
+                      : "Переключить на тёмную тему"
+                  }
+                  title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
+                >
+                  <span aria-hidden="true" className="text-base leading-none">
+                    {theme === "dark" ? "☀" : "☾"}
+                  </span>
+                </button>
+                {profileHref ? (
+                  <Link
+                    href={profileHref}
+                    className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                      {(user.displayName ?? user.email)
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                        {user.displayName ?? user.email}
+                      </span>
+                      {profilePublicId ? (
+                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
+                          {profilePublicId}
+                        </span>
+                      ) : null}
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                      {(user.displayName ?? user.email)
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                        {user.displayName ?? user.email}
+                      </span>
+                      {profilePublicId ? (
+                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
+                          {profilePublicId}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className={`${TOP_BUTTON_STYLES} border border-zinc-300 bg-transparent text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800`}
+                >
+                  {isLoggingOut ? "Выходим…" : "Выйти"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
