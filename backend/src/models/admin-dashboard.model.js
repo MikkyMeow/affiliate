@@ -44,7 +44,18 @@ export async function getHourlyDashboardSeries({
         SELECT
           date_trunc('hour', c.created_at AT TIME ZONE bounds.timezone) AS bucket_local,
           COUNT(*)::bigint AS conversions,
+          COUNT(*) FILTER (WHERE c.status = 'pending')::bigint AS pending_conversions,
           COUNT(*) FILTER (WHERE c.status = 'approved')::bigint AS approved_conversions,
+          COUNT(*) FILTER (WHERE c.status = 'rejected')::bigint AS rejected_conversions,
+          COUNT(*) FILTER (WHERE c.status = 'cancelled')::bigint AS cancelled_conversions,
+          COALESCE(
+            SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'pending'),
+            0
+          )::numeric(14, 2) AS pending_revenue,
+          COALESCE(
+            SUM(COALESCE(c.payout_amount, c.payout_rub, 0)) FILTER (WHERE c.status = 'pending'),
+            0
+          )::numeric(14, 2) AS pending_payout,
           COALESCE(
             SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'approved'),
             0
@@ -57,6 +68,7 @@ export async function getHourlyDashboardSeries({
         CROSS JOIN bounds
         WHERE c.created_at >= bounds.utc_day_start
           AND c.created_at < bounds.utc_day_end
+          AND COALESCE(c.is_test, false) = false
         GROUP BY 1
       )
       SELECT
@@ -64,7 +76,12 @@ export async function getHourlyDashboardSeries({
         TO_CHAR(hours.bucket_local, 'HH24:MI') AS label,
         COALESCE(click_hourly.clicks, 0)::bigint AS clicks,
         COALESCE(conversion_hourly.conversions, 0)::bigint AS conversions,
+        COALESCE(conversion_hourly.pending_conversions, 0)::bigint AS "pendingConversions",
         COALESCE(conversion_hourly.approved_conversions, 0)::bigint AS "approvedConversions",
+        COALESCE(conversion_hourly.rejected_conversions, 0)::bigint AS "rejectedConversions",
+        COALESCE(conversion_hourly.cancelled_conversions, 0)::bigint AS "cancelledConversions",
+        COALESCE(conversion_hourly.pending_revenue, 0)::numeric(14, 2) AS "pendingRevenue",
+        COALESCE(conversion_hourly.pending_payout, 0)::numeric(14, 2) AS "pendingPayout",
         COALESCE(conversion_hourly.revenue, 0)::numeric(14, 2) AS revenue,
         COALESCE(conversion_hourly.payout, 0)::numeric(14, 2) AS payout
       FROM hours

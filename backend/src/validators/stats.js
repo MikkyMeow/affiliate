@@ -1,5 +1,6 @@
 import { CLICK_REDIRECT_OUTCOME_VALUES } from '../constants/clicks.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
+import { RECORD_SOURCES } from '../constants/adjustments.js';
 import { parsePublicIdNumber, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const uuidRegex =
@@ -12,6 +13,7 @@ const DASHBOARD_BUCKET_VALUES = new Set(['hour']);
 const ADMIN_SUMMARY_GROUP_VALUES = new Set(['partner', 'offer', 'advertiser']);
 const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const clickRedirectOutcomes = new Set(CLICK_REDIRECT_OUTCOME_VALUES);
+const conversionSources = new Set(Object.values(RECORD_SOURCES));
 
 function buildError(field, message) {
   return { field, message };
@@ -442,6 +444,34 @@ function validateConversionStatus(value, field = 'status') {
   return { value: normalized, errors: [] };
 }
 
+function validateConversionSource(value, field = 'source') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!conversionSources.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `source должен быть одним из: ${Array.from(conversionSources).join(', ')}`,
+        ),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
 function validateClickResult(value, field = 'redirectOutcome') {
   if (value === undefined || value === null || value === '') {
     return { value: undefined, errors: [] };
@@ -698,6 +728,23 @@ export function validateConversionsListFilters(payload = {}) {
     filter.externalTransactionId = externalTransactionId;
   }
 
+  const { value: source, errors: sourceErrors } = validateConversionSource(
+    getQueryValue(payload, 'source'),
+  );
+  errors.push(...sourceErrors);
+  if (source) {
+    filter.source = source;
+  }
+
+  const { value: isTest, errors: isTestErrors } = validateBooleanFilter(
+    getQueryValue(payload, 'isTest', 'is_test', 'test'),
+    'isTest',
+  );
+  errors.push(...isTestErrors);
+  if (typeof isTest === 'boolean') {
+    filter.isTest = isTest;
+  }
+
   const { value: revenueMin, errors: revenueMinErrors } = validateNonNegativeNumber(
     getQueryValue(payload, 'revenueMin', 'revenue_min', 'revenueFrom'),
     'revenueMin',
@@ -732,24 +779,6 @@ export function validateConversionsListFilters(payload = {}) {
   errors.push(...payoutMaxErrors);
   if (payoutMax !== undefined) {
     filter.payoutMax = payoutMax;
-  }
-
-  if (getQueryValue(payload, 'source') !== undefined) {
-    errors.push(
-      buildError(
-        'source',
-        'source фильтр не поддерживается: в текущей модели конверсий нет поля source',
-      ),
-    );
-  }
-
-  if (getQueryValue(payload, 'isTest', 'is_test', 'test') !== undefined) {
-    errors.push(
-      buildError(
-        'isTest',
-        'isTest фильтр не поддерживается: в текущей модели конверсий нет test-флага',
-      ),
-    );
   }
 
   if (

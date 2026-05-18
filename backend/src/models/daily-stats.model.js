@@ -1,5 +1,9 @@
 import pool from '../db.js';
 
+function getQueryable(client) {
+  return client ?? pool;
+}
+
 function buildFilterClause({ offerId, affiliateId, dateFrom, dateTo } = {}) {
   const conditions = [];
   const params = [];
@@ -82,12 +86,16 @@ function normalizeAmountValue(value) {
   return '0';
 }
 
-export async function upsertClickRollup({ startDate, endDate }) {
+export async function upsertClickRollup(
+  { startDate, endDate },
+  { client = pool } = {},
+) {
   if (!startDate || !endDate) {
     throw new Error('startDate and endDate are required for click rollup');
   }
 
-  const result = await pool.query(
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       WITH params AS (
         SELECT $1::date AS start_date, $2::date AS end_date
@@ -136,12 +144,16 @@ export async function upsertClickRollup({ startDate, endDate }) {
   };
 }
 
-export async function upsertConversionRollup({ startDate, endDate }) {
+export async function upsertConversionRollup(
+  { startDate, endDate },
+  { client = pool } = {},
+) {
   if (!startDate || !endDate) {
     throw new Error('startDate and endDate are required for conversion rollup');
   }
 
-  const result = await pool.query(
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       WITH params AS (
         SELECT $1::date AS start_date, $2::date AS end_date
@@ -155,16 +167,48 @@ export async function upsertConversionRollup({ startDate, endDate }) {
           COUNT(*) FILTER (WHERE c.status = 'pending')::int AS pending_conversions_count,
           COUNT(*) FILTER (WHERE c.status = 'approved')::int AS approved_conversions_count,
           COUNT(*) FILTER (WHERE c.status = 'rejected')::int AS rejected_conversions_count,
-          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'pending'), 0)::numeric(14, 2) AS pending_payout_total_rub,
-          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'approved'), 0)::numeric(14, 2) AS approved_payout_total_rub,
-          COALESCE(SUM(c.payout_rub) FILTER (WHERE c.status = 'rejected'), 0)::numeric(14, 2) AS rejected_payout_total_rub,
-          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'pending'), 0)::numeric(14, 2) AS pending_revenue_total_rub,
-          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'approved'), 0)::numeric(14, 2) AS approved_revenue_total_rub,
-          COALESCE(SUM(c.revenue_amount) FILTER (WHERE c.status = 'rejected'), 0)::numeric(14, 2) AS rejected_revenue_total_rub
+          COUNT(*) FILTER (WHERE c.status = 'cancelled')::int AS cancelled_conversions_count,
+          COALESCE(
+            SUM(COALESCE(c.payout_amount, c.payout_rub, 0))
+              FILTER (WHERE c.status = 'pending'),
+            0
+          )::numeric(14, 2) AS pending_payout_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.payout_amount, c.payout_rub, 0))
+              FILTER (WHERE c.status = 'approved'),
+            0
+          )::numeric(14, 2) AS approved_payout_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.payout_amount, c.payout_rub, 0))
+              FILTER (WHERE c.status = 'rejected'),
+            0
+          )::numeric(14, 2) AS rejected_payout_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.payout_amount, c.payout_rub, 0))
+              FILTER (WHERE c.status = 'cancelled'),
+            0
+          )::numeric(14, 2) AS cancelled_payout_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'pending'),
+            0
+          )::numeric(14, 2) AS pending_revenue_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'approved'),
+            0
+          )::numeric(14, 2) AS approved_revenue_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'rejected'),
+            0
+          )::numeric(14, 2) AS rejected_revenue_total_rub,
+          COALESCE(
+            SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'cancelled'),
+            0
+          )::numeric(14, 2) AS cancelled_revenue_total_rub
         FROM conversions c
         CROSS JOIN params p
         WHERE c.created_at >= p.start_date
           AND c.created_at < p.end_date + INTERVAL '1 day'
+          AND COALESCE(c.is_test, false) = false
         GROUP BY rollup_date, c.offer_id, c.affiliate_id
       )
       INSERT INTO daily_stats (
@@ -175,12 +219,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
+        cancelled_conversions_count,
         pending_payout_total_rub,
         approved_payout_total_rub,
         rejected_payout_total_rub,
+        cancelled_payout_total_rub,
         pending_revenue_total_rub,
         approved_revenue_total_rub,
         rejected_revenue_total_rub,
+        cancelled_revenue_total_rub,
         created_at,
         updated_at
       )
@@ -192,12 +239,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
+        cancelled_conversions_count,
         pending_payout_total_rub,
         approved_payout_total_rub,
         rejected_payout_total_rub,
+        cancelled_payout_total_rub,
         pending_revenue_total_rub,
         approved_revenue_total_rub,
         rejected_revenue_total_rub,
+        cancelled_revenue_total_rub,
         NOW(),
         NOW()
       FROM rollup
@@ -208,12 +258,15 @@ export async function upsertConversionRollup({ startDate, endDate }) {
         pending_conversions_count = EXCLUDED.pending_conversions_count,
         approved_conversions_count = EXCLUDED.approved_conversions_count,
         rejected_conversions_count = EXCLUDED.rejected_conversions_count,
+        cancelled_conversions_count = EXCLUDED.cancelled_conversions_count,
         pending_payout_total_rub = EXCLUDED.pending_payout_total_rub,
         approved_payout_total_rub = EXCLUDED.approved_payout_total_rub,
         rejected_payout_total_rub = EXCLUDED.rejected_payout_total_rub,
+        cancelled_payout_total_rub = EXCLUDED.cancelled_payout_total_rub,
         pending_revenue_total_rub = EXCLUDED.pending_revenue_total_rub,
         approved_revenue_total_rub = EXCLUDED.approved_revenue_total_rub,
         rejected_revenue_total_rub = EXCLUDED.rejected_revenue_total_rub,
+        cancelled_revenue_total_rub = EXCLUDED.cancelled_revenue_total_rub,
         updated_at = NOW();
     `,
     [startDate, endDate],
@@ -247,12 +300,15 @@ export async function getDailyStatsTotals({
         COALESCE(SUM(pending_conversions_count), 0)::bigint AS pending_total,
         COALESCE(SUM(approved_conversions_count), 0)::bigint AS approved_total,
         COALESCE(SUM(rejected_conversions_count), 0)::bigint AS rejected_total,
+        COALESCE(SUM(cancelled_conversions_count), 0)::bigint AS cancelled_total,
         COALESCE(SUM(pending_payout_total_rub), 0)::numeric(14, 2) AS pending_payout_total_rub,
         COALESCE(SUM(approved_payout_total_rub), 0)::numeric(14, 2) AS approved_payout_total_rub,
         COALESCE(SUM(rejected_payout_total_rub), 0)::numeric(14, 2) AS rejected_payout_total_rub,
+        COALESCE(SUM(cancelled_payout_total_rub), 0)::numeric(14, 2) AS cancelled_payout_total_rub,
         COALESCE(SUM(pending_revenue_total_rub), 0)::numeric(14, 2) AS pending_revenue_total_rub,
         COALESCE(SUM(approved_revenue_total_rub), 0)::numeric(14, 2) AS approved_revenue_total_rub,
-        COALESCE(SUM(rejected_revenue_total_rub), 0)::numeric(14, 2) AS rejected_revenue_total_rub
+        COALESCE(SUM(rejected_revenue_total_rub), 0)::numeric(14, 2) AS rejected_revenue_total_rub,
+        COALESCE(SUM(cancelled_revenue_total_rub), 0)::numeric(14, 2) AS cancelled_revenue_total_rub
       FROM daily_stats
       ${whereClause};
     `,
@@ -265,12 +321,15 @@ export async function getDailyStatsTotals({
     pending_total: 0,
     approved_total: 0,
     rejected_total: 0,
+    cancelled_total: 0,
     pending_payout_total_rub: 0,
     approved_payout_total_rub: 0,
     rejected_payout_total_rub: 0,
+    cancelled_payout_total_rub: 0,
     pending_revenue_total_rub: 0,
     approved_revenue_total_rub: 0,
     rejected_revenue_total_rub: 0,
+    cancelled_revenue_total_rub: 0,
   };
 
   return {
@@ -279,12 +338,15 @@ export async function getDailyStatsTotals({
     pendingConversionsTotal: Number(row.pending_total ?? 0),
     approvedConversionsTotal: Number(row.approved_total ?? 0),
     rejectedConversionsTotal: Number(row.rejected_total ?? 0),
+    cancelledConversionsTotal: Number(row.cancelled_total ?? 0),
     pendingPayoutTotalRub: Number(row.pending_payout_total_rub ?? 0),
     approvedPayoutTotalRub: Number(row.approved_payout_total_rub ?? 0),
     rejectedPayoutTotalRub: Number(row.rejected_payout_total_rub ?? 0),
+    cancelledPayoutTotalRub: Number(row.cancelled_payout_total_rub ?? 0),
     pendingRevenueTotalRub: Number(row.pending_revenue_total_rub ?? 0),
     approvedRevenueTotalRub: Number(row.approved_revenue_total_rub ?? 0),
     rejectedRevenueTotalRub: Number(row.rejected_revenue_total_rub ?? 0),
+    cancelledRevenueTotalRub: Number(row.cancelled_revenue_total_rub ?? 0),
   };
 }
 
@@ -293,8 +355,10 @@ export async function incrementConversionRollup({
   offerId,
   affiliateId,
   status,
+  payoutAmount,
   payoutRub,
   revenueAmount,
+  isTest = false,
 }) {
   if (!offerId) {
     throw new Error('offerId is required for conversion rollup');
@@ -308,18 +372,25 @@ export async function incrementConversionRollup({
     throw new Error('status is required for conversion rollup');
   }
 
+  if (isTest) {
+    return;
+  }
+
   const normalizedDate = toUtcDateString(date);
   const approvedIncrement = status === 'approved' ? 1 : 0;
   const pendingIncrement = status === 'pending' ? 1 : 0;
   const rejectedIncrement = status === 'rejected' ? 1 : 0;
-  const payoutIncrement = normalizeAmountValue(payoutRub);
+  const cancelledIncrement = status === 'cancelled' ? 1 : 0;
+  const payoutIncrement = normalizeAmountValue(payoutAmount ?? payoutRub);
   const revenueIncrement = normalizeAmountValue(revenueAmount);
   const pendingPayoutIncrement = status === 'pending' ? payoutIncrement : '0';
   const approvedPayoutIncrement = status === 'approved' ? payoutIncrement : '0';
   const rejectedPayoutIncrement = status === 'rejected' ? payoutIncrement : '0';
+  const cancelledPayoutIncrement = status === 'cancelled' ? payoutIncrement : '0';
   const pendingRevenueIncrement = status === 'pending' ? revenueIncrement : '0';
   const approvedRevenueIncrement = status === 'approved' ? revenueIncrement : '0';
   const rejectedRevenueIncrement = status === 'rejected' ? revenueIncrement : '0';
+  const cancelledRevenueIncrement = status === 'cancelled' ? revenueIncrement : '0';
 
   await pool.query(
     `
@@ -331,12 +402,15 @@ export async function incrementConversionRollup({
         pending_conversions_count,
         approved_conversions_count,
         rejected_conversions_count,
+        cancelled_conversions_count,
         pending_payout_total_rub,
         approved_payout_total_rub,
         rejected_payout_total_rub,
+        cancelled_payout_total_rub,
         pending_revenue_total_rub,
         approved_revenue_total_rub,
         rejected_revenue_total_rub,
+        cancelled_revenue_total_rub,
         created_at,
         updated_at
       )
@@ -348,12 +422,15 @@ export async function incrementConversionRollup({
         $4,
         $5,
         $6,
-        $7::numeric(14, 2),
+        $7,
         $8::numeric(14, 2),
         $9::numeric(14, 2),
         $10::numeric(14, 2),
         $11::numeric(14, 2),
         $12::numeric(14, 2),
+        $13::numeric(14, 2),
+        $14::numeric(14, 2),
+        $15::numeric(14, 2),
         NOW(),
         NOW()
       )
@@ -367,18 +444,24 @@ export async function incrementConversionRollup({
           daily_stats.approved_conversions_count + EXCLUDED.approved_conversions_count,
         rejected_conversions_count =
           daily_stats.rejected_conversions_count + EXCLUDED.rejected_conversions_count,
+        cancelled_conversions_count =
+          daily_stats.cancelled_conversions_count + EXCLUDED.cancelled_conversions_count,
         pending_payout_total_rub =
           daily_stats.pending_payout_total_rub + EXCLUDED.pending_payout_total_rub,
         approved_payout_total_rub =
           daily_stats.approved_payout_total_rub + EXCLUDED.approved_payout_total_rub,
         rejected_payout_total_rub =
           daily_stats.rejected_payout_total_rub + EXCLUDED.rejected_payout_total_rub,
+        cancelled_payout_total_rub =
+          daily_stats.cancelled_payout_total_rub + EXCLUDED.cancelled_payout_total_rub,
         pending_revenue_total_rub =
           daily_stats.pending_revenue_total_rub + EXCLUDED.pending_revenue_total_rub,
         approved_revenue_total_rub =
           daily_stats.approved_revenue_total_rub + EXCLUDED.approved_revenue_total_rub,
         rejected_revenue_total_rub =
           daily_stats.rejected_revenue_total_rub + EXCLUDED.rejected_revenue_total_rub,
+        cancelled_revenue_total_rub =
+          daily_stats.cancelled_revenue_total_rub + EXCLUDED.cancelled_revenue_total_rub,
         updated_at = NOW();
     `,
     [
@@ -388,12 +471,15 @@ export async function incrementConversionRollup({
       pendingIncrement,
       approvedIncrement,
       rejectedIncrement,
+      cancelledIncrement,
       pendingPayoutIncrement,
       approvedPayoutIncrement,
       rejectedPayoutIncrement,
+      cancelledPayoutIncrement,
       pendingRevenueIncrement,
       approvedRevenueIncrement,
       rejectedRevenueIncrement,
+      cancelledRevenueIncrement,
     ],
   );
 }

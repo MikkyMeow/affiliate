@@ -117,12 +117,15 @@ export type AdvertiserFinanceSummary = {
   pendingRevenue: number;
   approvedRevenue: number;
   rejectedRevenue: number;
+  cancelledRevenue: number;
   pendingPayout: number;
   approvedPayout: number;
   rejectedPayout: number;
+  cancelledPayout: number;
   conversionsPending: number;
   conversionsApproved: number;
   conversionsRejected: number;
+  conversionsCancelled: number;
 };
 
 export type AdvertiserFinanceOfferBreakdown = {

@@ -2,6 +2,7 @@ export const CONVERSION_STATUSES = {
   PENDING: 'pending',
   APPROVED: 'approved',
   REJECTED: 'rejected',
+  CANCELLED: 'cancelled',
 };
 
 export const CONVERSION_STATUS_VALUES = Object.values(CONVERSION_STATUSES);

@@ -6,8 +6,14 @@ export type DashboardTotals = {
   clicks: number;
   transactions: number;
   conversions: number;
+  pendingConversions: number;
   approvedConversions: number;
+  rejectedConversions: number;
+  cancelledConversions: number;
   cr: number;
+  pendingRevenue: number;
+  pendingPayout: number;
+  pendingProfit: number;
   revenue: number;
   payout: number;
   profit: number;
@@ -48,8 +54,14 @@ const DASHBOARD_TOTALS_DEFAULT: DashboardTotals = {
   clicks: 0,
   transactions: 0,
   conversions: 0,
+  pendingConversions: 0,
   approvedConversions: 0,
+  rejectedConversions: 0,
+  cancelledConversions: 0,
   cr: 0,
+  pendingRevenue: 0,
+  pendingPayout: 0,
+  pendingProfit: 0,
   revenue: 0,
   payout: 0,
   profit: 0,

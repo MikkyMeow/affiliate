@@ -287,7 +287,12 @@ function normalizeTotalsRow(row = {}) {
   return {
     clicks: toNumber(row.clicks_total),
     conversions: toNumber(row.conversions_total),
+    pendingConversions: toNumber(row.pending_conversions_total),
     approvedConversions: toNumber(row.approved_conversions_total),
+    rejectedConversions: toNumber(row.rejected_conversions_total),
+    cancelledConversions: toNumber(row.cancelled_conversions_total),
+    pendingRevenue: Number(toNumber(row.pending_revenue_total).toFixed(2)),
+    pendingPayout: Number(toNumber(row.pending_payout_total).toFixed(2)),
     revenue: Number(toNumber(row.revenue_total).toFixed(2)),
     payout: Number(toNumber(row.payout_total).toFixed(2)),
   };
@@ -297,7 +302,12 @@ function normalizeGroupMetrics(row = {}) {
   return {
     clicks: toNumber(row.clicks_total),
     conversions: toNumber(row.conversions_total),
+    pendingConversions: toNumber(row.pending_conversions_total),
     approvedConversions: toNumber(row.approved_conversions_total),
+    rejectedConversions: toNumber(row.rejected_conversions_total),
+    cancelledConversions: toNumber(row.cancelled_conversions_total),
+    pendingRevenue: Number(toNumber(row.pending_revenue_total).toFixed(2)),
+    pendingPayout: Number(toNumber(row.pending_payout_total).toFixed(2)),
     revenue: Number(toNumber(row.revenue_total).toFixed(2)),
     payout: Number(toNumber(row.payout_total).toFixed(2)),
   };
@@ -342,7 +352,18 @@ export async function getAdminSummaryTotals(filter = {}) {
     `
       SELECT
         COUNT(*)::bigint AS conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'pending')::bigint AS pending_conversions_total,
         COUNT(*) FILTER (WHERE c.status = 'approved')::bigint AS approved_conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'rejected')::bigint AS rejected_conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'cancelled')::bigint AS cancelled_conversions_total,
+        COALESCE(
+          SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'pending'),
+          0
+        )::numeric(14, 2) AS pending_revenue_total,
+        COALESCE(
+          SUM(COALESCE(c.payout_amount, c.payout_rub, 0)) FILTER (WHERE c.status = 'pending'),
+          0
+        )::numeric(14, 2) AS pending_payout_total,
         COALESCE(
           SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'approved'),
           0
@@ -368,8 +389,16 @@ export async function getAdminSummaryTotals(filter = {}) {
   return normalizeTotalsRow({
     clicks_total: clickResult.rows[0]?.clicks_total ?? 0,
     conversions_total: conversionResult.rows[0]?.conversions_total ?? 0,
+    pending_conversions_total:
+      conversionResult.rows[0]?.pending_conversions_total ?? 0,
     approved_conversions_total:
       conversionResult.rows[0]?.approved_conversions_total ?? 0,
+    rejected_conversions_total:
+      conversionResult.rows[0]?.rejected_conversions_total ?? 0,
+    cancelled_conversions_total:
+      conversionResult.rows[0]?.cancelled_conversions_total ?? 0,
+    pending_revenue_total: conversionResult.rows[0]?.pending_revenue_total ?? 0,
+    pending_payout_total: conversionResult.rows[0]?.pending_payout_total ?? 0,
     revenue_total: conversionResult.rows[0]?.revenue_total ?? 0,
     payout_total: conversionResult.rows[0]?.payout_total ?? 0,
   });
@@ -406,7 +435,18 @@ export async function getAdminSummaryGroups(filter = {}, groupBy) {
       SELECT
         ${config.conversionSelect},
         COUNT(*)::bigint AS conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'pending')::bigint AS pending_conversions_total,
         COUNT(*) FILTER (WHERE c.status = 'approved')::bigint AS approved_conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'rejected')::bigint AS rejected_conversions_total,
+        COUNT(*) FILTER (WHERE c.status = 'cancelled')::bigint AS cancelled_conversions_total,
+        COALESCE(
+          SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'pending'),
+          0
+        )::numeric(14, 2) AS pending_revenue_total,
+        COALESCE(
+          SUM(COALESCE(c.payout_amount, c.payout_rub, 0)) FILTER (WHERE c.status = 'pending'),
+          0
+        )::numeric(14, 2) AS pending_payout_total,
         COALESCE(
           SUM(COALESCE(c.revenue_amount, 0)) FILTER (WHERE c.status = 'approved'),
           0
@@ -458,7 +498,12 @@ export async function getAdminSummaryGroups(filter = {}, groupBy) {
       metrics: {
         clicks: toNumber(row.clicks_total),
         conversions: 0,
+        pendingConversions: 0,
         approvedConversions: 0,
+        rejectedConversions: 0,
+        cancelledConversions: 0,
+        pendingRevenue: 0,
+        pendingPayout: 0,
         revenue: 0,
         payout: 0,
       },

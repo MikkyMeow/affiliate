@@ -33,6 +33,13 @@ type MetricDefinition = {
   formatValue: (value: number) => string;
 };
 
+type SupplementalMetricDefinition = {
+  key: 'pendingRevenue' | 'pendingPayout' | 'pendingProfit';
+  label: string;
+  description: string;
+  accentClassName: string;
+};
+
 const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
     key: 'transactions',
@@ -66,9 +73,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: 'revenue',
-    label: 'Revenue',
-    description: 'Сумма revenue по финансово учитываемым конверсиям.',
-    chartDescription: 'Почасовой revenue в RUB.',
+    label: 'Confirmed Revenue',
+    description: 'Подтверждённый revenue только по approved конверсиям.',
+    chartDescription: 'Почасовой confirmed revenue в RUB.',
     accentClassName: 'text-emerald-700 dark:text-emerald-300',
     stroke: '#059669',
     fill: '#34d399',
@@ -76,9 +83,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: 'payout',
-    label: 'Payout',
-    description: 'Сумма payout по финансово учитываемым конверсиям.',
-    chartDescription: 'Почасовой payout в RUB.',
+    label: 'Confirmed Payout',
+    description: 'Подтверждённый payout только по approved конверсиям.',
+    chartDescription: 'Почасовой confirmed payout в RUB.',
     accentClassName: 'text-amber-700 dark:text-amber-300',
     stroke: '#d97706',
     fill: '#fbbf24',
@@ -86,9 +93,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: 'profit',
-    label: 'Profit',
-    description: 'Revenue - payout, рассчитывается на backend.',
-    chartDescription: 'Почасовой profit в RUB.',
+    label: 'Confirmed Profit',
+    description: 'Confirmed revenue - confirmed payout, рассчитывается на backend.',
+    chartDescription: 'Почасовой confirmed profit в RUB.',
     accentClassName: 'text-teal-700 dark:text-teal-300',
     stroke: '#0f766e',
     fill: '#2dd4bf',
@@ -120,14 +127,41 @@ const EMPTY_TOTALS: DashboardTotals = {
   clicks: 0,
   transactions: 0,
   conversions: 0,
+  pendingConversions: 0,
   approvedConversions: 0,
+  rejectedConversions: 0,
+  cancelledConversions: 0,
   cr: 0,
+  pendingRevenue: 0,
+  pendingPayout: 0,
+  pendingProfit: 0,
   revenue: 0,
   payout: 0,
   profit: 0,
   epc: 0,
   approveRate: 0,
 };
+
+const SUPPLEMENTAL_METRICS: SupplementalMetricDefinition[] = [
+  {
+    key: 'pendingRevenue',
+    label: 'Pending revenue',
+    description: 'Pending conversions only.',
+    accentClassName: 'text-sky-700 dark:text-sky-300',
+  },
+  {
+    key: 'pendingPayout',
+    label: 'Pending payout',
+    description: 'Pending conversions only.',
+    accentClassName: 'text-indigo-700 dark:text-indigo-300',
+  },
+  {
+    key: 'pendingProfit',
+    label: 'Pending profit',
+    description: 'Pending revenue - pending payout.',
+    accentClassName: 'text-fuchsia-700 dark:text-fuchsia-300',
+  },
+];
 
 type OfferLookupResponse = {
   id: string;
@@ -501,6 +535,18 @@ export function DashboardMainPageContent() {
         ))}
       </div>
 
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {SUPPLEMENTAL_METRICS.map((metric) => (
+          <DashboardMetricCard
+            key={`dashboard-money-${metric.key}`}
+            label={metric.label}
+            description={metric.description}
+            value={formatMoney(totals[metric.key])}
+            accentClassName={metric.accentClassName}
+          />
+        ))}
+      </div>
+
       <section className="mt-10 overflow-hidden rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
@@ -682,6 +728,18 @@ export function DashboardMainPageContent() {
           ))}
         </div>
 
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {SUPPLEMENTAL_METRICS.map((metric) => (
+            <DashboardMetricCard
+              key={`summary-money-${metric.key}`}
+              label={metric.label}
+              description={metric.description}
+              value={formatMoney(summaryTotals[metric.key])}
+              accentClassName={metric.accentClassName}
+            />
+          ))}
+        </div>
+
         {!summaryLoading && !summaryError && hasSummaryData && isSummaryEmpty ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
             Нет данных по выбранным фильтрам.
@@ -698,9 +756,9 @@ export function DashboardMainPageContent() {
                     <th className="px-4 py-3 font-medium">Транзакции</th>
                     <th className="px-4 py-3 font-medium">Конверсии</th>
                     <th className="px-4 py-3 font-medium">CR</th>
-                    <th className="px-4 py-3 font-medium">Revenue</th>
-                    <th className="px-4 py-3 font-medium">Payout</th>
-                    <th className="px-4 py-3 font-medium">Profit</th>
+                    <th className="px-4 py-3 font-medium">Confirmed revenue</th>
+                    <th className="px-4 py-3 font-medium">Confirmed payout</th>
+                    <th className="px-4 py-3 font-medium">Confirmed profit</th>
                     <th className="px-4 py-3 font-medium">EPC</th>
                     <th className="px-4 py-3 font-medium">Approve Rate</th>
                   </tr>

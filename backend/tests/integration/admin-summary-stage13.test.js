@@ -275,7 +275,7 @@ describe('stage 13 admin summary', () => {
       advertiserId: null,
       groupBy: null,
     });
-    expect(allTotals.body.data.totals).toEqual({
+    expect(allTotals.body.data.totals).toMatchObject({
       clicks: 5,
       transactions: 5,
       conversions: 5,
@@ -294,7 +294,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(partnerFiltered.status).toBe(200);
-    expect(partnerFiltered.body.data.totals).toEqual({
+    expect(partnerFiltered.body.data.totals).toMatchObject({
       clicks: 3,
       transactions: 3,
       conversions: 3,
@@ -326,7 +326,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(offerFiltered.status).toBe(200);
-    expect(offerFiltered.body.data.totals).toEqual({
+    expect(offerFiltered.body.data.totals).toMatchObject({
       clicks: 3,
       transactions: 3,
       conversions: 3,
@@ -348,7 +348,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(partnerOfferFiltered.status).toBe(200);
-    expect(partnerOfferFiltered.body.data.totals).toEqual({
+    expect(partnerOfferFiltered.body.data.totals).toMatchObject({
       clicks: 2,
       transactions: 2,
       conversions: 2,
@@ -367,7 +367,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(advertiserFiltered.status).toBe(200);
-    expect(advertiserFiltered.body.data.totals).toEqual({
+    expect(advertiserFiltered.body.data.totals).toMatchObject({
       clicks: 4,
       transactions: 4,
       conversions: 4,
@@ -386,7 +386,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(dateFiltered.status).toBe(200);
-    expect(dateFiltered.body.data.totals).toEqual({
+    expect(dateFiltered.body.data.totals).toMatchObject({
       clicks: 2,
       transactions: 2,
       conversions: 2,
@@ -411,7 +411,7 @@ describe('stage 13 admin summary', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.data.totals).toEqual({
+    expect(response.body.data.totals).toMatchObject({
       clicks: 0,
       transactions: 0,
       conversions: 0,

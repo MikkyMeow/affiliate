@@ -33,12 +33,18 @@ function normalizeSummaryPayload(metrics = {}, { includeLegacyClicksAlias = true
     conversionsPending: Number(metrics.conversionsPending ?? 0),
     conversionsApproved: Number(metrics.conversionsApproved ?? 0),
     conversionsRejected: Number(metrics.conversionsRejected ?? 0),
+    conversionsCancelled: Number(metrics.conversionsCancelled ?? 0),
     pendingRevenue: Number(metrics.pendingRevenue ?? 0),
+    pendingProfit: roundMetric(
+      Number(metrics.pendingRevenue ?? 0) - Number(metrics.pendingPayout ?? 0),
+    ),
     approvedRevenue: Number(metrics.approvedRevenue ?? 0),
     rejectedRevenue: Number(metrics.rejectedRevenue ?? 0),
+    cancelledRevenue: Number(metrics.cancelledRevenue ?? 0),
     pendingPayout: Number(metrics.pendingPayout ?? 0),
     approvedPayout: Number(metrics.approvedPayout ?? 0),
     rejectedPayout: Number(metrics.rejectedPayout ?? 0),
+    cancelledPayout: Number(metrics.cancelledPayout ?? 0),
   };
 
   if (includeLegacyClicksAlias) {
@@ -56,12 +62,18 @@ function normalizeBreakdownEntry(entry, { includeLegacyClicksAlias = true } = {}
     conversionsPending: Number(entry.conversionsPending ?? 0),
     conversionsApproved: Number(entry.conversionsApproved ?? 0),
     conversionsRejected: Number(entry.conversionsRejected ?? 0),
+    conversionsCancelled: Number(entry.conversionsCancelled ?? 0),
     pendingRevenue: Number(entry.pendingRevenue ?? 0),
+    pendingProfit: roundMetric(
+      Number(entry.pendingRevenue ?? 0) - Number(entry.pendingPayout ?? 0),
+    ),
     approvedRevenue: Number(entry.approvedRevenue ?? 0),
     rejectedRevenue: Number(entry.rejectedRevenue ?? 0),
+    cancelledRevenue: Number(entry.cancelledRevenue ?? 0),
     pendingPayout: Number(entry.pendingPayout ?? 0),
     approvedPayout: Number(entry.approvedPayout ?? 0),
     rejectedPayout: Number(entry.rejectedPayout ?? 0),
+    cancelledPayout: Number(entry.cancelledPayout ?? 0),
   };
 
   if (includeLegacyClicksAlias) {
@@ -98,27 +110,47 @@ function calculatePerClick(amount, clicks) {
 function buildDashboardMetricSet({
   clicks,
   conversions,
+  pendingConversions,
   approvedConversions,
+  rejectedConversions,
+  cancelledConversions,
+  pendingRevenue,
+  pendingPayout,
   revenue,
   payout,
 }) {
-  // Stage 11 definitions:
-  // - revenue/payout use financially counted conversions only (approved in the current status model)
+  // Stage 15 definitions:
+  // - revenue/payout use confirmed approved conversions only
+  // - pendingRevenue/pendingPayout use unconfirmed pending conversions only
   // - profit is backend-calculated revenue - payout
   // - CR/EPC/approveRate must return 0 when the denominator is 0
   const normalizedClicks = Number(clicks ?? 0);
   const normalizedConversions = Number(conversions ?? 0);
+  const normalizedPendingConversions = Number(pendingConversions ?? 0);
   const normalizedApprovedConversions = Number(approvedConversions ?? 0);
+  const normalizedRejectedConversions = Number(rejectedConversions ?? 0);
+  const normalizedCancelledConversions = Number(cancelledConversions ?? 0);
+  const normalizedPendingRevenue = roundMetric(pendingRevenue);
+  const normalizedPendingPayout = roundMetric(pendingPayout);
   const normalizedRevenue = roundMetric(revenue);
   const normalizedPayout = roundMetric(payout);
+  const pendingProfit = roundMetric(
+    normalizedPendingRevenue - normalizedPendingPayout,
+  );
   const profit = roundMetric(normalizedRevenue - normalizedPayout);
 
   return {
     clicks: normalizedClicks,
     transactions: normalizedClicks,
     conversions: normalizedConversions,
+    pendingConversions: normalizedPendingConversions,
     approvedConversions: normalizedApprovedConversions,
+    rejectedConversions: normalizedRejectedConversions,
+    cancelledConversions: normalizedCancelledConversions,
     cr: calculateRatio(normalizedConversions, normalizedClicks),
+    pendingRevenue: normalizedPendingRevenue,
+    pendingPayout: normalizedPendingPayout,
+    pendingProfit,
     revenue: normalizedRevenue,
     payout: normalizedPayout,
     profit,
@@ -289,15 +321,28 @@ export async function getAdminDashboardStats({
       (accumulator, entry) => ({
         clicks: accumulator.clicks + entry.clicks,
         conversions: accumulator.conversions + entry.conversions,
+        pendingConversions:
+          accumulator.pendingConversions + entry.pendingConversions,
         approvedConversions:
           accumulator.approvedConversions + entry.approvedConversions,
+        rejectedConversions:
+          accumulator.rejectedConversions + entry.rejectedConversions,
+        cancelledConversions:
+          accumulator.cancelledConversions + entry.cancelledConversions,
+        pendingRevenue: accumulator.pendingRevenue + entry.pendingRevenue,
+        pendingPayout: accumulator.pendingPayout + entry.pendingPayout,
         revenue: accumulator.revenue + entry.revenue,
         payout: accumulator.payout + entry.payout,
       }),
       {
         clicks: 0,
         conversions: 0,
+        pendingConversions: 0,
         approvedConversions: 0,
+        rejectedConversions: 0,
+        cancelledConversions: 0,
+        pendingRevenue: 0,
+        pendingPayout: 0,
         revenue: 0,
         payout: 0,
       },

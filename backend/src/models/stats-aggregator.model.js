@@ -5,12 +5,47 @@ const CONVERSION_METRIC_COLUMNS = (alias = 'c') => `
   COUNT(*) FILTER (WHERE ${alias}.status = 'pending')::bigint AS conversions_pending,
   COUNT(*) FILTER (WHERE ${alias}.status = 'approved')::bigint AS conversions_approved,
   COUNT(*) FILTER (WHERE ${alias}.status = 'rejected')::bigint AS conversions_rejected,
-  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'pending'), 0)::numeric AS pending_payout_total,
-  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'approved'), 0)::numeric AS approved_payout_total,
-  COALESCE(SUM(${alias}.payout_rub) FILTER (WHERE ${alias}.status = 'rejected'), 0)::numeric AS rejected_payout_total,
-  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'pending'), 0)::numeric AS pending_revenue_total,
-  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'approved'), 0)::numeric AS approved_revenue_total,
-  COALESCE(SUM(${alias}.revenue_amount) FILTER (WHERE ${alias}.status = 'rejected'), 0)::numeric AS rejected_revenue_total
+  COUNT(*) FILTER (WHERE ${alias}.status = 'cancelled')::bigint AS conversions_cancelled,
+  COALESCE(
+    SUM(COALESCE(${alias}.payout_amount, ${alias}.payout_rub, 0))
+      FILTER (WHERE ${alias}.status = 'pending'),
+    0
+  )::numeric AS pending_payout_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.payout_amount, ${alias}.payout_rub, 0))
+      FILTER (WHERE ${alias}.status = 'approved'),
+    0
+  )::numeric AS approved_payout_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.payout_amount, ${alias}.payout_rub, 0))
+      FILTER (WHERE ${alias}.status = 'rejected'),
+    0
+  )::numeric AS rejected_payout_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.payout_amount, ${alias}.payout_rub, 0))
+      FILTER (WHERE ${alias}.status = 'cancelled'),
+    0
+  )::numeric AS cancelled_payout_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.revenue_amount, 0))
+      FILTER (WHERE ${alias}.status = 'pending'),
+    0
+  )::numeric AS pending_revenue_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.revenue_amount, 0))
+      FILTER (WHERE ${alias}.status = 'approved'),
+    0
+  )::numeric AS approved_revenue_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.revenue_amount, 0))
+      FILTER (WHERE ${alias}.status = 'rejected'),
+    0
+  )::numeric AS rejected_revenue_total,
+  COALESCE(
+    SUM(COALESCE(${alias}.revenue_amount, 0))
+      FILTER (WHERE ${alias}.status = 'cancelled'),
+    0
+  )::numeric AS cancelled_revenue_total
 `;
 
 function createEmptyMetrics() {
@@ -20,12 +55,15 @@ function createEmptyMetrics() {
     conversionsPending: 0,
     conversionsApproved: 0,
     conversionsRejected: 0,
+    conversionsCancelled: 0,
     pendingRevenue: 0,
     pendingPayout: 0,
     approvedRevenue: 0,
     approvedPayout: 0,
     rejectedRevenue: 0,
     rejectedPayout: 0,
+    cancelledRevenue: 0,
+    cancelledPayout: 0,
   };
 }
 
@@ -35,12 +73,15 @@ function mapConversionMetrics(row = {}) {
     conversionsPending: Number(row.conversions_pending ?? 0),
     conversionsApproved: Number(row.conversions_approved ?? 0),
     conversionsRejected: Number(row.conversions_rejected ?? 0),
+    conversionsCancelled: Number(row.conversions_cancelled ?? 0),
     pendingRevenue: Number(row.pending_revenue_total ?? 0),
     approvedRevenue: Number(row.approved_revenue_total ?? 0),
     rejectedRevenue: Number(row.rejected_revenue_total ?? 0),
+    cancelledRevenue: Number(row.cancelled_revenue_total ?? 0),
     pendingPayout: Number(row.pending_payout_total ?? 0),
     approvedPayout: Number(row.approved_payout_total ?? 0),
     rejectedPayout: Number(row.rejected_payout_total ?? 0),
+    cancelledPayout: Number(row.cancelled_payout_total ?? 0),
   };
 }
 
@@ -110,6 +151,8 @@ function buildConversionFilter(filter = {}, alias = 'c') {
     params.push(normalized.status);
     conditions.push(`${alias}.status = $${params.length}`);
   }
+
+  conditions.push(`COALESCE(${alias}.is_test, false) = false`);
 
   if (normalized.dateFrom) {
     params.push(normalized.dateFrom);

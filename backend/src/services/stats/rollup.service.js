@@ -102,8 +102,10 @@ export async function updateConversionRollup(conversionId) {
     offerId: conversion.offerId,
     affiliateId: conversion.affiliateId,
     status: conversion.status,
+    payoutAmount: conversion.payoutAmount,
     payoutRub: conversion.payoutRub,
     revenueAmount: conversion.revenueAmount,
+    isTest: conversion.isTest,
   });
 
   return {

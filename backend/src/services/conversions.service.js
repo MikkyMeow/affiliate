@@ -1,5 +1,15 @@
+import pool from '../db.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
-import { findConversionById, updateConversionStatus as updateModelStatus } from '../models/conversions.model.js';
+import {
+  findAdminConversionById,
+  findConversionById,
+  serializeConversionRecord,
+  updateConversionStatus as updateModelStatus,
+} from '../models/conversions.model.js';
+import {
+  insertConversionStatusHistory,
+  listConversionStatusHistory,
+} from '../models/conversionStatusHistory.model.js';
 import { upsertConversionRollup } from '../models/daily-stats.model.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
@@ -30,9 +40,53 @@ function resolveActorMeta(actor) {
   };
 }
 
+function normalizeReason(reason) {
+  if (reason === undefined || reason === null) {
+    return null;
+  }
+
+  if (typeof reason !== 'string') {
+    throw new ApiError(
+      ERROR_CODES.VALIDATION_ERROR,
+      400,
+      'reason должен быть строкой',
+    );
+  }
+
+  const normalized = reason.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildStatusChangeMetadata(conversion) {
+  return {
+    source: conversion.source ?? 'tracking',
+    isTest: Boolean(conversion.isTest),
+    manualAdjustmentBatchId: conversion.manualAdjustmentBatchId ?? null,
+    offerId: conversion.offerId,
+    affiliateId: conversion.affiliateId,
+    goalId: conversion.goalId ?? null,
+  };
+}
+
+function serializeHistoryEntry(entry) {
+  if (!entry) {
+    return null;
+  }
+
+  return {
+    id: entry.id,
+    fromStatus: entry.fromStatus ?? null,
+    toStatus: entry.toStatus,
+    reason: entry.reason ?? null,
+    changedAt: entry.changedAt,
+    metadata: entry.metadata ?? null,
+  };
+}
+
 export async function updateConversionStatus({
   conversionId,
   status,
+  reason = null,
   actor = null,
   requestId = null,
 }) {
@@ -47,49 +101,106 @@ export async function updateConversionStatus({
     });
   }
 
-  const existing = await findConversionById(conversionId);
+  const normalizedReason = normalizeReason(reason);
+  const client = await pool.connect();
 
-  if (!existing) {
+  try {
+    await client.query('BEGIN');
+
+    const existing = await findConversionById(conversionId, {
+      client,
+      forUpdate: true,
+    });
+
+    if (!existing) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Конверсия не найдена', {
+        conversionId,
+      });
+    }
+
+    if (existing.status === status) {
+      const conversion = await findAdminConversionById(conversionId, { client });
+      await client.query('COMMIT');
+      return {
+        conversion: conversion ?? serializeConversionRecord(existing),
+        historyEntry: null,
+      };
+    }
+
+    const updated = await updateModelStatus(
+      {
+        id: conversionId,
+        status,
+      },
+      { client },
+    );
+
+    const metadata = buildStatusChangeMetadata(updated);
+    const historyEntry = await insertConversionStatusHistory(
+      {
+        conversionId: updated.id,
+        fromStatus: existing.status,
+        toStatus: updated.status,
+        reason: normalizedReason,
+        changedBy: actor?.userId ?? null,
+        metadata,
+      },
+      { client },
+    );
+
+    const { actorUserId, actorRole } = resolveActorMeta(actor);
+    await writeAuditEvent({
+      entityType: 'conversion',
+      entityId: updated.id,
+      action: 'conversion.status_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      context: {
+        oldValue: existing.status,
+        newValue: updated.status,
+        reason: normalizedReason,
+        metadata,
+      },
+      client,
+    });
+
+    const rollupDate = normalizeDateForRollup(updated?.createdAt);
+    if (rollupDate) {
+      await upsertConversionRollup(
+        { startDate: rollupDate, endDate: rollupDate },
+        { client },
+      );
+    }
+
+    const conversion = await findAdminConversionById(updated.id, { client });
+
+    await client.query('COMMIT');
+
+    return {
+      conversion: conversion ?? serializeConversionRecord(updated),
+      historyEntry: serializeHistoryEntry(historyEntry),
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getConversionStatusHistory(conversionId) {
+  if (!conversionId) {
+    throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'conversionId обязателен');
+  }
+
+  const conversion = await findConversionById(conversionId);
+
+  if (!conversion) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Конверсия не найдена', {
       conversionId,
     });
   }
 
-  if (existing.status === status) {
-    return existing;
-  }
-
-  const updated = await updateModelStatus({
-    id: conversionId,
-    status,
-  });
-
-  const rollupDate = normalizeDateForRollup(updated?.createdAt);
-
-  if (rollupDate) {
-    await upsertConversionRollup({ startDate: rollupDate, endDate: rollupDate });
-  }
-
-  if (updated) {
-    const { actorUserId, actorRole } = resolveActorMeta(actor);
-    await writeAuditEvent({
-      entityType: 'conversion',
-      entityId: updated.id,
-      action: 'status_changed',
-      actorUserId,
-      actorRole,
-      requestId,
-      context: {
-        oldStatus: existing.status,
-        newStatus: updated.status,
-        offerId: updated.offerId,
-        affiliateId: updated.affiliateId,
-        goalId: updated.goalId ?? null,
-        payoutAmount: updated.payoutAmount ?? null,
-        revenueAmount: updated.revenueAmount ?? null,
-      },
-    });
-  }
-
-  return updated;
+  return listConversionStatusHistory(conversionId);
 }

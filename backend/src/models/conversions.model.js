@@ -11,6 +11,7 @@ const conversionFields = `
   manual_adjustment_batch_id AS "manualAdjustmentBatchId",
   created_by AS "createdBy",
   status,
+  is_test AS "isTest",
   external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
   goal_name AS "goalName",
@@ -18,7 +19,8 @@ const conversionFields = `
   revenue_amount AS "revenueAmount",
   payout_amount AS "payoutAmount",
   payout_rub AS "payoutRub",
-  created_at AS "createdAt"
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
 `;
 
 const conversionListFields = `
@@ -27,6 +29,7 @@ const conversionListFields = `
   affiliate_id AS "affiliateId",
   source,
   status,
+  is_test AS "isTest",
   external_transaction_id AS "externalTransactionId",
   goal_id AS "goalId",
   goal_name AS "goalName",
@@ -34,7 +37,8 @@ const conversionListFields = `
   revenue_amount AS "revenueAmount",
   payout_amount AS "payoutAmount",
   payout_rub AS "payoutRub",
-  created_at AS "createdAt"
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
 `;
 
 const adminConversionListFields = `
@@ -52,12 +56,15 @@ const adminConversionListFields = `
   adv.public_id_number AS "advertiserPublicIdNumber",
   adv.name AS "advertiserName",
   c.source,
+  c.manual_adjustment_batch_id AS "manualAdjustmentBatchId",
   c.status,
+  c.is_test AS "isTest",
   c.external_transaction_id AS "externalTransactionId",
   c.revenue_amount AS "revenueAmount",
   c.payout_amount AS "payoutAmount",
   c.payout_rub AS "payoutRub",
-  c.created_at AS "createdAt"
+  c.created_at AS "createdAt",
+  c.updated_at AS "updatedAt"
 `;
 
 function addUuidOrPublicIdCondition({
@@ -98,6 +105,7 @@ function normalizeMoneyValue(value) {
 }
 
 function normalizeAdminConversionRow(row) {
+  const base = serializeConversionRecord(row);
   const revenue = normalizeMoneyValue(row.revenueAmount);
   const payout = normalizeMoneyValue(row.payoutAmount ?? row.payoutRub);
   const profit =
@@ -106,11 +114,9 @@ function normalizeAdminConversionRow(row) {
       : null;
 
   return {
-    id: row.id,
-    clickId: row.clickId,
-    offerId: row.offerId,
+    ...base,
     offer: {
-      id: row.offerId,
+      id: base.offerId,
       publicId: formatPublicId(
         PUBLIC_ID_PREFIXES.offer,
         Number(row.offerPublicIdNumber ?? 0),
@@ -144,13 +150,61 @@ function normalizeAdminConversionRow(row) {
           name: row.advertiserName ?? null,
         }
       : null,
-    source: row.source ?? 'tracking',
-    status: row.status,
-    externalTransactionId: row.externalTransactionId ?? null,
     revenue,
     payout,
     profit,
-    createdAt: row.createdAt,
+  };
+}
+
+export async function findAdminConversionById(
+  id,
+  { client = pool, forUpdate = false } = {},
+) {
+  const lockClause = forUpdate ? 'FOR UPDATE' : '';
+  const result = await client.query(
+    `
+      SELECT ${adminConversionListFields}
+      FROM conversions AS c
+      INNER JOIN offers AS o ON o.id = c.offer_id
+      INNER JOIN affiliates AS a ON a.id = c.affiliate_id
+      LEFT JOIN advertisers AS adv ON adv.id = o.advertiser_id
+      LEFT JOIN offer_goals AS og ON og.id = c.goal_id
+      WHERE c.id = $1
+      ${lockClause};
+    `,
+    [id],
+  );
+
+  return result.rows[0] ? normalizeAdminConversionRow(result.rows[0]) : null;
+}
+
+export function serializeConversionRecord(row) {
+  const revenue = normalizeMoneyValue(row?.revenueAmount);
+  const payout = normalizeMoneyValue(row?.payoutAmount ?? row?.payoutRub);
+  const profit =
+    revenue !== null && payout !== null
+      ? Number((revenue - payout).toFixed(2))
+      : null;
+
+  return {
+    id: row?.id ?? null,
+    clickId: row?.clickId ?? null,
+    offerId: row?.offerId ?? null,
+    affiliateId: row?.affiliateId ?? null,
+    source: row?.source ?? 'tracking',
+    manualAdjustmentBatchId: row?.manualAdjustmentBatchId ?? null,
+    createdBy: row?.createdBy ?? null,
+    status: row?.status ?? null,
+    isTest: Boolean(row?.isTest),
+    externalTransactionId: row?.externalTransactionId ?? null,
+    goalId: row?.goalId ?? null,
+    goalName: row?.goalName ?? null,
+    goalType: row?.goalType ?? null,
+    revenue,
+    payout,
+    profit,
+    createdAt: row?.createdAt ?? null,
+    updatedAt: row?.updatedAt ?? row?.createdAt ?? null,
   };
 }
 
@@ -162,6 +216,7 @@ export async function createConversion({
   manualAdjustmentBatchId = null,
   createdBy = null,
   status,
+  isTest = false,
   payoutRub,
   externalTransactionId = null,
   goalId = null,
@@ -181,6 +236,7 @@ export async function createConversion({
         manual_adjustment_batch_id,
         created_by,
         status,
+        is_test,
         payout_rub,
         external_transaction_id,
         goal_id,
@@ -190,7 +246,24 @@ export async function createConversion({
         payout_amount,
         created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, NOW()))
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        COALESCE($16, NOW())
+      )
       RETURNING ${conversionFields};
     `,
     [
@@ -201,6 +274,7 @@ export async function createConversion({
       manualAdjustmentBatchId,
       createdBy,
       status,
+      isTest,
       payoutRub,
       externalTransactionId,
       goalId,
@@ -305,12 +379,17 @@ export async function findByOfferGoalAndExternalTransactionId(
   return result.rows[0] ?? null;
 }
 
-export async function findConversionById(id) {
-  const result = await pool.query(
+export async function findConversionById(
+  id,
+  { client = pool, forUpdate = false } = {},
+) {
+  const lockClause = forUpdate ? 'FOR UPDATE' : '';
+  const result = await client.query(
     `
       SELECT ${conversionFields}
       FROM conversions
-      WHERE id = $1;
+      WHERE id = $1
+      ${lockClause};
     `,
     [id],
   );
@@ -318,11 +397,16 @@ export async function findConversionById(id) {
   return result.rows[0] ?? null;
 }
 
-export async function updateConversionStatus({ id, status }) {
-  const result = await pool.query(
+export async function updateConversionStatus(
+  { id, status },
+  { client = pool } = {},
+) {
+  const result = await client.query(
     `
       UPDATE conversions
-      SET status = $2
+      SET
+        status = $2,
+        updated_at = NOW()
       WHERE id = $1
       RETURNING ${conversionFields};
     `,
@@ -333,7 +417,7 @@ export async function updateConversionStatus({ id, status }) {
 }
 
 export async function listConversions(
-  { offerId, affiliateId, status } = {},
+  { offerId, affiliateId, status, isTest } = {},
   { limit = 20, offset = 0 } = {},
 ) {
   const conditions = [];
@@ -352,6 +436,11 @@ export async function listConversions(
   if (status) {
     params.push(status);
     conditions.push(`status = $${params.length}`);
+  }
+
+  if (typeof isTest === 'boolean') {
+    params.push(isTest);
+    conditions.push(`COALESCE(is_test, false) = $${params.length}`);
   }
 
   const whereClause =
@@ -396,6 +485,8 @@ export async function listAdminConversions(
     clickId,
     conversionId,
     externalTransactionId,
+    source,
+    isTest,
     revenueMin,
     revenueMax,
     payoutMin,
@@ -451,6 +542,16 @@ export async function listAdminConversions(
   if (status) {
     params.push(status);
     conditions.push(`c.status = $${params.length}`);
+  }
+
+  if (source) {
+    params.push(source);
+    conditions.push(`c.source = $${params.length}`);
+  }
+
+  if (typeof isTest === 'boolean') {
+    params.push(isTest);
+    conditions.push(`COALESCE(c.is_test, false) = $${params.length}`);
   }
 
   if (conversionId) {
@@ -543,8 +644,10 @@ export async function getConversionTotals({ offerId, affiliateId } = {}) {
     `
       SELECT
         COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
         COUNT(*) FILTER (WHERE status = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE status = 'rejected')::int AS rejected,
+        COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled,
         COALESCE(SUM(payout_rub), 0)::numeric AS "totalPayoutRub"
       FROM conversions
       ${whereClause};
@@ -554,15 +657,19 @@ export async function getConversionTotals({ offerId, affiliateId } = {}) {
 
   const row = result.rows[0] ?? {
     total: 0,
+    pending: 0,
     approved: 0,
     rejected: 0,
+    cancelled: 0,
     totalPayoutRub: 0,
   };
 
   return {
     total: row.total ?? 0,
+    pending: row.pending ?? 0,
     approved: row.approved ?? 0,
     rejected: row.rejected ?? 0,
+    cancelled: row.cancelled ?? 0,
     totalPayoutRub: Number(row.totalPayoutRub ?? 0),
   };
 }

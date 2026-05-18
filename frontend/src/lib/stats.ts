@@ -7,12 +7,16 @@ export type StatsSummary = {
   conversionsPending: number;
   conversionsApproved: number;
   conversionsRejected: number;
+  conversionsCancelled: number;
   pendingRevenue: number;
   pendingPayout: number;
+  pendingProfit: number;
   approvedRevenue: number;
   approvedPayout: number;
   rejectedRevenue: number;
   rejectedPayout: number;
+  cancelledRevenue: number;
+  cancelledPayout: number;
 };
 
 export type BreakdownMetrics = {
@@ -21,12 +25,16 @@ export type BreakdownMetrics = {
   conversionsPending: number;
   conversionsApproved: number;
   conversionsRejected: number;
+  conversionsCancelled: number;
   pendingRevenue: number;
   pendingPayout: number;
+  pendingProfit: number;
   approvedRevenue: number;
   approvedPayout: number;
   rejectedRevenue: number;
   rejectedPayout: number;
+  cancelledRevenue: number;
+  cancelledPayout: number;
 };
 
 export type GoalBreakdownEntry = BreakdownMetrics & {
@@ -86,12 +94,16 @@ const STATS_SUMMARY_DEFAULT: StatsSummary = {
   conversionsPending: 0,
   conversionsApproved: 0,
   conversionsRejected: 0,
+  conversionsCancelled: 0,
   pendingRevenue: 0,
   pendingPayout: 0,
+  pendingProfit: 0,
   approvedRevenue: 0,
   approvedPayout: 0,
   rejectedRevenue: 0,
   rejectedPayout: 0,
+  cancelledRevenue: 0,
+  cancelledPayout: 0,
 };
 
 const BREAKDOWN_METRICS_DEFAULT: BreakdownMetrics = {
@@ -100,12 +112,16 @@ const BREAKDOWN_METRICS_DEFAULT: BreakdownMetrics = {
   conversionsPending: 0,
   conversionsApproved: 0,
   conversionsRejected: 0,
+  conversionsCancelled: 0,
   pendingRevenue: 0,
   pendingPayout: 0,
+  pendingProfit: 0,
   approvedRevenue: 0,
   approvedPayout: 0,
   rejectedRevenue: 0,
   rejectedPayout: 0,
+  cancelledRevenue: 0,
+  cancelledPayout: 0,
 };
 
 function toNumber(value: unknown): number {

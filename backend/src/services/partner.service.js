@@ -197,5 +197,8 @@ export async function listPartnerClicks(userId, pagination) {
 export async function listPartnerConversions(userId, filter, pagination) {
   const affiliate = await requireAffiliateForUser(userId);
 
-  return listConversions({ affiliateId: affiliate.id, ...filter }, pagination);
+  return listConversions(
+    { affiliateId: affiliate.id, isTest: false, ...filter },
+    pagination,
+  );
 }

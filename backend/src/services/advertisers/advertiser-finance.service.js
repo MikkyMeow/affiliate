@@ -16,12 +16,15 @@ function mapSummaryToFinance(summary = {}) {
     pendingRevenue: summary.pendingRevenue ?? 0,
     approvedRevenue: summary.approvedRevenue ?? 0,
     rejectedRevenue: summary.rejectedRevenue ?? 0,
+    cancelledRevenue: summary.cancelledRevenue ?? 0,
     pendingPayout: summary.pendingPayout ?? 0,
     approvedPayout: summary.approvedPayout ?? 0,
     rejectedPayout: summary.rejectedPayout ?? 0,
+    cancelledPayout: summary.cancelledPayout ?? 0,
     conversionsPending: summary.conversionsPending ?? 0,
     conversionsApproved: summary.conversionsApproved ?? 0,
     conversionsRejected: summary.conversionsRejected ?? 0,
+    conversionsCancelled: summary.conversionsCancelled ?? 0,
   };
 }
 
@@ -66,16 +69,27 @@ function mapStatuses(entries = []) {
       };
     }
 
+    if (status === CONVERSION_STATUSES.CANCELLED) {
+      return {
+        status,
+        revenue: entry.cancelledRevenue ?? 0,
+        payout: entry.cancelledPayout ?? 0,
+        count: entry.conversionsCancelled ?? entry.conversionsTotal ?? 0,
+      };
+    }
+
     return {
       status,
       revenue:
         (entry.pendingRevenue ?? 0) +
         (entry.approvedRevenue ?? 0) +
-        (entry.rejectedRevenue ?? 0),
+        (entry.rejectedRevenue ?? 0) +
+        (entry.cancelledRevenue ?? 0),
       payout:
         (entry.pendingPayout ?? 0) +
         (entry.approvedPayout ?? 0) +
-        (entry.rejectedPayout ?? 0),
+        (entry.rejectedPayout ?? 0) +
+        (entry.cancelledPayout ?? 0),
       count: entry.conversionsTotal ?? 0,
     };
   });

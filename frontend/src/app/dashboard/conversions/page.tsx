@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -12,12 +13,16 @@ import { InlineAlert } from '@/components/InlineAlert';
 import { useAuth } from '@/context/AuthContext';
 import { canAccessAdminArea } from '@/lib/auth/roles';
 import {
+  CONVERSION_SOURCE_OPTIONS,
   CONVERSION_STATUS_OPTIONS,
   type ConversionFilters,
   type ConversionItem,
+  type ConversionStatusHistoryItem,
   type LookupOption,
   type PaginationMeta,
+  fetchConversionStatusHistory,
   fetchConversions,
+  updateConversionStatus,
 } from '@/lib/admin-lists';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { fetchOfferGoals, type OfferGoal } from '@/lib/offers';
@@ -57,6 +62,8 @@ type ConversionFilterForm = {
   affiliateId: string;
   advertiserId: string;
   status: string;
+  source: string;
+  isTest: string;
   clickId: string;
   conversionId: string;
   externalTransactionId: string;
@@ -75,6 +82,25 @@ function parsePositiveInteger(
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanQuery(
+  value: string | null | undefined,
+): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes'].includes(normalized)) {
+    return true;
+  }
+
+  if (['false', '0', 'no'].includes(normalized)) {
+    return false;
+  }
+
+  return undefined;
+}
+
 function buildFormFromSearchParams(
   searchParams: ReadonlyURLSearchParams | null,
 ): ConversionFilterForm {
@@ -86,6 +112,8 @@ function buildFormFromSearchParams(
     affiliateId: searchParams?.get('affiliateId') ?? '',
     advertiserId: searchParams?.get('advertiserId') ?? '',
     status: searchParams?.get('status') ?? '',
+    source: searchParams?.get('source') ?? '',
+    isTest: searchParams?.get('isTest') ?? '',
     clickId: searchParams?.get('clickId') ?? '',
     conversionId: searchParams?.get('conversionId') ?? '',
     externalTransactionId: searchParams?.get('externalTransactionId') ?? '',
@@ -122,6 +150,8 @@ function buildQueryParamsFromForm(
     ['affiliateId', form.affiliateId],
     ['advertiserId', form.advertiserId],
     ['status', form.status],
+    ['source', form.source],
+    ['isTest', form.isTest],
     ['clickId', form.clickId],
     ['conversionId', form.conversionId],
     ['externalTransactionId', form.externalTransactionId],
@@ -166,16 +196,32 @@ const STATUS_STYLES: Record<string, string> = {
     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
   rejected: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+  cancelled:
+    'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200',
 };
 
 function renderSourceBadge(source: string) {
-  if (source !== 'manual') {
+  return (
+    <span
+      className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+        source === 'manual'
+          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+          : 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200'
+      }`}
+    >
+      {source === 'manual' ? 'Manual' : 'Tracking'}
+    </span>
+  );
+}
+
+function renderTestBadge(isTest: boolean) {
+  if (!isTest) {
     return null;
   }
 
   return (
-    <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-      Manual
+    <span className="mt-2 inline-flex rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-200">
+      Test
     </span>
   );
 }
@@ -210,6 +256,21 @@ export default function ConversionsPage() {
   const [lookupsError, setLookupsError] = useState<string | null>(null);
   const [goalsError, setGoalsError] = useState<string | null>(null);
   const [matchedOfferGoalsError, setMatchedOfferGoalsError] = useState<string | null>(null);
+  const [statusActionId, setStatusActionId] = useState<string | null>(null);
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
+  const [statusActionMessage, setStatusActionMessage] = useState<string | null>(null);
+  const [expandedConversionId, setExpandedConversionId] = useState<string | null>(null);
+  const [historyByConversionId, setHistoryByConversionId] = useState<
+    Record<
+      string,
+      {
+        loaded: boolean;
+        loading: boolean;
+        error: string | null;
+        items: ConversionStatusHistoryItem[];
+      }
+    >
+  >({});
   const [postbackClickId, setPostbackClickId] = useState('');
   const [postbackStatus, setPostbackStatus] = useState<'approved' | 'rejected'>(
     'approved',
@@ -259,6 +320,8 @@ export default function ConversionsPage() {
       affiliateId: searchParams?.get('affiliateId') ?? undefined,
       advertiserId: searchParams?.get('advertiserId') ?? undefined,
       status: searchParams?.get('status') ?? undefined,
+      source: searchParams?.get('source') ?? undefined,
+      isTest: parseBooleanQuery(searchParams?.get('isTest')),
       clickId: searchParams?.get('clickId') ?? undefined,
       conversionId: searchParams?.get('conversionId') ?? undefined,
       externalTransactionId:
@@ -582,6 +645,148 @@ export default function ConversionsPage() {
       navigateWithParams(buildQueryParamsFromForm(nextFilters));
     },
     [filters, navigateWithParams],
+  );
+
+  const loadStatusHistory = useCallback(
+    async (conversionId: string, { force = false }: { force?: boolean } = {}) => {
+      if (!accessToken) {
+        return;
+      }
+
+      const existing = historyByConversionId[conversionId];
+      if (!force && (existing?.loading || existing?.loaded)) {
+        return;
+      }
+
+      setHistoryByConversionId((current) => ({
+        ...current,
+        [conversionId]: {
+          loaded: false,
+          loading: true,
+          error: null,
+          items: current[conversionId]?.items ?? [],
+        },
+      }));
+
+      try {
+        const response = await fetchConversionStatusHistory(accessToken, conversionId);
+        setHistoryByConversionId((current) => ({
+          ...current,
+          [conversionId]: {
+            loaded: true,
+            loading: false,
+            error: null,
+            items: response.items,
+          },
+        }));
+      } catch (loadError) {
+        const apiError = loadError as ApiError;
+        setHistoryByConversionId((current) => ({
+          ...current,
+          [conversionId]: {
+            loaded: false,
+            loading: false,
+            error: apiError.message ?? 'Не удалось загрузить историю статусов',
+            items: current[conversionId]?.items ?? [],
+          },
+        }));
+      }
+    },
+    [accessToken, historyByConversionId],
+  );
+
+  const handleToggleHistory = useCallback(
+    (conversionId: string) => {
+      if (expandedConversionId !== conversionId) {
+        void loadStatusHistory(conversionId);
+      }
+
+      setExpandedConversionId((current) =>
+        current === conversionId ? null : conversionId,
+      );
+    },
+    [expandedConversionId, loadStatusHistory],
+  );
+
+  const handleStatusAction = useCallback(
+    async (conversion: ConversionItem, nextStatus: string) => {
+      if (!accessToken) {
+        return;
+      }
+
+      if (conversion.status === nextStatus) {
+        return;
+      }
+
+      if (nextStatus === 'rejected' || nextStatus === 'cancelled') {
+        const confirmed = window.confirm(
+          nextStatus === 'cancelled'
+            ? 'Cancel this conversion? It will no longer count in confirmed or pending totals.'
+            : 'Reject this conversion? It will no longer count in confirmed or pending totals.',
+        );
+
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      let reason: string | null = null;
+      if (nextStatus === 'rejected' || nextStatus === 'cancelled') {
+        const prompted = window.prompt(
+          'Reason (optional). Leave blank to continue without a reason.',
+          '',
+        );
+        if (prompted && prompted.trim()) {
+          reason = prompted.trim();
+        }
+      }
+
+      setStatusActionId(conversion.id);
+      setStatusActionError(null);
+      setStatusActionMessage(null);
+
+      try {
+        const response = await updateConversionStatus(accessToken, conversion.id, {
+          status: nextStatus,
+          reason,
+        });
+
+        setConversions((current) =>
+          current.map((item) =>
+            item.id === conversion.id
+              ? {
+                  ...item,
+                  ...response.conversion,
+                  offer: response.conversion.offer ?? item.offer,
+                  affiliate: response.conversion.affiliate ?? item.affiliate,
+                  advertiser: response.conversion.advertiser ?? item.advertiser,
+                  goal: response.conversion.goal ?? item.goal,
+                }
+              : item,
+          ),
+        );
+        setStatusActionMessage(
+          `Conversion ${conversion.id} updated to ${response.conversion.status}.`,
+        );
+
+        if (expandedConversionId === conversion.id || historyByConversionId[conversion.id]) {
+          await loadStatusHistory(conversion.id, { force: true });
+        }
+      } catch (updateError) {
+        const apiError = updateError as ApiError;
+        setStatusActionError(
+          apiError.message ?? 'Не удалось обновить статус конверсии',
+        );
+      } finally {
+        setStatusActionId(null);
+      }
+    },
+    [
+      accessToken,
+      expandedConversionId,
+      historyByConversionId,
+      loadStatusHistory,
+    ],
   );
 
   const computeSignature = useCallback(
@@ -1141,6 +1346,45 @@ export default function ConversionsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Source
+            <select
+              value={filters.source}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  source: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              {CONVERSION_SOURCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Test
+            <select
+              value={filters.isTest}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  isTest: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              <option value="">Все</option>
+              <option value="false">Production only</option>
+              <option value="true">Test only</option>
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Click ID
             <input
               type="text"
@@ -1279,6 +1523,18 @@ export default function ConversionsPage() {
           </div>
         </div>
 
+        {statusActionError ? (
+          <div className="px-6 pt-6">
+            <InlineAlert variant="error">{statusActionError}</InlineAlert>
+          </div>
+        ) : null}
+
+        {statusActionMessage ? (
+          <div className="px-6 pt-6">
+            <InlineAlert variant="success">{statusActionMessage}</InlineAlert>
+          </div>
+        ) : null}
+
         {error ? (
           <div className="px-6 py-6">
             <InlineAlert variant="error" title="Не удалось загрузить конверсии">
@@ -1310,90 +1566,207 @@ export default function ConversionsPage() {
                   <th className="px-6 py-3 font-medium">Revenue</th>
                   <th className="px-6 py-3 font-medium">Payout</th>
                   <th className="px-6 py-3 font-medium">Profit</th>
+                  <th className="px-6 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {conversions.map((conversion) => (
-                  <tr
-                    key={conversion.id}
-                    className="text-zinc-900 hover:bg-zinc-50 dark:text-zinc-100 dark:hover:bg-zinc-900/40"
-                  >
-                    <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
-                      {dateFormatter.format(new Date(conversion.createdAt))}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs">{conversion.id}</div>
-                      {renderSourceBadge(conversion.source)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs">
-                        {conversion.externalTransactionId ?? '—'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs">
-                        {conversion.clickId ?? '—'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium">
-                        {conversion.offer.publicId ?? '—'}
-                      </div>
-                      <div className="text-zinc-500 dark:text-zinc-400">
-                        {conversion.offer.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {conversion.goal ? (
-                        <>
-                          <div className="font-mono text-xs">{conversion.goal.id}</div>
-                          <div className="text-zinc-500 dark:text-zinc-400">
-                            {conversion.goal.name ?? '—'}
+                  <Fragment key={conversion.id}>
+                    <tr
+                      className="text-zinc-900 hover:bg-zinc-50 dark:text-zinc-100 dark:hover:bg-zinc-900/40"
+                    >
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                        <div>{dateFormatter.format(new Date(conversion.createdAt))}</div>
+                        <div className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                          Updated {dateFormatter.format(new Date(conversion.updatedAt))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-xs">{conversion.id}</div>
+                        <div className="flex flex-wrap gap-2">
+                          {renderSourceBadge(conversion.source)}
+                          {renderTestBadge(conversion.isTest)}
+                        </div>
+                        {conversion.manualAdjustmentBatchId ? (
+                          <div className="mt-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                            Batch {conversion.manualAdjustmentBatchId}
                           </div>
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium">
-                        {conversion.affiliate.publicId ?? '—'}
-                      </div>
-                      <div className="text-zinc-500 dark:text-zinc-400">
-                        {conversion.affiliate.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {conversion.advertiser ? (
-                        <>
-                          <div className="font-medium">
-                            {conversion.advertiser.publicId ?? '—'}
+                        ) : null}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-xs">
+                          {conversion.externalTransactionId ?? '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-xs">
+                          {conversion.clickId ?? '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium">
+                          {conversion.offer?.publicId ?? '—'}
+                        </div>
+                        <div className="text-zinc-500 dark:text-zinc-400">
+                          {conversion.offer?.name ?? '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {conversion.goal ? (
+                          <>
+                            <div className="font-mono text-xs">{conversion.goal.id}</div>
+                            <div className="text-zinc-500 dark:text-zinc-400">
+                              {conversion.goal.name ?? '—'}
+                            </div>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium">
+                          {conversion.affiliate?.publicId ?? '—'}
+                        </div>
+                        <div className="text-zinc-500 dark:text-zinc-400">
+                          {conversion.affiliate?.name ?? '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {conversion.advertiser ? (
+                          <>
+                            <div className="font-medium">
+                              {conversion.advertiser.publicId ?? '—'}
+                            </div>
+                            <div className="text-zinc-500 dark:text-zinc-400">
+                              {conversion.advertiser.name}
+                            </div>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-6 py-4">{renderStatus(conversion.status)}</td>
+                      <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
+                        {conversion.revenue === null
+                          ? '—'
+                          : currencyFormatter.format(conversion.revenue)}
+                      </td>
+                      <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
+                        {conversion.payout === null
+                          ? '—'
+                          : currencyFormatter.format(conversion.payout)}
+                      </td>
+                      <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
+                        {conversion.profit === null
+                          ? '—'
+                          : currencyFormatter.format(conversion.profit)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {CONVERSION_STATUS_OPTIONS.map((option) => (
+                            <button
+                              key={`${conversion.id}-${option.value}`}
+                              type="button"
+                              disabled={
+                                statusActionId === conversion.id ||
+                                conversion.status === option.value
+                              }
+                              onClick={() =>
+                                void handleStatusAction(conversion, option.value)
+                              }
+                              className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            disabled={statusActionId === conversion.id}
+                            onClick={() => handleToggleHistory(conversion.id)}
+                            className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          >
+                            {expandedConversionId === conversion.id ? 'Hide history' : 'History'}
+                          </button>
+                        </div>
+                        {statusActionId === conversion.id ? (
+                          <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Updating…
                           </div>
-                          <div className="text-zinc-500 dark:text-zinc-400">
-                            {conversion.advertiser.name}
+                        ) : null}
+                      </td>
+                    </tr>
+                    {expandedConversionId === conversion.id ? (
+                      <tr
+                        className="bg-zinc-50/60 dark:bg-zinc-900/20"
+                      >
+                        <td colSpan={13} className="px-6 py-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                  Status history
+                                </h3>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                  Status changes are audited on the backend.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => void loadStatusHistory(conversion.id, { force: true })}
+                                className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                              >
+                                Refresh
+                              </button>
+                            </div>
+
+                            {historyByConversionId[conversion.id]?.loading ? (
+                              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                Loading history…
+                              </p>
+                            ) : historyByConversionId[conversion.id]?.error ? (
+                              <InlineAlert variant="error">
+                                {historyByConversionId[conversion.id]?.error}
+                              </InlineAlert>
+                            ) : (historyByConversionId[conversion.id]?.items.length ?? 0) === 0 ? (
+                              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                No status changes recorded yet.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {historyByConversionId[conversion.id]?.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-800 dark:text-zinc-100">
+                                        <span className="font-medium">
+                                          {item.fromStatus ?? '—'} → {item.toStatus}
+                                        </span>
+                                        {item.reason ? (
+                                          <span className="text-zinc-500 dark:text-zinc-400">
+                                            {item.reason}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {dateFormatter.format(new Date(item.changedAt))}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                      {item.changedBy
+                                        ? `${item.changedBy.name ?? 'Unknown'} · ${item.changedBy.email ?? '—'}`
+                                        : 'System / unknown actor'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-6 py-4">{renderStatus(conversion.status)}</td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {conversion.revenue === null
-                        ? '—'
-                        : currencyFormatter.format(conversion.revenue)}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {conversion.payout === null
-                        ? '—'
-                        : currencyFormatter.format(conversion.payout)}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-200">
-                      {conversion.profit === null
-                        ? '—'
-                        : currencyFormatter.format(conversion.profit)}
-                    </td>
-                  </tr>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

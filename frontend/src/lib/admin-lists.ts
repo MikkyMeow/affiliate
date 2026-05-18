@@ -80,12 +80,15 @@ export type ConversionItem = {
   advertiserId: string | null;
   advertiser: LookupOption | null;
   source: string;
+  manualAdjustmentBatchId: string | null;
   status: string;
+  isTest: boolean;
   externalTransactionId: string | null;
   revenue: number | null;
   payout: number | null;
   profit: number | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type ConversionFilters = {
@@ -98,6 +101,8 @@ export type ConversionFilters = {
   affiliateId?: string;
   advertiserId?: string;
   status?: string;
+  source?: string;
+  isTest?: boolean;
   clickId?: string;
   conversionId?: string;
   externalTransactionId?: string;
@@ -105,6 +110,35 @@ export type ConversionFilters = {
   revenueMax?: string;
   payoutMin?: string;
   payoutMax?: string;
+};
+
+export type ConversionStatusHistoryItem = {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  reason: string | null;
+  changedBy: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
+  changedAt: string;
+};
+
+export type UpdateConversionStatusPayload = {
+  status: string;
+  reason?: string | null;
+};
+
+export type UpdateConversionStatusResponse = {
+  conversion: ConversionItem;
+  historyEntry: {
+    id: string;
+    fromStatus: string | null;
+    toStatus: string;
+    reason: string | null;
+    changedAt: string;
+  } | null;
 };
 
 export const CLICK_RESULT_OPTIONS = [
@@ -134,6 +168,21 @@ export const CONVERSION_STATUS_OPTIONS = [
   {
     value: 'rejected',
     label: 'Rejected',
+  },
+  {
+    value: 'cancelled',
+    label: 'Cancelled',
+  },
+] as const;
+
+export const CONVERSION_SOURCE_OPTIONS = [
+  {
+    value: 'tracking',
+    label: 'Tracking',
+  },
+  {
+    value: 'manual',
+    label: 'Manual',
   },
 ] as const;
 
@@ -223,6 +272,10 @@ export function buildConversionsQuery(filters: ConversionFilters) {
   appendDefinedParam(params, 'affiliateId', filters.affiliateId);
   appendDefinedParam(params, 'advertiserId', filters.advertiserId);
   appendDefinedParam(params, 'status', filters.status);
+  appendDefinedParam(params, 'source', filters.source);
+  if (typeof filters.isTest === 'boolean') {
+    appendDefinedParam(params, 'isTest', filters.isTest ? 'true' : 'false');
+  }
   appendDefinedParam(params, 'clickId', filters.clickId);
   appendDefinedParam(params, 'conversionId', filters.conversionId);
   appendDefinedParam(
@@ -278,4 +331,29 @@ export async function fetchConversions(
     items: data,
     meta: normalizePaginationMeta(meta, { limit, page }),
   };
+}
+
+export async function updateConversionStatus(
+  token: string,
+  conversionId: string,
+  payload: UpdateConversionStatusPayload,
+) {
+  return apiFetch<UpdateConversionStatusResponse>(
+    `/conversions/${conversionId}/status`,
+    {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function fetchConversionStatusHistory(
+  token: string,
+  conversionId: string,
+) {
+  return apiFetch<{ items: ConversionStatusHistoryItem[] }>(
+    `/conversions/${conversionId}/status-history`,
+    { token },
+  );
 }
