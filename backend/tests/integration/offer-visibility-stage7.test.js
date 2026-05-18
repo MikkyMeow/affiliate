@@ -144,7 +144,7 @@ describe('Stage 7 offer visibility and access', () => {
         FROM audit_events
         WHERE entity_type = 'offer'
           AND entity_id = $1
-          AND action = 'availability_changed'
+          AND action = 'offer.availability_changed'
         ORDER BY created_at ASC
       `,
       [offer.id],
@@ -152,17 +152,17 @@ describe('Stage 7 offer visibility and access', () => {
 
     expect(auditRows.rows).toHaveLength(2);
     expect(auditRows.rows[0]).toMatchObject({
-      action: 'availability_changed',
+      action: 'offer.availability_changed',
       actorRole: 'admin',
     });
-    expect(auditRows.rows[0].context.oldValue).toBe('public');
-    expect(auditRows.rows[0].context.newValue).toBe('on_request');
+    expect(auditRows.rows[0].context.oldValue).toEqual({ availability: 'public' });
+    expect(auditRows.rows[0].context.newValue).toEqual({ availability: 'on_request' });
     expect(auditRows.rows[1]).toMatchObject({
-      action: 'availability_changed',
+      action: 'offer.availability_changed',
       actorRole: 'manager',
     });
-    expect(auditRows.rows[1].context.oldValue).toBe('on_request');
-    expect(auditRows.rows[1].context.newValue).toBe('private');
+    expect(auditRows.rows[1].context.oldValue).toEqual({ availability: 'on_request' });
+    expect(auditRows.rows[1].context.newValue).toEqual({ availability: 'private' });
   });
 
   it('shows public and on-request offers, limits on-request details, and keeps private offers hidden without access', async () => {

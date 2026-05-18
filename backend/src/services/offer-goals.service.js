@@ -455,6 +455,7 @@ async function writeGoalAuditEvents({
   next,
   actor,
   requestId,
+  client = null,
 }) {
   const { actorUserId, actorRole } = getActorMetadata(actor);
   const previousAudit = serializeGoalAuditValue(previous);
@@ -485,31 +486,56 @@ async function writeGoalAuditEvents({
   await writeAuditEvent({
     entityType: 'offer_goal',
     entityId: next.id,
-    action: 'updated',
+    action: 'goal.updated',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValue: previousAudit,
-      newValue: nextAudit,
+    client,
+    oldValue: previousAudit,
+    newValue: nextAudit,
+    metadata: {
+      ...metadata,
       changes,
-      metadata,
     },
   });
 
-  if (changes.revenue || changes.payout || changes.profit) {
+  if (changes.revenue) {
     await writeAuditEvent({
       entityType: 'offer_goal',
       entityId: next.id,
-      action: 'financial_changed',
+      action: 'goal.revenue_changed',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: previousAudit,
-        newValue: nextAudit,
-        metadata,
+      client,
+      oldValue: {
+        revenue: previousAudit?.revenue ?? null,
       },
+      newValue: {
+        revenue: nextAudit?.revenue ?? null,
+      },
+      metadata,
+    });
+  }
+
+  if (changes.payout) {
+    await writeAuditEvent({
+      entityType: 'offer_goal',
+      entityId: next.id,
+      action: 'goal.payout_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      client,
+      oldValue: {
+        payout: previousAudit?.payout ?? null,
+        profit: previousAudit?.profit ?? null,
+      },
+      newValue: {
+        payout: nextAudit?.payout ?? null,
+        profit: nextAudit?.profit ?? null,
+      },
+      metadata,
     });
   }
 
@@ -517,15 +543,22 @@ async function writeGoalAuditEvents({
     await writeAuditEvent({
       entityType: 'offer_goal',
       entityId: next.id,
-      action: 'limit_changed',
+      action: 'goal.limit_changed',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: previousAudit,
-        newValue: nextAudit,
-        metadata,
+      client,
+      oldValue: {
+        limitEnabled: previousAudit?.limitEnabled ?? null,
+        limitType: previousAudit?.limitType ?? null,
+        limitValue: previousAudit?.limitValue ?? null,
       },
+      newValue: {
+        limitEnabled: nextAudit?.limitEnabled ?? null,
+        limitType: nextAudit?.limitType ?? null,
+        limitValue: nextAudit?.limitValue ?? null,
+      },
+      metadata,
     });
   }
 }
@@ -656,26 +689,26 @@ export async function createOfferGoal(offerId, dto, { actor = null, requestId = 
       { client },
     );
 
-    await client.query('COMMIT');
-
     const serialized = serializeAdminGoal(goal, { limitUsed: 0 });
     const { actorUserId, actorRole } = getActorMetadata(actor);
 
     await writeAuditEvent({
       entityType: 'offer_goal',
       entityId: serialized.id,
-      action: 'created',
+      action: 'goal.created',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        newValue: serializeGoalAuditValue(goal),
-        metadata: {
-          offerId: serialized.offerId,
-          goalId: serialized.id,
-        },
+      client,
+      oldValue: null,
+      newValue: serializeGoalAuditValue(goal),
+      metadata: {
+        offerId: serialized.offerId,
+        goalId: serialized.id,
       },
     });
+
+    await client.query('COMMIT');
 
     return serialized;
   } catch (error) {
@@ -767,9 +800,7 @@ export async function updateOfferGoal(
       { client },
     );
 
-    await client.query('COMMIT');
-
-    const limitUsed = await getCountedConversionCountByGoalId(goal.id);
+    const limitUsed = await getCountedConversionCountByGoalId(goal.id, { client });
     const serialized = serializeAdminGoal(goal, { limitUsed });
 
     await writeGoalAuditEvents({
@@ -777,7 +808,10 @@ export async function updateOfferGoal(
       next: goal,
       actor,
       requestId,
+      client,
     });
+
+    await client.query('COMMIT');
 
     return serialized;
   } catch (error) {
@@ -851,27 +885,27 @@ export async function upsertOfferGoalAffiliateRate(
       { client },
     );
 
-    await client.query('COMMIT');
-
     const { actorUserId, actorRole } = getActorMetadata(actor);
-    const action = existingRate ? 'updated' : 'created';
     await writeAuditEvent({
       entityType: 'offer_goal_affiliate_rate',
       entityId: rate.id,
-      action,
+      action: existingRate
+        ? 'goal.affiliate_rate_updated'
+        : 'goal.affiliate_rate_created',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: serializeRateAuditValue(existingRate),
-        newValue: serializeRateAuditValue(rate),
-        metadata: {
-          offerId,
-          goalId,
-          affiliateId,
-        },
+      client,
+      oldValue: serializeRateAuditValue(existingRate),
+      newValue: serializeRateAuditValue(rate),
+      metadata: {
+        offerId,
+        goalId,
+        affiliateId,
       },
     });
+
+    await client.query('COMMIT');
 
     return serializeAffiliateRate(rate);
   } catch (error) {
@@ -910,26 +944,25 @@ export async function deleteOfferGoalAffiliateRate(
       throwGoalAffiliateRateNotFound(offerId, goalId, affiliateId);
     }
 
-    await client.query('COMMIT');
-
     const { actorUserId, actorRole } = getActorMetadata(actor);
     await writeAuditEvent({
       entityType: 'offer_goal_affiliate_rate',
       entityId: deleted.id,
-      action: 'deleted',
+      action: 'goal.affiliate_rate_deleted',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: serializeRateAuditValue(deleted),
-        newValue: null,
-        metadata: {
-          offerId,
-          goalId,
-          affiliateId,
-        },
+      client,
+      oldValue: serializeRateAuditValue(deleted),
+      newValue: null,
+      metadata: {
+        offerId,
+        goalId,
+        affiliateId,
       },
     });
+
+    await client.query('COMMIT');
 
     return true;
   } catch (error) {
@@ -1064,18 +1097,16 @@ export async function createConversionWithResolvedGoal(
       await writeAuditEvent({
         entityType: 'offer_goal',
         entityId: resolvedGoalId,
-        action: 'limit_rejected_conversion',
+        action: 'goal.limit_rejected_conversion',
         actorUserId,
         actorRole,
         requestId,
-        context: {
-          metadata: {
-            offerId,
-            goalId: error.details?.goalId ?? goalId ?? null,
-            affiliateId,
-            clickId,
-            countedStatuses: COUNTED_CONVERSION_STATUSES,
-          },
+        metadata: {
+          offerId,
+          goalId: error.details?.goalId ?? goalId ?? null,
+          affiliateId,
+          clickId,
+          countedStatuses: COUNTED_CONVERSION_STATUSES,
         },
       });
     }

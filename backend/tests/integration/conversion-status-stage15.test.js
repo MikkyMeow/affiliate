@@ -338,18 +338,30 @@ describe('stage 15 conversion status model', () => {
       action: 'conversion.status_changed',
       actorRole: 'admin',
       context: expect.objectContaining({
-        oldValue: 'pending',
-        newValue: 'approved',
-        reason: 'Advertiser confirmed lead',
+        oldValue: {
+          status: 'pending',
+        },
+        newValue: {
+          status: 'approved',
+        },
+        metadata: expect.objectContaining({
+          reason: 'Advertiser confirmed lead',
+        }),
       }),
     });
     expect(auditRows.rows[1]).toMatchObject({
       action: 'conversion.status_changed',
       actorRole: 'manager',
       context: expect.objectContaining({
-        oldValue: 'approved',
-        newValue: 'cancelled',
-        reason: 'Duplicate advertiser callback',
+        oldValue: {
+          status: 'approved',
+        },
+        newValue: {
+          status: 'cancelled',
+        },
+        metadata: expect.objectContaining({
+          reason: 'Duplicate advertiser callback',
+        }),
       }),
     });
   });

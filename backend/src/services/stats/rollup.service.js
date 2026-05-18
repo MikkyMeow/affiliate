@@ -7,7 +7,9 @@ import {
 } from '../../models/daily-stats.model.js';
 import { findConversionById } from '../../models/conversions.model.js';
 import { findByClickId } from '../../models/clicks.model.js';
-import { writeAuditEvent } from '../audit.service.js';
+import { logAuditError, writeAuditEvent } from '../audit.service.js';
+import { ApiError } from '../../utils/apiError.js';
+import { ERROR_CODES } from '../../utils/response.js';
 import {
   formatDateInTimeZone,
   getDefaultTimeZone,
@@ -138,7 +140,7 @@ export async function recalculateDailyStats(
 
     if (actor?.userId && actor?.role) {
       await writeAuditEvent({
-        entityType: 'daily_stats',
+        entityType: 'stats',
         entityId: buildAuditEntityId({
           dateFrom: startDate,
           dateTo: endDate,
@@ -148,7 +150,8 @@ export async function recalculateDailyStats(
         actorUserId: actor.userId,
         actorRole: actor.role,
         requestId,
-        context: {
+        client,
+        metadata: {
           dateFrom: startDate,
           dateTo: endDate,
           timezone: resolvedTimezone,
@@ -156,7 +159,6 @@ export async function recalculateDailyStats(
           clicksRowsProcessed: Number(clickRollup.rowsProcessed ?? 0),
           conversionsRowsProcessed: Number(conversionRollup.rowsProcessed ?? 0),
         },
-        client,
       });
     }
 
@@ -180,7 +182,36 @@ export async function recalculateDailyStats(
     if (shouldManageTransaction) {
       await client.query('ROLLBACK');
     }
-    throw error;
+    if (actor?.userId && actor?.role) {
+      await logAuditError({
+        entityType: 'stats',
+        entityId: buildAuditEntityId({
+          dateFrom: startDate,
+          dateTo: endDate,
+          timezone: resolvedTimezone,
+        }),
+        action: 'stats.recalculate_failed',
+        actorUserId: actor.userId,
+        actorRole: actor.role,
+        requestId,
+        metadata: {
+          dateFrom: startDate,
+          dateTo: endDate,
+          timezone: resolvedTimezone,
+        },
+        error,
+      });
+    }
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось пересчитать статистику',
+    );
   } finally {
     if (shouldManageTransaction) {
       client.release();

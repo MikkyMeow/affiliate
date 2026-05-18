@@ -1,5 +1,6 @@
 import { getAffiliateById } from './affiliates.service.js';
 import { getOfferById } from './offers.service.js';
+import pool from '../db.js';
 import {
   deleteOfferAffiliateHidden,
   findHiddenAffiliateForOffer,
@@ -38,39 +39,58 @@ export async function hideOfferFromAffiliate({
 
   await getOfferById(offerId);
   await getAffiliateById(affiliateId);
+  const client = await pool.connect();
 
-  const previous = await findHiddenAffiliateForOffer(offerId, affiliateId);
-  const hidden = await upsertOfferAffiliateHidden({
-    offerId,
-    affiliateId,
-    createdBy: actorId,
-    reason,
-  });
+  try {
+    await client.query('BEGIN');
 
-  await writeAuditEvent({
-    entityType: 'offer',
-    entityId: offerId,
-    action: 'offer.partner_hidden',
-    actorUserId: actorId,
-    actorRole,
-    requestId,
-    context: {
-      offerId,
-      affiliateId,
+    const previous = await findHiddenAffiliateForOffer(offerId, affiliateId, {
+      client,
+      forUpdate: true,
+    });
+    const hidden = await upsertOfferAffiliateHidden(
+      {
+        offerId,
+        affiliateId,
+        createdBy: actorId,
+        reason,
+      },
+      { client },
+    );
+
+    await writeAuditEvent({
+      entityType: 'offer',
+      entityId: offerId,
+      action: 'offer.partner_hidden',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      client,
       oldValue: previous
         ? {
-            createdAt: previous.createdAt ?? null,
+            hiddenAt: previous.createdAt ?? null,
             reason: previous.reason ?? null,
           }
         : null,
       newValue: {
-        createdAt: hidden.createdAt ?? null,
+        hiddenAt: hidden.createdAt ?? null,
         reason: hidden.reason ?? null,
       },
-    },
-  });
+      metadata: {
+        offerId,
+        affiliateId,
+      },
+    });
 
-  return buildHiddenResponse(hidden);
+    await client.query('COMMIT');
+
+    return buildHiddenResponse(hidden);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function unhideOfferFromAffiliate({
@@ -86,30 +106,45 @@ export async function unhideOfferFromAffiliate({
 
   await getOfferById(offerId);
   await getAffiliateById(affiliateId);
+  const client = await pool.connect();
 
-  const deleted = await deleteOfferAffiliateHidden(offerId, affiliateId);
+  try {
+    await client.query('BEGIN');
 
-  if (deleted) {
-    await writeAuditEvent({
-      entityType: 'offer',
-      entityId: offerId,
-      action: 'offer.partner_unhidden',
-      actorUserId: actorId,
-      actorRole,
-      requestId,
-      context: {
-        offerId,
-        affiliateId,
+    const deleted = await deleteOfferAffiliateHidden(offerId, affiliateId, {
+      client,
+    });
+
+    if (deleted) {
+      await writeAuditEvent({
+        entityType: 'offer',
+        entityId: offerId,
+        action: 'offer.partner_unhidden',
+        actorUserId: actorId,
+        actorRole,
+        requestId,
+        client,
         oldValue: {
-          createdAt: deleted.createdAt ?? null,
+          hiddenAt: deleted.createdAt ?? null,
           reason: deleted.reason ?? null,
         },
         newValue: null,
-      },
-    });
-  }
+        metadata: {
+          offerId,
+          affiliateId,
+        },
+      });
+    }
 
-  return deleted;
+    await client.query('COMMIT');
+
+    return deleted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function listHiddenAffiliatesForOffer(offerId) {

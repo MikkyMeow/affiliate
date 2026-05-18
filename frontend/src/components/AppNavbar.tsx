@@ -20,6 +20,7 @@ const ADMIN_LINKS = [
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
   { href: "/dashboard/affiliates", label: "Партнёры" },
   { href: "/dashboard/offers", label: "Офферы" },
+  { href: "/dashboard/audit-logs", label: "Логи" },
   { href: "/dashboard/questionnaires", label: "Анкеты", adminOnly: true },
   { href: "/dashboard/managers", label: "Менеджеры", adminOnly: true },
 ];

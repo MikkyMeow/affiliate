@@ -209,7 +209,10 @@ describe('Stage 6 registration questionnaires', () => {
       [updateResponse.body.data.questionnaire.id],
     );
 
-    expect(auditRows.rows.map((row) => row.action)).toEqual(['created', 'updated']);
+    expect(auditRows.rows.map((row) => row.action)).toEqual([
+      'questionnaire.created',
+      'questionnaire.updated',
+    ]);
     expect(auditRows.rows[1].context.oldValues.title).toBe('Partner questionnaire');
     expect(auditRows.rows[1].context.newValues.title).toBe('Partner questionnaire v2');
   });
@@ -556,8 +559,8 @@ describe('Stage 6 registration questionnaires', () => {
     );
 
     expect(auditRows.rows.map((row) => row.action)).toEqual([
-      'submitted',
-      'updated',
+      'questionnaire.answers_submitted',
+      'questionnaire.answers_updated',
     ]);
     expect(auditRows.rows[1].actorRole).toBe('affiliate');
     expect(auditRows.rows[1].context.oldValues.answers.traffic_source).toBe('SEO');

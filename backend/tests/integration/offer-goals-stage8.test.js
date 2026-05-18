@@ -539,14 +539,20 @@ describe('Stage 8 offer goals', () => {
 
     const goalAuditEvents = await fetchAuditEvents('offer_goal', goalId);
     expect(goalAuditEvents.map((event) => event.action)).toEqual(
-      expect.arrayContaining(['created', 'updated', 'financial_changed', 'limit_changed']),
+      expect.arrayContaining([
+        'goal.created',
+        'goal.updated',
+        'goal.revenue_changed',
+        'goal.payout_changed',
+        'goal.limit_changed',
+      ]),
     );
 
     const rateAuditEvents = await fetchAuditEvents('offer_goal_affiliate_rate', rateId);
     expect(rateAuditEvents.map((event) => event.action)).toEqual([
-      'created',
-      'updated',
-      'deleted',
+      'goal.affiliate_rate_created',
+      'goal.affiliate_rate_updated',
+      'goal.affiliate_rate_deleted',
     ]);
   });
 });

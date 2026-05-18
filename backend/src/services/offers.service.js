@@ -176,11 +176,12 @@ export async function createOffer(dto, { actor = null, requestId = null } = {}) 
   await writeAuditEvent({
     entityType: 'offer',
     entityId: offer.id,
-    action: 'created',
+    action: 'offer.created',
     actorUserId,
     actorRole,
     requestId,
-    context: buildOfferSnapshot(offer),
+    oldValue: null,
+    newValue: buildOfferSnapshot(offer),
   });
 
   return offer;
@@ -281,11 +282,13 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
     await writeAuditEvent({
       entityType: 'offer',
       entityId: offer.id,
-      action: 'updated',
+      action: 'offer.updated',
       actorUserId,
       actorRole,
       requestId,
-      context: {
+      oldValue: buildOfferSnapshot(existing),
+      newValue: buildOfferSnapshot(offer),
+      metadata: {
         changes,
       },
     });
@@ -299,17 +302,19 @@ export async function updateOffer(id, dto, { actor = null, requestId = null } = 
     await writeAuditEvent({
       entityType: 'offer',
       entityId: offer.id,
-      action: 'availability_changed',
+      action: 'offer.availability_changed',
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: previousAvailability,
-        newValue: nextAvailability,
-        metadata: {
-          offerId: offer.id,
-          availability: nextAvailability,
-        },
+      oldValue: {
+        availability: previousAvailability,
+      },
+      newValue: {
+        availability: nextAvailability,
+      },
+      metadata: {
+        offerId: offer.id,
+        availability: nextAvailability,
       },
     });
   }

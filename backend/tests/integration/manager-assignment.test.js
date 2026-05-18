@@ -290,7 +290,7 @@ describe('responsible manager assignment', () => {
       `
         SELECT entity_type AS "entityType", action, actor_user_id AS "actorUserId", actor_role AS "actorRole", context_json AS context
         FROM audit_events
-        WHERE action = 'manager_assigned'
+        WHERE action IN ('affiliate.manager_changed', 'advertiser.manager_changed')
         ORDER BY entity_type ASC
       `,
     );
@@ -299,7 +299,7 @@ describe('responsible manager assignment', () => {
       expect.arrayContaining([
         expect.objectContaining({
           entityType: 'advertiser',
-          action: 'manager_assigned',
+          action: 'advertiser.manager_changed',
           actorUserId: adminUser.id,
           actorRole: 'admin',
           context: expect.objectContaining({
@@ -309,7 +309,7 @@ describe('responsible manager assignment', () => {
         }),
         expect.objectContaining({
           entityType: 'affiliate',
-          action: 'manager_assigned',
+          action: 'affiliate.manager_changed',
           actorUserId: adminUser.id,
           actorRole: 'admin',
           context: expect.objectContaining({

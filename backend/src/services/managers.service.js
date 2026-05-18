@@ -11,7 +11,7 @@ import {
   updateUserPasswordById,
 } from '../models/userModel.js';
 import { deleteTokensByUser } from '../models/refreshTokenModel.js';
-import { writeAuditEvent } from './audit.service.js';
+import { logAuditError, writeAuditEvent } from './audit.service.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 
@@ -23,6 +23,7 @@ function buildManagerSnapshot(user) {
   }
 
   return {
+    name: user.displayName ?? null,
     email: user.email ?? null,
     displayName: user.displayName ?? null,
     role: user.role ?? null,
@@ -134,6 +135,19 @@ export async function createManager(dto, { actor = null, requestId = null } = {}
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
+      await logAuditError({
+        entityType: 'manager',
+        entityId: dto.email.toLowerCase(),
+        action: 'manager.create_failed',
+        actorUserId: actor?.userId ?? null,
+        actorRole: actor?.role ?? null,
+        requestId,
+        metadata: {
+          email: dto.email.toLowerCase(),
+        },
+        errorCode: ERROR_CODES.CONFLICT,
+        errorMessage: 'Пользователь с таким email уже существует',
+      });
       throw new ApiError(
         ERROR_CODES.CONFLICT,
         409,
@@ -141,7 +155,24 @@ export async function createManager(dto, { actor = null, requestId = null } = {}
         { email: dto.email },
       );
     }
-    throw error;
+
+    await logAuditError({
+      entityType: 'manager',
+      entityId: dto.email.toLowerCase(),
+      action: 'manager.create_failed',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      metadata: {
+        email: dto.email.toLowerCase(),
+      },
+      error,
+    });
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось создать менеджера',
+    );
   }
 
   const manager = await findUserById(createdUser.id);
@@ -150,16 +181,14 @@ export async function createManager(dto, { actor = null, requestId = null } = {}
   await writeAuditEvent({
     entityType: 'manager',
     entityId: manager.id,
-    action: 'created',
+    action: 'manager.created',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValues: null,
-      newValues: buildManagerSnapshot(manager),
-      metadata: {
-        generatedPasswordShown: true,
-      },
+    oldValue: null,
+    newValue: buildManagerSnapshot(manager),
+    metadata: {
+      generatedPasswordShown: true,
     },
   });
 
@@ -208,16 +237,14 @@ export async function updateManager(
   await writeAuditEvent({
     entityType: 'manager',
     entityId: updatedManager.id,
-    action: 'updated',
+    action: 'manager.updated',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValues: previousSnapshot,
-      newValues: nextSnapshot,
-      metadata: {
-        updatedFields: Object.keys(dto),
-      },
+    oldValue: previousSnapshot,
+    newValue: nextSnapshot,
+    metadata: {
+      updatedFields: Object.keys(dto),
     },
   });
 
@@ -239,16 +266,14 @@ export async function resetManagerPassword(
   await writeAuditEvent({
     entityType: 'manager',
     entityId: manager.id,
-    action: 'password_reset',
+    action: 'manager.password_reset',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValues: null,
-      newValues: null,
-      metadata: {
-        resetByAdmin: true,
-      },
+    oldValue: null,
+    newValue: null,
+    metadata: {
+      resetByAdmin: true,
     },
   });
 
@@ -268,16 +293,14 @@ export async function deleteManager(
   await writeAuditEvent({
     entityType: 'manager',
     entityId: manager.id,
-    action: 'deleted',
+    action: 'manager.deleted',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValues: snapshot,
-      newValues: null,
-      metadata: {
-        deletedByAdmin: true,
-      },
+    oldValue: snapshot,
+    newValue: null,
+    metadata: {
+      deletedByAdmin: true,
     },
   });
 
@@ -333,16 +356,14 @@ export async function changeOwnPassword(
   await writeAuditEvent({
     entityType: 'user',
     entityId: user.id,
-    action: 'password_changed',
+    action: 'user.password_changed',
     actorUserId,
     actorRole,
     requestId,
-    context: {
-      oldValues: null,
-      newValues: null,
-      metadata: {
-        changedBySelf: true,
-      },
+    oldValue: null,
+    newValue: null,
+    metadata: {
+      changedBySelf: true,
     },
   });
 }

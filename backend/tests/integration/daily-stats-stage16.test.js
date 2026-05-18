@@ -600,13 +600,15 @@ describe('stage 16 daily stats and manual recalculation', () => {
       expect.arrayContaining([
         expect.objectContaining({
           action: 'stats.recalculated',
-          entityType: 'daily_stats',
+          entityType: 'stats',
           actorUserId: user.id,
           context: expect.objectContaining({
-            dateFrom: '2026-05-10',
-            dateTo: '2026-05-10',
-            timezone: 'UTC',
-            daysRecalculated: 1,
+            metadata: expect.objectContaining({
+              dateFrom: '2026-05-10',
+              dateTo: '2026-05-10',
+              timezone: 'UTC',
+              daysRecalculated: 1,
+            }),
           }),
         }),
       ]),

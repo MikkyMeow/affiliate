@@ -157,6 +157,19 @@ function buildManagerAuditMetadata(previousManager, nextManager) {
   };
 }
 
+function buildManagerAuditValue(managerUserId, manager) {
+  return {
+    managerUserId: managerUserId ?? null,
+    manager: manager
+      ? {
+          id: manager.id,
+          name: manager.displayName ?? null,
+          email: manager.email ?? null,
+        }
+      : null,
+  };
+}
+
 export async function assignAffiliateManager(
   affiliateId,
   managerUserId,
@@ -189,23 +202,23 @@ export async function assignAffiliateManager(
     await writeAuditEvent({
       entityType: 'affiliate',
       entityId: affiliateId,
-      action: 'manager_assigned',
+      action: 'affiliate.manager_changed',
       actorUserId: actor?.userId ?? null,
       actorRole: actor?.role ?? null,
       requestId,
       client,
-      context: {
-        oldValues: {
-          managerUserId: existingAffiliate.managerUserId ?? null,
-        },
-        newValues: {
-          managerUserId: updatedAffiliate?.managerUserId ?? null,
-        },
-        metadata: buildManagerAuditMetadata(
-          existingAffiliate.manager,
-          nextManager,
-        ),
-      },
+      oldValue: buildManagerAuditValue(
+        existingAffiliate.managerUserId ?? null,
+        existingAffiliate.manager,
+      ),
+      newValue: buildManagerAuditValue(
+        updatedAffiliate?.managerUserId ?? null,
+        nextManager,
+      ),
+      metadata: buildManagerAuditMetadata(
+        existingAffiliate.manager,
+        nextManager,
+      ),
     });
 
     await client.query('COMMIT');

@@ -377,29 +377,29 @@ export async function upsertAdminQuestionnaire(
     await writeAuditEvent({
       entityType: 'registration_questionnaire',
       entityId: questionnaire.id,
-      action: previousQuestionnaire ? 'updated' : 'created',
+      action: previousQuestionnaire
+        ? 'questionnaire.updated'
+        : 'questionnaire.created',
       actorUserId: actor?.userId ?? null,
       actorRole: actor?.role ?? null,
       requestId,
       client,
-      context: {
-        oldValues: previousQuestionnaire
-          ? {
-              title: previousQuestionnaire.title ?? null,
-              description: previousQuestionnaire.description ?? null,
-              fields: previousQuestionnaire.fields ?? [],
-              isActive: previousQuestionnaire.isActive ?? false,
-            }
-          : null,
-        newValues: {
-          title: questionnaire.title ?? null,
-          description: questionnaire.description ?? null,
-          fields: questionnaire.fields ?? [],
-          isActive: questionnaire.isActive ?? false,
-        },
-        metadata: {
-          targetRole,
-        },
+      oldValue: previousQuestionnaire
+        ? {
+            title: previousQuestionnaire.title ?? null,
+            description: previousQuestionnaire.description ?? null,
+            fields: previousQuestionnaire.fields ?? [],
+            isActive: previousQuestionnaire.isActive ?? false,
+          }
+        : null,
+      newValue: {
+        title: questionnaire.title ?? null,
+        description: questionnaire.description ?? null,
+        fields: questionnaire.fields ?? [],
+        isActive: questionnaire.isActive ?? false,
+      },
+      metadata: {
+        targetRole,
       },
     });
 
@@ -604,22 +604,22 @@ export async function submitMyQuestionnaireAnswers(
     await writeAuditEvent({
       entityType: 'questionnaire_answers',
       entityId: savedAnswer.id,
-      action: existingAnswer ? 'updated' : 'submitted',
+      action: existingAnswer
+        ? 'questionnaire.answers_updated'
+        : 'questionnaire.answers_submitted',
       actorUserId: actor?.userId ?? userId,
       actorRole: actor?.role ?? targetRole,
       requestId,
       client,
-      context: {
-        oldValues: {
-          answers: existingAnswer?.answers ?? {},
-        },
-        newValues: {
-          answers: savedAnswer.answers ?? {},
-        },
-        metadata: {
-          targetRole,
-          questionnaireId: questionnaire.id,
-        },
+      oldValue: {
+        answers: existingAnswer?.answers ?? {},
+      },
+      newValue: {
+        answers: savedAnswer.answers ?? {},
+      },
+      metadata: {
+        targetRole,
+        questionnaireId: questionnaire.id,
       },
     });
 

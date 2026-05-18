@@ -20,7 +20,7 @@ import {
   findPendingOfferRequest,
   updateOfferRequestReview,
 } from '../models/offerRequests.model.js';
-import { writeAuditEvent } from './audit.service.js';
+import { logAuditError, writeAuditEvent } from './audit.service.js';
 
 const supportedManualAccessTypes = new Set(Object.values(OFFER_ACCESS_TYPES));
 
@@ -97,6 +97,18 @@ function buildAccessSnapshot(record) {
 
   return {
     accessType: record.accessType ?? null,
+    source: record.source ?? null,
+    updatedAt: record.updatedAt ?? null,
+  };
+}
+
+function buildAccessValue(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    status: record.accessType ?? null,
     source: record.source ?? null,
     updatedAt: record.updatedAt ?? null,
   };
@@ -192,28 +204,37 @@ export async function setManualOfferAffiliateAccess({
       }
     }
 
-    await client.query('COMMIT');
-
     await writeAuditEvent({
       entityType: 'offer_access',
       entityId: buildAccessEntityId(offerId, affiliateId),
-      action: 'manual_access_set',
+      action: 'offer.manual_access_set',
       actorUserId: actorId,
       actorRole,
       requestId,
-      context: {
+      client,
+      oldValue: buildAccessValue(existingAccess),
+      newValue: buildAccessValue(access),
+      metadata: {
         offerId,
         affiliateId,
         visibilityMode,
-        previousAccess: buildAccessSnapshot(existingAccess),
-        newAccess: buildAccessSnapshot(access),
       },
     });
+
+    await client.query('COMMIT');
 
     return access;
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось обновить доступ партнёра к офферу',
+    );
   } finally {
     client.release();
   }
@@ -260,8 +281,6 @@ export async function grantOfferAffiliateAccess({
       { client, forUpdate: true },
     );
 
-    await client.query('COMMIT');
-
     await writeAuditEvent({
       entityType: 'offer_access',
       entityId: buildAccessEntityId(offerId, affiliateId),
@@ -269,7 +288,14 @@ export async function grantOfferAffiliateAccess({
       actorUserId: actorId,
       actorRole,
       requestId,
-      context: {
+      client,
+      oldValue: {
+        status: existingAccess?.accessType ?? null,
+      },
+      newValue: {
+        status: access?.accessType ?? null,
+      },
+      metadata: {
         offerId,
         affiliateId,
         availability: offer.availability ?? offer.visibilityMode ?? null,
@@ -277,6 +303,8 @@ export async function grantOfferAffiliateAccess({
         newStatus: access?.accessType ?? null,
       },
     });
+
+    await client.query('COMMIT');
 
     return {
       access: buildAffiliateAccessResponse(access),
@@ -286,7 +314,28 @@ export async function grantOfferAffiliateAccess({
     };
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    await logAuditError({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_grant_failed',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      metadata: {
+        offerId,
+        affiliateId,
+      },
+      error,
+    });
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось выдать доступ партнёру к офферу',
+    );
   } finally {
     client.release();
   }
@@ -312,17 +361,20 @@ export async function removeManualOfferAffiliateAccess({
     await writeAuditEvent({
       entityType: 'offer_access',
       entityId: buildAccessEntityId(offerId, affiliateId),
-      action: 'manual_access_removed',
+      action: 'offer.manual_access_removed',
       actorUserId: actorId,
       actorRole,
       requestId,
-      context: {
+      oldValue: buildAccessValue(deleted),
+      newValue: null,
+      metadata: {
         offerId,
         affiliateId,
-        previousAccess: buildAccessSnapshot(deleted),
       },
     });
   }
+
+  return deleted;
 }
 
 export async function revokeOfferAffiliateAccess({
@@ -339,26 +391,67 @@ export async function revokeOfferAffiliateAccess({
   await getOfferById(offerId);
   await getAffiliateById(affiliateId);
 
-  const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId);
+  const client = await pool.connect();
 
-  if (deleted) {
-    await writeAuditEvent({
+  try {
+    await client.query('BEGIN');
+
+    const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId, { client });
+
+    if (deleted) {
+      await writeAuditEvent({
+        entityType: 'offer_access',
+        entityId: buildAccessEntityId(offerId, affiliateId),
+        action: 'offer.access_revoked',
+        actorUserId: actorId,
+        actorRole,
+        requestId,
+        client,
+        oldValue: {
+          status: deleted.accessType ?? null,
+        },
+        newValue: {
+          status: null,
+        },
+        metadata: {
+          offerId,
+          affiliateId,
+          previousStatus: deleted.accessType ?? null,
+          newStatus: null,
+        },
+      });
+    }
+
+    await client.query('COMMIT');
+
+    return deleted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    await logAuditError({
       entityType: 'offer_access',
       entityId: buildAccessEntityId(offerId, affiliateId),
-      action: 'offer.access_revoked',
+      action: 'offer.access_revoke_failed',
       actorUserId: actorId,
       actorRole,
       requestId,
-      context: {
+      metadata: {
         offerId,
         affiliateId,
-        previousStatus: deleted.accessType ?? null,
-        newStatus: null,
       },
+      error,
     });
-  }
+    if (error instanceof ApiError) {
+      throw error;
+    }
 
-  return deleted;
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось отозвать доступ партнёра к офферу',
+    );
+  } finally {
+    client.release();
+  }
 }
 
 export async function listOfferAffiliateAccessRecords(offerId) {

@@ -54,14 +54,14 @@ describe('manager role and manager administration', () => {
         FROM audit_events
         WHERE entity_id = $1
           AND entity_type = 'manager'
-          AND action = 'created'
+          AND action = 'manager.created'
       `,
       [createResponse.body.data.manager.id],
     );
 
     expect(auditResponse.rowCount).toBe(1);
     expect(auditResponse.rows[0]).toMatchObject({
-      action: 'created',
+      action: 'manager.created',
       entityType: 'manager',
       actorUserId: adminUser.id,
       actorRole: 'admin',
@@ -233,7 +233,7 @@ describe('manager role and manager administration', () => {
         FROM audit_events
         WHERE entity_id = $1
           AND entity_type = 'manager'
-          AND action = 'updated'
+          AND action = 'manager.updated'
       `,
       [managerId],
     );
@@ -313,14 +313,14 @@ describe('manager role and manager administration', () => {
         SELECT action, entity_type AS "entityType", actor_role AS "actorRole"
         FROM audit_events
         WHERE entity_id = $1
-          AND action = 'password_changed'
+          AND action = 'user.password_changed'
       `,
       [changedUser.id],
     );
 
     expect(auditResponse.rowCount).toBe(1);
     expect(auditResponse.rows[0]).toMatchObject({
-      action: 'password_changed',
+      action: 'user.password_changed',
       entityType: 'user',
       actorRole: 'manager',
     });
@@ -371,14 +371,14 @@ describe('manager role and manager administration', () => {
         FROM audit_events
         WHERE entity_id = $1
           AND entity_type = 'manager'
-          AND action = 'password_reset'
+          AND action = 'manager.password_reset'
       `,
       [managerId],
     );
 
     expect(auditResponse.rowCount).toBe(1);
     expect(auditResponse.rows[0]).toMatchObject({
-      action: 'password_reset',
+      action: 'manager.password_reset',
       entityType: 'manager',
       actorUserId: adminUser.id,
     });
@@ -414,14 +414,14 @@ describe('manager role and manager administration', () => {
         FROM audit_events
         WHERE entity_id = $1
           AND entity_type = 'manager'
-          AND action = 'deleted'
+          AND action = 'manager.deleted'
       `,
       [managerId],
     );
 
     expect(auditResponse.rowCount).toBe(1);
     expect(auditResponse.rows[0]).toMatchObject({
-      action: 'deleted',
+      action: 'manager.deleted',
       entityType: 'manager',
       actorUserId: adminUser.id,
     });

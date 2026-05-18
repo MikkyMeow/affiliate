@@ -14,7 +14,7 @@ import { upsertConversionRollup } from '../models/daily-stats.model.js';
 import { formatDateInTimeZone, getDefaultTimeZone } from '../lib/timezone.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
-import { writeAuditEvent } from './audit.service.js';
+import { logAuditError, writeAuditEvent } from './audit.service.js';
 
 function normalizeDateForRollup(value) {
   if (!value) {
@@ -102,11 +102,12 @@ export async function updateConversionStatus({
 
   const normalizedReason = normalizeReason(reason);
   const client = await pool.connect();
+  let existing = null;
 
   try {
     await client.query('BEGIN');
 
-    const existing = await findConversionById(conversionId, {
+    existing = await findConversionById(conversionId, {
       client,
       forUpdate: true,
     });
@@ -155,13 +156,17 @@ export async function updateConversionStatus({
       actorUserId,
       actorRole,
       requestId,
-      context: {
-        oldValue: existing.status,
-        newValue: updated.status,
-        reason: normalizedReason,
-        metadata,
-      },
       client,
+      oldValue: {
+        status: existing.status,
+      },
+      newValue: {
+        status: updated.status,
+      },
+      metadata: {
+        ...metadata,
+        reason: normalizedReason,
+      },
     });
 
     const rollupDate = normalizeDateForRollup(updated?.createdAt);
@@ -186,7 +191,32 @@ export async function updateConversionStatus({
     };
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    if (existing) {
+      await logAuditError({
+        entityType: 'conversion',
+        entityId: conversionId,
+        action: 'conversion.status_change_failed',
+        actorUserId: actor?.userId ?? null,
+        actorRole: actor?.role ?? null,
+        requestId,
+        metadata: {
+          previousStatus: existing.status ?? null,
+          requestedStatus: status,
+          reason: normalizedReason,
+        },
+        error,
+      });
+    }
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось обновить статус конверсии',
+    );
   } finally {
     client.release();
   }

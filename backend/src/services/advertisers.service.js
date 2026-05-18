@@ -298,6 +298,19 @@ function buildManagerAuditMetadata(previousManager, nextManager) {
   };
 }
 
+function buildManagerAuditValue(managerUserId, manager) {
+  return {
+    managerUserId: managerUserId ?? null,
+    manager: manager
+      ? {
+          id: manager.id,
+          name: manager.displayName ?? null,
+          email: manager.email ?? null,
+        }
+      : null,
+  };
+}
+
 export async function assignAdvertiserManager(
   advertiserId,
   managerUserId,
@@ -330,23 +343,23 @@ export async function assignAdvertiserManager(
     await writeAuditEvent({
       entityType: 'advertiser',
       entityId: advertiserId,
-      action: 'manager_assigned',
+      action: 'advertiser.manager_changed',
       actorUserId: actor?.userId ?? null,
       actorRole: actor?.role ?? null,
       requestId,
       client,
-      context: {
-        oldValues: {
-          managerUserId: existingAdvertiser.managerUserId ?? null,
-        },
-        newValues: {
-          managerUserId: updatedAdvertiser?.managerUserId ?? null,
-        },
-        metadata: buildManagerAuditMetadata(
-          existingAdvertiser.manager,
-          nextManager,
-        ),
-      },
+      oldValue: buildManagerAuditValue(
+        existingAdvertiser.managerUserId ?? null,
+        existingAdvertiser.manager,
+      ),
+      newValue: buildManagerAuditValue(
+        updatedAdvertiser?.managerUserId ?? null,
+        nextManager,
+      ),
+      metadata: buildManagerAuditMetadata(
+        existingAdvertiser.manager,
+        nextManager,
+      ),
     });
 
     await client.query('COMMIT');

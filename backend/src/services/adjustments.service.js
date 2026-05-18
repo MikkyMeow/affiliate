@@ -43,7 +43,7 @@ import { generateClickId } from '../lib/generateClickId.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { createConversionWithResolvedGoal } from './offer-goals.service.js';
-import { writeAuditEvent } from './audit.service.js';
+import { logAuditError, writeAuditEvent } from './audit.service.js';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1197,7 +1197,11 @@ async function writeBatchAuditEvent({
   action,
   actor,
   requestId,
-  context,
+  metadata,
+  oldValue = null,
+  newValue = null,
+  errorCode = null,
+  errorMessage = null,
   client = null,
 }) {
   return writeAuditEvent({
@@ -1207,9 +1211,17 @@ async function writeBatchAuditEvent({
     actorUserId: actor?.userId ?? null,
     actorRole: actor?.role ?? null,
     requestId,
-    context,
+    oldValue,
+    newValue,
+    metadata,
+    errorCode,
+    errorMessage,
     client,
   });
+}
+
+function buildAdjustmentErrorEntityId({ batchId = null, requestId = null, fallback = null }) {
+  return batchId ?? requestId ?? fallback ?? 'adjustment_operation';
 }
 
 function normalizeBatchResult(metadata) {
@@ -1299,16 +1311,18 @@ async function applyConversionRow({
       actorUserId: actor.userId,
       actorRole: actor.role,
       requestId,
-      context: {
-        metadata: {
-          batchId,
-          rowNumber: row.rowNumber,
-          offerId: conversion.offerId,
-          affiliateId: conversion.affiliateId,
-          goalId: conversion.goalId ?? null,
-          status: conversion.status,
-          source: conversion.source ?? RECORD_SOURCES.MANUAL,
-        },
+      newValue: {
+        status: conversion.status,
+        source: conversion.source ?? RECORD_SOURCES.MANUAL,
+        manualAdjustmentBatchId: conversion.manualAdjustmentBatchId ?? batchId,
+        goalId: conversion.goalId ?? null,
+      },
+      metadata: {
+        batchId,
+        rowNumber: row.rowNumber,
+        offerId: conversion.offerId,
+        affiliateId: conversion.affiliateId,
+        goalId: conversion.goalId ?? null,
       },
       client,
     });
@@ -1378,15 +1392,18 @@ async function applyClickRow({
     actorUserId: actor.userId,
     actorRole: actor.role,
     requestId,
-    context: {
-      metadata: {
-        batchId,
-        rowNumber: row.rowNumber,
-        offerId: click.offerId,
-        affiliateId: click.affiliateId,
-        goalId: click.goalId ?? null,
-        source: click.source ?? RECORD_SOURCES.MANUAL,
-      },
+    newValue: {
+      source: click.source ?? RECORD_SOURCES.MANUAL,
+      manualAdjustmentBatchId: click.manualAdjustmentBatchId ?? batchId,
+      goalId: click.goalId ?? null,
+    },
+    metadata: {
+      batchId,
+      rowNumber: row.rowNumber,
+      offerId: click.offerId,
+      affiliateId: click.affiliateId,
+      goalId: click.goalId ?? null,
+      source: click.source ?? RECORD_SOURCES.MANUAL,
     },
     client,
   });
@@ -1409,78 +1426,78 @@ export async function previewManualAdjustmentBatch(
     throw new Error('actor.userId is required to preview adjustments');
   }
 
-  validateCsvPayloadSize(dto.csvText);
+  try {
+    validateCsvPayloadSize(dto.csvText);
 
-  const parsed = readCsvRows(dto.csvText);
-  validateCsvRowCount(parsed.rows.length);
+    const parsed = readCsvRows(dto.csvText);
+    validateCsvRowCount(parsed.rows.length);
 
-  const cache = createResolverCache();
-  const {
-    errors: defaultErrors,
-    defaultAffiliate,
-    defaultOffer,
-    defaultGoal,
-  } = await resolveDefaultEntities(dto, cache);
+    const cache = createResolverCache();
+    const {
+      errors: defaultErrors,
+      defaultAffiliate,
+      defaultOffer,
+      defaultGoal,
+    } = await resolveDefaultEntities(dto, cache);
 
-  if (defaultErrors.length > 0) {
-    throwValidationError(defaultErrors);
-  }
+    if (defaultErrors.length > 0) {
+      throwValidationError(defaultErrors);
+    }
 
-  const previewRows =
-    dto.type === MANUAL_ADJUSTMENT_TYPES.CONVERSIONS
-      ? await buildConversionPreviewRows({
-          parsedRows: parsed.rows,
-          dto,
-          defaultAffiliate,
-          defaultOffer,
-          defaultGoal,
-          cache,
-        })
-      : await buildClickPreviewRows({
-          parsedRows: parsed.rows,
-          dto,
-          defaultAffiliate,
-          defaultOffer,
-          defaultGoal,
-          cache,
-        });
+    const previewRows =
+      dto.type === MANUAL_ADJUSTMENT_TYPES.CONVERSIONS
+        ? await buildConversionPreviewRows({
+            parsedRows: parsed.rows,
+            dto,
+            defaultAffiliate,
+            defaultOffer,
+            defaultGoal,
+            cache,
+          })
+        : await buildClickPreviewRows({
+            parsedRows: parsed.rows,
+            dto,
+            defaultAffiliate,
+            defaultOffer,
+            defaultGoal,
+            cache,
+          });
 
-  const totalRows = previewRows.length;
-  const validRows = previewRows.filter((row) => row.valid).length;
-  const invalidRows = totalRows - validRows;
-  const ignoredColumns = collectIgnoredColumns(parsed.headers);
-  const metadata = buildBatchMetadata({
-    headers: parsed.headers,
-    ignoredColumns,
-    previewRows,
-  });
+    const totalRows = previewRows.length;
+    const validRows = previewRows.filter((row) => row.valid).length;
+    const invalidRows = totalRows - validRows;
+    const ignoredColumns = collectIgnoredColumns(parsed.headers);
+    const metadata = buildBatchMetadata({
+      headers: parsed.headers,
+      ignoredColumns,
+      previewRows,
+    });
 
-  const batch = await createManualAdjustmentBatchModel(
-    {
-      type: dto.type,
-      partnerMode: dto.partnerMode,
-      defaultAffiliateId: defaultAffiliate?.id ?? null,
-      defaultOfferId: defaultOffer?.id ?? null,
-      defaultGoalId: defaultGoal?.id ?? null,
-      defaultStatus: dto.defaultStatus ?? null,
-      originalFilename: dto.originalFilename ?? null,
-      totalRows,
-      validRows,
-      invalidRows,
-      createdRows: 0,
-      skippedRows: 0,
-      status: MANUAL_ADJUSTMENT_BATCH_STATUSES.PREVIEWED,
-      createdById: actor.userId,
-      metadata,
-    },
-  );
+    const batch = await createManualAdjustmentBatchModel(
+      {
+        type: dto.type,
+        partnerMode: dto.partnerMode,
+        defaultAffiliateId: defaultAffiliate?.id ?? null,
+        defaultOfferId: defaultOffer?.id ?? null,
+        defaultGoalId: defaultGoal?.id ?? null,
+        defaultStatus: dto.defaultStatus ?? null,
+        originalFilename: dto.originalFilename ?? null,
+        totalRows,
+        validRows,
+        invalidRows,
+        createdRows: 0,
+        skippedRows: 0,
+        status: MANUAL_ADJUSTMENT_BATCH_STATUSES.PREVIEWED,
+        createdById: actor.userId,
+        metadata,
+      },
+    );
 
-  await writeBatchAuditEvent({
-    batch,
-    action: 'adjustment.preview_created',
-    actor,
-    requestId,
-    context: {
+    await writeBatchAuditEvent({
+      batch,
+      action: 'adjustment.preview_created',
+      actor,
+      requestId,
       metadata: {
         batchId: batch.id,
         type: batch.type,
@@ -1491,17 +1508,44 @@ export async function previewManualAdjustmentBatch(
           invalidRows,
         },
       },
-    },
-  });
+    });
 
-  const summary = summarizePreviewRows(previewRows);
+    const summary = summarizePreviewRows(previewRows);
 
-  return {
-    batch: serializeBatch(batch),
-    rows: summary.rows,
-    hiddenValidRows: summary.hiddenValidRows,
-    ignoredColumns,
-  };
+    return {
+      batch: serializeBatch(batch),
+      rows: summary.rows,
+      hiddenValidRows: summary.hiddenValidRows,
+      ignoredColumns,
+    };
+  } catch (error) {
+    await logAuditError({
+      entityType: 'manual_adjustment_batch',
+      entityId: buildAdjustmentErrorEntityId({
+        requestId,
+        fallback: `preview:${dto.type}:${dto.originalFilename ?? 'batch'}`,
+      }),
+      action: 'adjustment.preview_failed',
+      actorUserId: actor.userId,
+      actorRole: actor.role,
+      requestId,
+      metadata: {
+        type: dto.type ?? null,
+        filename: dto.originalFilename ?? null,
+      },
+      error,
+    });
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось подготовить preview batch',
+    );
+  }
 }
 
 export async function applyManualAdjustmentBatch(batchId, { actor, requestId = null } = {}) {
@@ -1640,18 +1684,16 @@ export async function applyManualAdjustmentBatch(batchId, { actor, requestId = n
       action: 'adjustment.applied',
       actor,
       requestId,
-      context: {
-        metadata: {
-          batchId: updatedBatch.id,
-          type: updatedBatch.type,
-          filename: updatedBatch.originalFilename ?? null,
-          counts: {
-            totalRows: updatedBatch.totalRows,
-            validRows: updatedBatch.validRows,
-            invalidRows: updatedBatch.invalidRows,
-            createdRows: createdCount,
-            skippedRows: skippedCount,
-          },
+      metadata: {
+        batchId: updatedBatch.id,
+        type: updatedBatch.type,
+        filename: updatedBatch.originalFilename ?? null,
+        counts: {
+          totalRows: updatedBatch.totalRows,
+          validRows: updatedBatch.validRows,
+          invalidRows: updatedBatch.invalidRows,
+          createdRows: createdCount,
+          skippedRows: skippedCount,
         },
       },
       client,
@@ -1689,18 +1731,28 @@ export async function applyManualAdjustmentBatch(batchId, { actor, requestId = n
       action: 'adjustment.apply_failed',
       actor,
       requestId,
-      context: {
-        metadata: {
-          batchId: batch.id,
-          type: batch.type,
-          filename: batch.originalFilename ?? null,
-          error:
-            error instanceof Error ? error.message : 'Не удалось применить batch',
-        },
+      metadata: {
+        batchId: batch.id,
+        type: batch.type,
+        filename: batch.originalFilename ?? null,
       },
+      errorCode:
+        error instanceof ApiError && typeof error.code === 'string'
+          ? error.code
+          : 'APPLY_FAILED',
+      errorMessage:
+        error instanceof Error ? error.message : 'Не удалось применить batch',
     });
 
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось применить batch',
+    );
   } finally {
     client.release();
   }
