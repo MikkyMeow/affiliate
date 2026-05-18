@@ -9,10 +9,13 @@ import {
   getAdminFilteredSummary,
   getSummary,
 } from '../services/stats/stats.service.js';
+import { recalculateDailyStats } from '../services/stats/rollup.service.js';
 import {
   validateAdminStatsSummaryQuery,
   validateDashboardStatsQuery,
+  validateStatsRecalculationPayload,
 } from '../validators/stats.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 
@@ -54,6 +57,45 @@ router.get(
 
     const summary = await getAdminFilteredSummary(query);
     return sendSuccess(res, summary);
+  }),
+);
+
+router.post(
+  '/recalculate',
+  asyncHandler(async (req, res) => {
+    const {
+      payload,
+      errors,
+      statusCode,
+    } = validateStatsRecalculationPayload(req.body ?? {});
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        statusCode,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const result = await recalculateDailyStats(
+      {
+        dateFrom: payload.dateFrom,
+        dateTo: payload.dateTo,
+        timezone: payload.timezone,
+        actor: getActorContext(req.user),
+        requestId: req.id ?? null,
+      },
+    );
+
+    return sendSuccess(res, {
+      ok: true,
+      dateFrom: result.dateFrom,
+      dateTo: result.dateTo,
+      timezone: result.timezone,
+      daysRecalculated: result.daysRecalculated,
+      recalculatedAt: result.recalculatedAt,
+    });
   }),
 );
 

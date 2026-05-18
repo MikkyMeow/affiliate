@@ -18,13 +18,15 @@ import {
   getAdminSummaryGroups as getAdminSummaryGroupsModel,
   getAdminSummaryTotals as getAdminSummaryTotalsModel,
 } from '../../models/admin-stats-summary.model.js';
+import {
+  getDailyStatsGroups,
+  getDailyStatsSummary,
+} from '../../models/daily-stats.model.js';
+import { getDefaultTimeZone, resolveTimeZone } from '../../lib/timezone.js';
 import { getAggregatedSummary as getRollupSummary } from './rollup.service.js';
 
 const DEFAULT_DASHBOARD_BUCKET = 'hour';
-const DEFAULT_DASHBOARD_TIMEZONE =
-  process.env.TZ?.trim() ||
-  Intl.DateTimeFormat().resolvedOptions().timeZone ||
-  'UTC';
+const DEFAULT_DASHBOARD_TIMEZONE = getDefaultTimeZone();
 
 function normalizeSummaryPayload(metrics = {}, { includeLegacyClicksAlias = true } = {}) {
   const summary = {
@@ -162,25 +164,27 @@ function buildDashboardMetricSet({
   };
 }
 
-function isValidTimeZone(value) {
-  if (typeof value !== 'string') {
-    return false;
-  }
+function buildDashboardMetricSetFromSummary(summary = {}) {
+  return buildDashboardMetricSet({
+    clicks: summary.clicks,
+    conversions: summary.conversionsTotal,
+    pendingConversions: summary.pendingConversions,
+    approvedConversions: summary.approvedConversions,
+    rejectedConversions: summary.rejectedConversions,
+    cancelledConversions: summary.cancelledConversions,
+    pendingRevenue: summary.pendingRevenue,
+    pendingPayout: summary.pendingPayout,
+    revenue: summary.approvedRevenue,
+    payout: summary.approvedPayout,
+  });
+}
 
-  try {
-    Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
-    return true;
-  } catch {
-    return false;
-  }
+function hasStoredDailyStats(summary = {}) {
+  return Number(summary.rowCount ?? 0) > 0;
 }
 
 function resolveDashboardTimezone(rawTimezone) {
-  if (typeof rawTimezone === 'string' && rawTimezone.trim() && isValidTimeZone(rawTimezone.trim())) {
-    return rawTimezone.trim();
-  }
-
-  return DEFAULT_DASHBOARD_TIMEZONE;
+  return resolveTimeZone(rawTimezone, DEFAULT_DASHBOARD_TIMEZONE);
 }
 
 function formatDateParts(parts) {
@@ -301,10 +305,17 @@ export async function getAdminDashboardStats({
 } = {}) {
   const resolvedTimezone = resolveDashboardTimezone(timezone);
   const resolvedDate = date || resolveCurrentDateInTimezone(resolvedTimezone);
-  const rows = await getHourlyDashboardSeries({
-    date: resolvedDate,
-    timezone: resolvedTimezone,
-  });
+  const [rows, storedSummary] = await Promise.all([
+    getHourlyDashboardSeries({
+      date: resolvedDate,
+      timezone: resolvedTimezone,
+    }),
+    getDailyStatsSummary({
+      dateFrom: resolvedDate,
+      dateTo: resolvedDate,
+      timezone: resolvedTimezone,
+    }),
+  ]);
 
   const series = rows.map((row) => {
     const metrics = buildDashboardMetricSet(row);
@@ -316,7 +327,7 @@ export async function getAdminDashboardStats({
     };
   });
 
-  const totals = buildDashboardMetricSet(
+  const rawTotals = buildDashboardMetricSet(
     series.reduce(
       (accumulator, entry) => ({
         clicks: accumulator.clicks + entry.clicks,
@@ -348,6 +359,9 @@ export async function getAdminDashboardStats({
       },
     ),
   );
+  const totals = hasStoredDailyStats(storedSummary)
+    ? buildDashboardMetricSetFromSummary(storedSummary)
+    : rawTotals;
 
   return {
     date: resolvedDate,
@@ -355,12 +369,16 @@ export async function getAdminDashboardStats({
     bucket,
     totals,
     series,
+    statsUpdatedAt: hasStoredDailyStats(storedSummary)
+      ? storedSummary.statsUpdatedAt
+      : null,
   };
 }
 
 export async function getAdminFilteredSummary({
   dateFrom,
   dateTo,
+  timezone,
   offerId,
   affiliateId,
   advertiserId,
@@ -370,15 +388,22 @@ export async function getAdminFilteredSummary({
   const filter = {
     dateFrom,
     dateTo,
+    timezone,
     offerId,
     affiliateId,
     advertiserId,
   };
-  const totalsMetrics = await getAdminSummaryTotalsModel(filter);
-  const totals = buildDashboardMetricSet(totalsMetrics);
+  const storedSummary = await getDailyStatsSummary(filter);
+  const useStoredSummary = hasStoredDailyStats(storedSummary);
+
+  const totalsMetrics = useStoredSummary
+    ? buildDashboardMetricSetFromSummary(storedSummary)
+    : buildDashboardMetricSet(await getAdminSummaryTotalsModel(filter));
   const groups = groupBy
     ? (
-        await getAdminSummaryGroupsModel(filter, groupBy)
+        useStoredSummary
+          ? await getDailyStatsGroups(filter, groupBy)
+          : await getAdminSummaryGroupsModel(filter, groupBy)
       ).map((entry) => ({
         key: entry.key,
         type: entry.type,
@@ -406,7 +431,8 @@ export async function getAdminFilteredSummary({
             : advertiserId?.value ?? null,
         groupBy: groupBy ?? null,
       },
-    totals,
+    totals: totalsMetrics,
     groups,
+    statsUpdatedAt: useStoredSummary ? storedSummary.statsUpdatedAt : null,
   };
 }

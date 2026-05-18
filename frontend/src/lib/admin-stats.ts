@@ -6,6 +6,7 @@ export type AdminSummaryGroupBy = 'partner' | 'offer' | 'advertiser';
 export type AdminSummaryFilters = {
   dateFrom?: string;
   dateTo?: string;
+  timezone?: string;
   offerId?: string;
   affiliateId?: string;
   advertiserId?: string;
@@ -38,6 +39,22 @@ export type AdminSummaryResponse = {
   };
   totals: DashboardTotals;
   groups: AdminSummaryGroup[];
+  statsUpdatedAt: string | null;
+};
+
+export type AdminStatsRecalculationRequest = {
+  dateFrom: string;
+  dateTo: string;
+  timezone?: string;
+};
+
+export type AdminStatsRecalculationResponse = {
+  ok: true;
+  dateFrom: string;
+  dateTo: string;
+  timezone: string;
+  daysRecalculated: number;
+  recalculatedAt: string;
 };
 
 const EMPTY_TOTALS: DashboardTotals = {
@@ -112,6 +129,7 @@ export function buildAdminSummaryQuery(filters: AdminSummaryFilters = {}) {
 
   appendQueryParam(params, 'dateFrom', filters.dateFrom);
   appendQueryParam(params, 'dateTo', filters.dateTo);
+  appendQueryParam(params, 'timezone', filters.timezone);
   appendQueryParam(params, 'offerId', filters.offerId);
   appendQueryParam(params, 'affiliateId', filters.affiliateId);
   appendQueryParam(params, 'advertiserId', filters.advertiserId);
@@ -175,5 +193,20 @@ export async function getAdminSummary(
           metrics: normalizeTotals(entry?.metrics),
         }))
       : [],
+    statsUpdatedAt:
+      typeof response.statsUpdatedAt === 'string'
+        ? response.statsUpdatedAt
+        : null,
   };
+}
+
+export async function recalculateAdminStats(
+  token: string,
+  payload: AdminStatsRecalculationRequest,
+): Promise<AdminStatsRecalculationResponse> {
+  return apiFetch<AdminStatsRecalculationResponse>('/admin/stats/recalculate', {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }

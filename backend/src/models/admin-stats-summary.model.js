@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { formatPublicId, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import { getDefaultTimeZone, resolveTimeZone } from '../lib/timezone.js';
 
 const SUMMARY_GROUP_LIMIT = 100;
 
@@ -161,15 +162,32 @@ async function getStatsSchemaCapabilities() {
   return statsSchemaCapabilitiesPromise;
 }
 
-function applyDateFilters({ dateFrom, dateTo, column, conditions, params }) {
+function applyDateFilters({
+  dateFrom,
+  dateTo,
+  timezone,
+  column,
+  conditions,
+  params,
+}) {
+  const resolvedTimezone = resolveTimeZone(timezone, getDefaultTimeZone());
+
   if (dateFrom) {
     params.push(dateFrom);
-    conditions.push(`${column} >= $${params.length}::date`);
+    const dateIndex = params.length;
+    params.push(resolvedTimezone);
+    conditions.push(
+      `${column} >= ($${dateIndex}::date::timestamp AT TIME ZONE $${params.length})`,
+    );
   }
 
   if (dateTo) {
     params.push(dateTo);
-    conditions.push(`${column} < ($${params.length}::date + INTERVAL '1 day')`);
+    const dateIndex = params.length;
+    params.push(resolvedTimezone);
+    conditions.push(
+      `${column} < (($${dateIndex}::date + INTERVAL '1 day')::timestamp AT TIME ZONE $${params.length})`,
+    );
   }
 }
 
@@ -194,6 +212,7 @@ function buildClickFilter(filter = {}, capabilities) {
   applyDateFilters({
     dateFrom: filter.dateFrom,
     dateTo: filter.dateTo,
+    timezone: filter.timezone,
     column: 'c.created_at',
     conditions,
     params,
@@ -242,6 +261,7 @@ function buildConversionFilter(filter = {}, capabilities) {
   applyDateFilters({
     dateFrom: filter.dateFrom,
     dateTo: filter.dateTo,
+    timezone: filter.timezone,
     column: 'c.created_at',
     conditions,
     params,

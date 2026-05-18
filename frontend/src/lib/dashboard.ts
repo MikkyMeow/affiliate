@@ -32,6 +32,7 @@ export type DashboardStatsResponse = {
   bucket: DashboardBucket;
   totals: DashboardTotals;
   series: DashboardSeriesPoint[];
+  statsUpdatedAt: string | null;
 };
 
 export type DashboardMetricKey =
@@ -147,6 +148,10 @@ export async function getDashboardStats(
           ...normalizeTotals(entry),
         }))
       : [],
+    statsUpdatedAt:
+      typeof response.statsUpdatedAt === 'string'
+        ? response.statsUpdatedAt
+        : null,
   };
 }
 

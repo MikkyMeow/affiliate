@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { canAccessAdminArea } from '@/lib/auth/roles';
 import {
   getAdminSummary,
+  recalculateAdminStats,
   type AdminSummaryGroup,
   type AdminSummaryGroupBy,
   type AdminSummaryResponse,
@@ -243,6 +244,20 @@ function formatSummaryGroupLabel(group: AdminSummaryGroup) {
   return entity.publicId ?? entity.name ?? group.key;
 }
 
+function formatUpdatedAt(value: string, timezone: string) {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: timezone,
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  }).format(parsed);
+}
+
 export function DashboardMainPageContent() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const canAccess = canAccessAdminArea(user);
@@ -261,6 +276,10 @@ export function DashboardMainPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [lookupsError, setLookupsError] = useState<string | null>(null);
+  const [recalculationLoading, setRecalculationLoading] = useState(false);
+  const [recalculationError, setRecalculationError] = useState<string | null>(null);
+  const [recalculationMessage, setRecalculationMessage] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     const preferredTimeZone = getPreferredTimeZone();
@@ -345,7 +364,7 @@ export function DashboardMainPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, canAccess, selectedDate, timezone, user]);
+  }, [accessToken, authLoading, canAccess, refreshVersion, selectedDate, timezone, user]);
 
   useEffect(() => {
     if (authLoading || !accessToken || !user || !canAccess) {
@@ -420,6 +439,7 @@ export function DashboardMainPageContent() {
         const response = await getAdminSummary(accessToken, {
           dateFrom: summaryFilters.dateFrom || undefined,
           dateTo: summaryFilters.dateTo || undefined,
+          timezone,
           offerId: summaryFilters.offerId || undefined,
           affiliateId: summaryFilters.affiliateId || undefined,
           advertiserId: summaryFilters.advertiserId || undefined,
@@ -454,7 +474,43 @@ export function DashboardMainPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, canAccess, summaryFilters, user]);
+  }, [accessToken, authLoading, canAccess, refreshVersion, summaryFilters, timezone, user]);
+
+  const handleRecalculateStats = async () => {
+    if (
+      !accessToken ||
+      !recalculationDateFrom ||
+      !recalculationDateTo ||
+      recalculationLoading
+    ) {
+      return;
+    }
+
+    setRecalculationLoading(true);
+    setRecalculationError(null);
+    setRecalculationMessage(null);
+
+    try {
+      const result = await recalculateAdminStats(accessToken, {
+        dateFrom: recalculationDateFrom,
+        dateTo: recalculationDateTo,
+        timezone,
+      });
+
+      setRecalculationMessage(
+        `Статистика пересчитана за ${result.dateFrom} - ${result.dateTo}.`,
+      );
+      setRefreshVersion((current) => current + 1);
+    } catch (requestError) {
+      setRecalculationError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Не удалось пересчитать статистику',
+      );
+    } finally {
+      setRecalculationLoading(false);
+    }
+  };
 
   if (authLoading || !user || !accessToken || !canAccess) {
     return null;
@@ -467,6 +523,16 @@ export function DashboardMainPageContent() {
   const summaryGroups = summary?.groups ?? [];
   const hasSummaryData = summary !== null;
   const isSummaryEmpty = Object.values(summaryTotals).every((value) => value === 0);
+  const dashboardUpdatedAt = stats?.statsUpdatedAt
+    ? formatUpdatedAt(stats.statsUpdatedAt, timezone)
+    : null;
+  const summaryUpdatedAt = summary?.statsUpdatedAt
+    ? formatUpdatedAt(summary.statsUpdatedAt, timezone)
+    : null;
+  const recalculationDateFrom =
+    summaryFilters.dateFrom || summaryFilters.dateTo || selectedDate;
+  const recalculationDateTo =
+    summaryFilters.dateTo || summaryFilters.dateFrom || selectedDate;
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
@@ -505,10 +571,47 @@ export function DashboardMainPageContent() {
                 <span className="mt-1 block font-medium text-zinc-900 dark:text-zinc-100">
                   {timezone}
                 </span>
+                {dashboardUpdatedAt ? (
+                  <span className="mt-2 block text-xs text-zinc-500 dark:text-zinc-400">
+                    Updated at {dashboardUpdatedAt}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
         </div>
+
+        <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="text-sm text-zinc-600 dark:text-zinc-300">
+            Пересчёт использует текущий диапазон сводки, если он выбран. Иначе
+            пересчитывается только выбранный день.
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleRecalculateStats()}
+            disabled={
+              recalculationLoading ||
+              !recalculationDateFrom ||
+              !recalculationDateTo
+            }
+            className="rounded-2xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:border-emerald-200 disabled:bg-emerald-300 dark:border-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:border-emerald-900 dark:disabled:bg-emerald-900/60"
+          >
+            {recalculationLoading ? 'Пересчитываем…' : 'Пересчитать статистику'}
+          </button>
+        </div>
+
+        {recalculationMessage ? (
+          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+            {recalculationMessage}
+          </div>
+        ) : null}
+
+        {recalculationError ? (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+            Не удалось пересчитать статистику: {recalculationError}
+          </div>
+        ) : null}
 
         {loading && !hasLoadedStats ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-5 py-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-300">
@@ -560,6 +663,11 @@ export function DashboardMainPageContent() {
               Этот блок запрашивает уже агрегированные метрики с backend и не
               пересчитывает clicks или conversions на клиенте.
             </p>
+            {summaryUpdatedAt ? (
+              <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Updated at {summaryUpdatedAt}
+              </p>
+            ) : null}
           </div>
 
           <button

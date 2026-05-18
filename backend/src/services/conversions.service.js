@@ -11,6 +11,7 @@ import {
   listConversionStatusHistory,
 } from '../models/conversionStatusHistory.model.js';
 import { upsertConversionRollup } from '../models/daily-stats.model.js';
+import { formatDateInTimeZone, getDefaultTimeZone } from '../lib/timezone.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { writeAuditEvent } from './audit.service.js';
@@ -20,13 +21,11 @@ function normalizeDateForRollup(value) {
     return null;
   }
 
-  const date = value instanceof Date ? value : new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
+  try {
+    return formatDateInTimeZone(value, getDefaultTimeZone());
+  } catch {
     return null;
   }
-
-  return date.toISOString().slice(0, 10);
 }
 
 function resolveActorMeta(actor) {
@@ -168,7 +167,11 @@ export async function updateConversionStatus({
     const rollupDate = normalizeDateForRollup(updated?.createdAt);
     if (rollupDate) {
       await upsertConversionRollup(
-        { startDate: rollupDate, endDate: rollupDate },
+        {
+          startDate: rollupDate,
+          endDate: rollupDate,
+          timezone: getDefaultTimeZone(),
+        },
         { client },
       );
     }

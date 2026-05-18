@@ -1,6 +1,7 @@
 import { CLICK_REDIRECT_OUTCOME_VALUES } from '../constants/clicks.js';
 import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
 import { RECORD_SOURCES } from '../constants/adjustments.js';
+import { MAX_STATS_RECALC_DAYS } from '../constants/stats.js';
 import { parsePublicIdNumber, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const uuidRegex =
@@ -1003,6 +1004,15 @@ export function validateAdminStatsSummaryQuery(payload = {}) {
     errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
   }
 
+  const { value: timezone, errors: timezoneErrors } = validateTimezone(
+    getQueryValue(payload, 'timezone'),
+    'timezone',
+  );
+  errors.push(...timezoneErrors);
+  if (timezone) {
+    query.timezone = timezone;
+  }
+
   const rawOfferId = normalizeOptionalString(
     getQueryValue(payload, 'offerId', 'offer_id'),
   );
@@ -1057,6 +1067,66 @@ export function validateAdminStatsSummaryQuery(payload = {}) {
   query.responseFilters = responseFilters;
 
   return { query, errors };
+}
+
+export function validateStatsRecalculationPayload(payload = {}) {
+  const errors = [];
+  let statusCode = 400;
+
+  const rawDateFrom = getQueryValue(payload, 'dateFrom', 'date_from');
+  const rawDateTo = getQueryValue(payload, 'dateTo', 'date_to');
+  const rawTimezone = normalizeOptionalString(getQueryValue(payload, 'timezone'));
+
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(
+    rawDateFrom,
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(
+    rawDateTo,
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+
+  if (!rawDateFrom) {
+    errors.push(buildError('dateFrom', 'dateFrom обязателен'));
+  }
+
+  if (!rawDateTo) {
+    errors.push(buildError('dateTo', 'dateTo обязателен'));
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+
+  if (dateFrom && dateTo && dateFrom <= dateTo) {
+    const start = new Date(`${dateFrom}T00:00:00.000Z`);
+    const end = new Date(`${dateTo}T00:00:00.000Z`);
+    const days =
+      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+
+    if (days > MAX_STATS_RECALC_DAYS) {
+      statusCode = 422;
+      errors.push(
+        buildError(
+          'dateTo',
+          `Максимальный период пересчёта: ${MAX_STATS_RECALC_DAYS} дней`,
+        ),
+      );
+    }
+  }
+
+  return {
+    payload: {
+      dateFrom,
+      dateTo,
+      timezone: rawTimezone || undefined,
+    },
+    errors,
+    statusCode,
+  };
 }
 
 function sanitizeAdvertiserFilter(filter = {}, errors = []) {
