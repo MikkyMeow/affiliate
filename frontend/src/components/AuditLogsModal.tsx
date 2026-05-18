@@ -7,15 +7,13 @@ import { AuditLogTable } from './AuditLogTable';
 
 const DEFAULT_LIMIT = 10;
 
-export function AuditLogsModal({
-  open,
+function AuditLogsModalContent({
   onClose,
   token,
   entityType,
   entityId,
   title,
 }: {
-  open: boolean;
   onClose: () => void;
   token: string;
   entityType: string;
@@ -27,27 +25,11 @@ export function AuditLogsModal({
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [errorOnly, setErrorOnly] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setPage(1);
-    setErrorOnly(false);
-    setError(null);
-  }, [entityId, entityType, open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
     let active = true;
-    setLoading(true);
-    setError(null);
 
     fetchEntityAuditLogs(token, entityType, entityId, {
       page,
@@ -62,6 +44,8 @@ export function AuditLogsModal({
         setItems(response.items);
         setTotalPages(response.totalPages);
         setTotal(response.total);
+        setError(null);
+        setLoading(false);
       })
       .catch((requestError) => {
         if (!active) {
@@ -74,23 +58,15 @@ export function AuditLogsModal({
         setError(
           (requestError as ApiError).message ?? 'Не удалось загрузить audit log',
         );
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
+        setLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [entityId, entityType, errorOnly, open, page, token]);
+  }, [entityId, entityType, errorOnly, page, token]);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -99,11 +75,7 @@ export function AuditLogsModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
-
-  if (!open) {
-    return null;
-  }
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 py-8">
@@ -126,6 +98,7 @@ export function AuditLogsModal({
                 onChange={(event) => {
                   setErrorOnly(event.target.checked);
                   setPage(1);
+                  setLoading(true);
                 }}
               />
               Только ошибки
@@ -158,7 +131,10 @@ export function AuditLogsModal({
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() => setPage((current) => Math.max(current - 1, 1))}
+              onClick={() => {
+                setPage((current) => Math.max(current - 1, 1));
+                setLoading(true);
+              }}
               disabled={loading || page <= 1}
               className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
@@ -166,11 +142,12 @@ export function AuditLogsModal({
             </button>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
                 setPage((current) =>
                   totalPages > 0 ? Math.min(current + 1, totalPages) : current + 1,
-                )
-              }
+                );
+                setLoading(true);
+              }}
               disabled={loading || (totalPages > 0 && page >= totalPages)}
               className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
@@ -180,5 +157,36 @@ export function AuditLogsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export function AuditLogsModal({
+  open,
+  onClose,
+  token,
+  entityType,
+  entityId,
+  title,
+}: {
+  open: boolean;
+  onClose: () => void;
+  token: string;
+  entityType: string;
+  entityId: string;
+  title?: string;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <AuditLogsModalContent
+      key={`${entityType}:${entityId}`}
+      onClose={onClose}
+      token={token}
+      entityType={entityType}
+      entityId={entityId}
+      title={title}
+    />
   );
 }

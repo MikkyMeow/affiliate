@@ -42,13 +42,6 @@ const EMPTY_FORM: ManagerFormState = {
   displayName: '',
   email: '',
 };
-const PAGE_SIZE_OPTIONS = [20, 50, 100];
-const SORT_OPTIONS = [
-  { value: 'createdAt:desc', label: 'Newest first' },
-  { value: 'createdAt:asc', label: 'Oldest first' },
-  { value: 'displayName:asc', label: 'Name A-Z' },
-  { value: 'email:asc', label: 'Email A-Z' },
-];
 
 function parsePositiveInteger(
   value: string | null | undefined,
@@ -202,6 +195,25 @@ export default function ManagersPage() {
 
     void loadManagers();
   }, [accessToken, authLoading, loadManagers, user]);
+
+  const applySearchQuery = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      const normalized = value.trim();
+
+      if (normalized) {
+        params.set('search', normalized);
+      } else {
+        params.delete('search');
+      }
+
+      params.set('page', '1');
+
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    },
+    [pathname, router, searchParams],
+  );
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -418,7 +430,7 @@ export default function ManagersPage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            setSearchQuery(searchInput.trim());
+            applySearchQuery(searchInput);
           }}
           className="flex flex-wrap items-center gap-3"
         >

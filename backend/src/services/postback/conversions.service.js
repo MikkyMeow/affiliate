@@ -151,7 +151,10 @@ function assertOfferMatchesClick({ offer, click }) {
   );
 }
 
-function assertPartnerCanConvertOffer(visibilityState, { offerId, affiliateId }) {
+function assertPartnerCanConvertOffer(
+  visibilityState,
+  { clickId, offerId, affiliateId },
+) {
   if (canPartnerAccessOffer(visibilityState)) {
     return;
   }
@@ -364,6 +367,7 @@ export async function registerConversion(
       { offer },
     );
     assertPartnerCanConvertOffer(visibilityState, {
+      clickId,
       offerId: offer.id,
       affiliateId: click.affiliateId,
     });

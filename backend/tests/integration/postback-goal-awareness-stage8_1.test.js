@@ -11,6 +11,7 @@ import {
   createTestOffer,
   createTestOfferGoal,
   createTestOfferGoalAffiliateRate,
+  hideAffiliateFromOffer,
 } from '../helpers/factories.js';
 import { buildPostbackSignature } from '../helpers/postback.js';
 
@@ -243,6 +244,42 @@ describe('Stage 8.1 goal-aware postbacks', () => {
     expect(Number(conversion.revenueAmount)).toBeCloseTo(650);
     expect(Number(conversion.payoutAmount)).toBeCloseTo(250);
     expect(Number(conversion.payoutRub)).toBeCloseTo(250);
+  });
+
+  it('returns 403 when a partner loses offer visibility before postback conversion', async () => {
+    const affiliate = await createTestAffiliate();
+    const offer = await createTestOffer({ visibilityMode: 'public' });
+    const goal = await createTestOfferGoal(offer.id, {
+      revenue: 500,
+      payout: 250,
+    });
+    const clickId = await createTrackedClick(offer.id, affiliate.id);
+
+    await hideAffiliateFromOffer({
+      offerId: offer.id,
+      affiliateId: affiliate.id,
+      reason: 'stage19-hidden-before-postback',
+    });
+
+    const response = await sendPostback({
+      token: offer.postbackToken,
+      clickId,
+      goalId: goal.id,
+      status: 'approved',
+      externalTransactionId: 'hidden-after-click',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(response.body.error.details).toMatchObject({
+      clickId,
+      offerId: offer.id,
+      affiliateId: affiliate.id,
+      denyReason: 'hidden',
+    });
+
+    const conversion = await findByClickIdAndGoalId(clickId, goal.id);
+    expect(conversion).toBeNull();
   });
 
   it('checks limits on the selected goal, allows other goals on the same click, and still blocks true duplicates', async () => {

@@ -12,6 +12,11 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, 'tests/setup/test-env.js')],
     testTimeout: 30000,
     hookTimeout: 30000,
-    threads: false,
+    fileParallelism: false,
+    maxWorkers: 1,
+    minWorkers: 1,
+    sequence: {
+      concurrent: false,
+    },
   },
 });

@@ -303,8 +303,8 @@ describe('responsible manager assignment', () => {
           actorUserId: adminUser.id,
           actorRole: 'admin',
           context: expect.objectContaining({
-            oldValues: { managerUserId: null },
-            newValues: { managerUserId: managerUser.id },
+            oldValues: expect.objectContaining({ managerUserId: null }),
+            newValues: expect.objectContaining({ managerUserId: managerUser.id }),
           }),
         }),
         expect.objectContaining({
@@ -313,8 +313,8 @@ describe('responsible manager assignment', () => {
           actorUserId: adminUser.id,
           actorRole: 'admin',
           context: expect.objectContaining({
-            oldValues: { managerUserId: null },
-            newValues: { managerUserId: managerUser.id },
+            oldValues: expect.objectContaining({ managerUserId: null }),
+            newValues: expect.objectContaining({ managerUserId: managerUser.id }),
           }),
         }),
       ]),

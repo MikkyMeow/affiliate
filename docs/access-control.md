@@ -1,58 +1,122 @@
-# Access control overview
+# Access Control Overview
 
-This project now exposes three user-facing roles with strict separation of concerns:
+This document reflects the current implemented behavior.
 
-- **Admin** — manages advertisers, affiliates, offers, finances and moderation from the internal dashboard. Admins never use advertiser self-service routes.
-- **Affiliate** — works with `/api/v1/partner/**` read/write endpoints and legacy `/api/v1/profile`. Affiliates cannot see advertiser data.
-- **Advertiser** — self-registers through `/api/v1/auth/register` with `accountType=advertiser`, receives a read-only cabinet and can only access their own profile, offers, stats, postbacks and finance summaries.
+## Roles
 
-Advertisers are no longer created manually from the admin UI; admins only observe and edit existing entities.
+- `admin` can access the internal dashboard and all operational data.
+- `manager` can access the internal dashboard and operational entities, but cannot manage managers or registration questionnaires.
+- `affiliate` uses the partner cabinet and partner-safe APIs only.
+- `advertiser` uses the advertiser cabinet and advertiser-safe APIs only.
 
-## Registration and auth
+## Authentication
 
 | Endpoint | Allowed actors | Notes |
 | --- | --- | --- |
-| `POST /api/v1/auth/register` | Public | `accountType` must be `affiliate` or `advertiser`. Duplicate email -> `409`, invalid type -> `400`. Automatically links affiliate/advertiser entities. |
-| `POST /api/v1/auth/login` | Public | Returns JWT + refresh token and role payload. |
-| `GET /api/v1/auth/me` | Authenticated (`admin`, `affiliate`, `advertiser`) | Returns user profile with role-specific linkage. Missing token -> `401`. |
-| `GET /api/v1/profile` | Authenticated (`affiliate`, `admin`) | Legacy profile endpoint for affiliate/admin panels. Advertisers should use `/api/v1/auth/me`. |
+| `POST /api/v1/auth/register` | Public | `accountType` must be `affiliate` or `advertiser`. Managers are not self-registered. |
+| `POST /api/v1/auth/login` | Public | Returns JWT auth package for all existing roles. |
+| `GET /api/v1/auth/me` | Authenticated | Returns `user`, role-specific `profile`, and questionnaire completion status. |
+| `POST /api/v1/auth/change-password` | Authenticated | Available for all authenticated roles through the common auth flow. |
 
-## Advertiser self-service (read-only)
+## Admin Area
 
-All endpoints require `Authorization: Bearer <advertiser token>`. Missing token -> `401`, wrong role -> `403`. Foreign entity IDs return `404`.
+Internal dashboard access is allowed for `admin` and `manager`.
 
-| Endpoint | Description | Scope / protections |
-| --- | --- | --- |
-| `GET /api/v1/advertiser/profile` | Basic advertiser entity info | Only advertiser linked to the token may access. |
-| `GET /api/v1/advertiser/offers` | Paginated list of owned offers | Lists only offers tied to advertiserId. No write endpoints exist, and `/api/v1/offers/**` is blocked for advertisers with `403`. |
-| `GET /api/v1/advertiser/offers/:id` | Offer details | Returns `404` if offer belongs to another advertiser. |
-| `GET /api/v1/advertiser/stats/summary`<br>`GET /advertiser/stats/breakdowns` | Performance aggregates | Accept `dateFrom/dateTo`. `offerId`/`affiliateId` filters are rejected with `400`. |
-| `GET /api/v1/advertiser/stats/offers/:offerId` | Offer-focused stats | `404` when `offerId` is not owned. |
-| `GET /api/v1/advertiser/postbacks`<br>`GET /api/v1/advertiser/postbacks/:postbackId` | Postback logs | Restricted to advertiser's own offers; filtering by foreign `offerId` yields `404`. |
-| `GET /api/v1/advertiser/finance/summary`<br>`GET /api/v1/advertiser/finance/breakdowns` | Finance view | Supports own offer/date filters; foreign `offerId` -> `404`. Returns zeros for empty history. |
+- Shared admin-area routes use `authorizeAdminArea`.
+- Frontend navigation for managers hides `Анкеты` and `Менеджеры`.
+- Managers still see dashboard, clicks, conversions, adjustments, advertisers, partners, offers, and audit logs.
 
-## Admin-only APIs
+Important route groups:
 
-Admin tokens are required; advertisers/affiliates receive `403`, unauthenticated clients receive `401`.
+- `GET|POST|PATCH /api/v1/advertisers/**`
+- `GET|POST|PATCH /api/v1/affiliates/**`
+- `GET|POST|PATCH /api/v1/offers/**`
+- `GET /api/v1/clicks`
+- `GET|PATCH|POST /api/v1/conversions/**`
+- `GET|POST /api/v1/admin/stats/**`
+- `GET|POST /api/v1/admin/offers/**`
+- `GET|POST /api/v1/admin/adjustments/**`
+- `GET /api/v1/admin/audit-logs/**`
 
-| Endpoint | Description |
-| --- | --- |
-| `GET /api/v1/advertisers`, `GET /api/v1/advertisers/:id`, `PATCH /api/v1/advertisers/:id` | List and edit advertisers. Manual creation route removed. |
-| `GET|POST|PATCH /api/v1/offers/**` | Offer CRUD + goal/geo/access helpers. |
-| `GET /api/v1/admin/stats/totals` | Internal stats dashboard feed. |
-| `POST /api/v1/admin/offer-requests/:id/decision` | Moderates affiliate access requests. |
-| `GET /api/v1/affiliates/**`, `/api/v1/users/**`, `/api/v1/clicks`, `/api/v1/conversions` | Other admin maintenance APIs (unchanged). |
+## Admin-Only Operations
 
-## Affiliate-only APIs
+The following write scopes are restricted to `admin` only:
 
-| Endpoint | Description |
-| --- | --- |
-| `GET /api/v1/partner/offers`, `/partner/offers/:id`, `/partner/offers/:id/request` | Affiliate offer catalog, requests and access control. |
-| `GET /api/v1/partner/stats`, `/partner/clicks`, `/partner/conversions` | Affiliate reporting. |
-| `/track/click`, `/track/postback` | Public tracking endpoints (no auth). |
+- manager management via `/api/v1/admin/managers`:
+  list, create, update, reset password, delete
+- questionnaire management via `/api/v1/admin/questionnaires`
+- advertiser creation via `POST /api/v1/advertisers`
+- advertiser password reset via `POST /api/v1/advertisers/:id/reset-password`
 
-## UX summary
+Managers can still use:
 
-- Admin dashboard still lists advertisers but no longer displays “Создать рекламодателя” or any CTA into the deprecated flow.
-- Advertisers always log into `/advertiser/**` routes and see read-only controls; there are no write buttons or links to admin tools.
-- Deep links like `/advertiser/offers/:id` and `/advertiser/stats/offers/:offerId` continue to work after refresh and respect the isolation guarantees above.
+- `GET /api/v1/admin/managers/lookup`
+- manager assignment endpoints for partners and advertisers
+- offer availability/access/hide operations
+- goals and partner-specific goal rates
+- adjustments preview/apply
+- conversion status changes
+- stats recalculation
+- audit-log read endpoints
+
+## Partner Cabinet
+
+Partner routes require `role=affiliate`.
+
+- `/api/v1/partner/profile` and `PATCH /api/v1/partner/profile` remain available before questionnaire completion.
+- `/api/v1/me/questionnaire` and `PUT /api/v1/me/questionnaire/answers` remain available before questionnaire completion.
+- Reporting and offer routes under `/api/v1/partner/**` are gated after profile access by questionnaire completion middleware.
+- Logout is not blocked by questionnaire gating.
+
+Partner visibility and privacy rules:
+
+- Partners never access admin pages or admin APIs.
+- Partners never access audit logs.
+- Partners never receive advertiser information in partner offer responses.
+- Partners never receive admin-only notes, postback token, revenue, or profit.
+- On `on_request` offers without access, partners get a restricted description-only view and can request access.
+- `private` offers are hidden until access is granted.
+- Hidden-partner override has the highest priority and hides the offer even if it is public or manually granted.
+
+## Advertiser Cabinet
+
+Advertiser routes require `role=advertiser`.
+
+- Advertisers can self-register through auth registration.
+- Admins can also create advertisers and reveal a temporary password once.
+- `/api/v1/advertiser/profile` and `PATCH /api/v1/advertiser/profile` remain available before questionnaire completion.
+- `/api/v1/me/questionnaire` and `PUT /api/v1/me/questionnaire/answers` remain available before questionnaire completion.
+- Offer, stats, postback-log, and finance routes under `/api/v1/advertiser/**` require questionnaire completion.
+
+Advertiser privacy rules:
+
+- Advertisers cannot access admin pages or admin APIs.
+- Advertisers cannot access audit logs.
+- Advertisers only see their own advertiser-safe data.
+- Advertisers do not receive internal notes or other admin-only fields.
+
+## Public Tracking
+
+Tracking endpoints are public:
+
+- `GET /track/click`
+- `GET /track/postback`
+- `POST /track/postback`
+
+Security rules:
+
+- Postback authentication is based on the offer postback token plus request signature.
+- The postback token is server-side only and must never be exposed to partner-facing browser code.
+- Postbacks must provide a valid `goalId`/`goal_id` for the offer resolved by the token.
+- Revenue, payout, and profit are resolved on the backend and are not trusted from request payloads.
+
+## Questionnaire Gate
+
+Questionnaire completion is enforced for partner and advertiser operational routes, but not for:
+
+- login/logout
+- auth refresh
+- own profile routes
+- own questionnaire routes
+
+This prevents redirect loops and allows users to complete or edit their questionnaire after registration.

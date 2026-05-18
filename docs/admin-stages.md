@@ -46,7 +46,9 @@ Where the current project already has a route family or naming convention, agent
 - Manual records must be marked with `source = "manual"` or exact equivalent.
 - Manual records must be linked to an adjustment batch.
 - Manual records must include `createdBy`.
-- Manual records must be auditable and cancellable.
+- Manual records must be auditable.
+- Manual conversions do not require synthetic clicks.
+- Batch cancellation and CSV export are intentionally not implemented in the current scope.
 
 ### 2.4 Test data
 
@@ -54,6 +56,7 @@ Where the current project already has a route family or naming convention, agent
 - Test data must not affect money.
 - Test data must not affect main statistics.
 - Test events may be visible in logs or diagnostics.
+- Playwright E2E and seed/demo data are intentionally deferred to a later stage.
 
 ### 2.5 Access control
 
@@ -80,13 +83,21 @@ All critical operations must be written to audit log:
 - hiding offer from partner.
 - goal creation/update/delete.
 - revenue/payout changes.
-- postback test execution.
+- postback test execution, if that flow is implemented.
 - CSV upload.
 - CSV apply.
-- CSV batch cancellation.
 - conversion status changes.
 - questionnaire creation/update.
 - questionnaire submission.
+- Temporary passwords, auth secrets, cookies, and raw CSV contents must never be stored in plaintext audit payloads.
+
+### 2.7 Validation constraints
+
+- Saved views and default role filters are intentionally not implemented.
+- Stats recalculation is manual only; there is no scheduled job in the current scope.
+- Managers and admins may view audit logs; partners and advertisers may not.
+- Partners never see advertiser information in partner offer APIs or pages.
+- Postbacks use one offer token plus required `goalId`/`goal_id`.
 
 ## 3. Required Implementation Order
 
@@ -1829,74 +1840,41 @@ Updated `goal` object with calculated `profit`.
 
 #### Goal
 
-Add a minimal working advertiser-facing JS postback generator to the offer page without moving rate logic to frontend.
+Add a minimal working operator-facing postback example generator to the offer page without moving any financial logic to frontend code.
 
-#### Backend tasks
+#### Current implemented behavior
 
-- Reuse the existing postback endpoint route family under `/track/postback`.
-- Extend the postback contract so backend can resolve:
-  - offer public/internal identifier
-  - goal public/internal identifier
-  - click ID or tracking token when available
-  - status
-  - external transaction/order ID when available
-- Keep rate, revenue, payout, and profit resolution on backend goal settings only.
-- Do not expose unnecessary secrets in generated JS.
-- Keep generator output extendable for later custom macro mapping.
-
-#### Frontend tasks
-
-- Add generator section on admin offer page.
-- Generate one JS function per goal.
-- Add copy-to-clipboard button.
-- Add a short instruction block for advertiser-side developer.
-- Explain macros in UI:
-  - macro means placeholder provided by advertiser-side system, for example `{click_id}`, `{order_id}`, `{status}`
-  - MVP uses default placeholder names
-  - future versions may support custom macro mapping
-
-#### Database migrations
-
-- Add nullable backend storage for `externalTransactionId` on the conversion or postback-log side if that field does not already exist.
-- Do not add storage for this data in frontend state.
+- The admin/manager offer page shows one example request per goal.
+- All examples reuse the same offer postback token and change only `goalId`/`goal_id`.
+- The token authenticates the offer. `goalId` selects the goal inside that offer.
+- Financial values are never accepted as truth from the request payload.
+- The postback token is a server-side secret and must never be exposed in partner-facing browser code.
 
 #### API contracts
 
-Generated JS example format:
+##### Endpoints
 
-```js
-async function sendSaleGoalPostback() {
-  await fetch("https://platform.example.com/track/postback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      token: "{postback_token}",
-      offerId: "#O18",
-      goalId: "4dad1b15-2d7f-455e-b00e-a6029a9e14c5",
-      clickId: "{click_id}",
-      status: "{status}",
-      externalTransactionId: "{order_id}",
-      signature: "{signature}"
-    })
-  });
-}
-```
-
-##### Endpoint
-`POST /track/postback`
+- `POST /track/postback`
+- `GET /track/postback`
 
 ##### Auth
-Public endpoint. Signature/token validation is required.
 
-##### Query Params
-None.
+Public endpoints. Signature and token validation are required.
 
-##### Request Body
+##### Request fields
+
+- `token`: required offer postback token
+- `clickId` or `click_id`: required click identifier
+- `goalId` or `goal_id`: required goal UUID
+- `status`: optional, defaults to `pending`
+- `externalTransactionId`: optional
+- `signature` or `sig`: required
+
+##### Example request shape
 
 ```json
 {
   "token": "postback-token",
-  "offerId": "#O18",
   "goalId": "4dad1b15-2d7f-455e-b00e-a6029a9e14c5",
   "clickId": "clk_123",
   "status": "approved",
@@ -1905,49 +1883,24 @@ None.
 }
 ```
 
-##### Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "clickId": "clk_123",
-    "status": "approved"
-  },
-  "meta": null
-}
-```
-
 ##### Validation Rules
 
-- `token` required.
-- `goalId` required.
-- `status` required.
-- `signature` required.
-- At least one of `clickId` or tracking token alias must be present when supported by the offer.
-- Backend resolves revenue and payout from goal settings only.
-- Request body money fields must be ignored for financial truth.
-
-##### Error Cases
-
-- `400 VALIDATION_ERROR`
-- `401 INVALID_POSTBACK_TOKEN`
-- `404 NOT_FOUND`
-- `409 DUPLICATE_CONVERSION`
+- one token per offer
+- `goalId` is required
+- the goal must belong to the token-resolved offer
+- the click must belong to the same offer
+- backend resolves revenue, payout, and profit from goal settings and partner-specific overrides
+- request `revenue`, `payout`, `profit`, and legacy `payoutRub` inputs are not authoritative for stored money
 
 #### Tests
 
-- Generator rendering test per goal.
-- Contract validation tests for new postback fields.
-- Security test proving frontend does not inject money values into financial calculations.
-- Copy button smoke test if UI test coverage exists.
+- Postback contract validation tests cover required `goalId`, wrong-offer goal rejection, goal snapshots, partner-specific rates, and goal-level limits.
 
 #### DoD
 
-- Offer page shows generated JS snippets per goal.
-- Generated JS targets the platform postback endpoint.
-- Macros are documented for advertiser developers.
-- Backend remains the only source of truth for rates and totals.
+- Offer page shows per-goal postback examples for operators.
+- Postback examples document goal selection without moving money logic to frontend.
+- Backend remains the only source of truth for money and limits.
 
 #### Open Questions
 
@@ -2488,353 +2441,94 @@ None.
 
 Add `Adjustments` workflow for manual CSV ingestion that participates in statistics and payouts and stays fully auditable.
 
-#### Backend tasks
+#### Current implemented behavior
 
-- Add adjustment batch model.
-- Support CSV upload for:
-  - conversions
-  - payable clicks
-- Support partner modes:
+- `admin` and `manager` can preview and apply CSV adjustments.
+- Supported adjustment types:
+  - `conversions`
+  - `clicks`
+- Supported partner modes:
   - `single_partner`
-  - `per_row_partner`
-- Add preview/validation before apply.
-- Add apply flow.
-- Add batch detail view data.
-- Add batch cancellation flow.
-- Manual conversion must not require synthetic click.
-- Recommended manual conversion model:
-  - `clickId` nullable
-  - stores `affiliateId`, `offerId`, `goalId` directly
-  - `source = "manual"`
-  - `manualAdjustmentBatchId` set
-  - `createdBy` set
-- Manual clicks model:
-  - `source = "manual"`
-  - `affiliateId`
-  - `offerId`
-  - optional `goalId`
-  - `manualAdjustmentBatchId`
-  - `createdBy`
-- On apply and cancel, trigger stats recalculation for affected date range.
-- Write audit events for upload preview, apply, and cancellation.
+  - `per_row`
+- Preview stores a preview batch and row diagnostics, but does not create clicks or conversions.
+- Apply creates manual records from valid rows only.
+- Manual conversions do not require synthetic clicks.
+- Manual conversions and clicks store direct affiliate, offer, and goal relations when available.
+- Manual records use `source = "manual"`, batch linkage, and creator linkage.
+- CSV money values are not used as financial truth for manual conversions.
+- Batch cancellation and CSV export are intentionally not implemented.
 
 #### Frontend tasks
 
-- Add `Adjustments` page in admin.
-- Add controls:
-  - upload type
-  - partner mode
-  - selected partner in single-partner mode
-  - default offer
-  - default goal
-  - default status
-- Add CSV help section with column specs and examples.
-- Add preview grid with row errors and warnings.
-- Add apply confirmation.
-- Add batch list and batch detail views.
-- Add cancellation action for applied batches.
-
-#### Database migrations
-
-- Create `manual_adjustment_batches` table.
-- Add `source`, `manual_adjustment_batch_id`, `created_by`, `is_cancelled`, `cancelled_at` to conversion and manual-click storage where absent.
-- Make conversion `click_id` nullable if not already nullable.
-- Add `external_transaction_id` field to conversions if absent.
-- Add indexes for batch lookup and recalculation.
+- Add `Adjustments` page in admin area.
+- Show CSV help with examples for conversions and clicks.
+- Show preview row validation errors.
+- Show batch history and batch detail view.
+- Show applied result rows and skipped rows from the stored batch detail.
 
 #### API contracts
 
-CSV column specification for conversion upload:
+##### Preview endpoint
 
-- Required for both modes:
-  - `offerId`
-  - `goalId`
-  - `status`
-  - `revenue`
-  - `payout`
-  - `conversionAt`
-- Required only for `per_row_partner`:
-  - `affiliateId`
-- Optional:
-  - `clickId`
-  - `externalTransactionId`
-  - `note`
-
-CSV column specification for payable click upload:
-
-- Required for both modes:
-  - `offerId`
-  - `clickAt`
-  - `payout`
-- Required only for `per_row_partner`:
-  - `affiliateId`
-- Optional:
-  - `goalId`
-  - `clickId`
-  - `externalTransactionId`
-  - `note`
-
-Validation error format:
-
-```json
-{
-  "row": 7,
-  "field": "goalId",
-  "code": "NOT_FOUND",
-  "message": "Goal not found",
-  "value": "#G99"
-}
-```
-
-##### Endpoint
 `POST /api/v1/admin/adjustments/preview`
 
-##### Auth
-`admin`, `manager`
+Request body is JSON, not multipart upload.
 
-##### Query Params
-None.
+Important fields:
 
-##### Request Body
-`multipart/form-data`
+- `type`: `conversions | clicks`
+- `partnerMode`: `single_partner | per_row`
+- `affiliateId`: optional default in `single_partner`
+- `offerId`: optional default
+- `goalId`: optional default
+- `defaultStatus`: optional default
+- `originalFilename`: optional
+- `csvText`: required raw CSV text
 
-Required form fields:
+Preview rules:
 
-- `uploadType`: `conversion | payable_click`
-- `partnerMode`: `single_partner | per_row_partner`
-- `affiliateId`: required in `single_partner` mode
-- `defaultOfferId`: optional
-- `defaultGoalId`: optional
-- `defaultStatus`: optional
-- `file`: CSV file
+- public IDs such as `#P1`, `#A1`, and `#O1` are resolved where supported
+- goal resolution accepts actual implemented identifiers from the parser
+- preview does not create records
+- invalid rows are returned with explicit error reasons
 
-##### Response
+##### Apply endpoint
 
-```json
-{
-  "success": true,
-  "data": {
-    "batchDraftId": "0cb2b353-b014-4437-b304-cd4ef0c7407c",
-    "uploadType": "conversion",
-    "partnerMode": "single_partner",
-    "rowCount": 2,
-    "validRowCount": 1,
-    "invalidRowCount": 1,
-    "rows": [
-      {
-        "row": 1,
-        "valid": true,
-        "normalized": {
-          "affiliateId": "5cb79d78-c7c6-4702-a0d9-3fd727c58650",
-          "offerId": "a44dc597-9cb5-4ad8-9b07-96a0d91a4e28",
-          "goalId": "4dad1b15-2d7f-455e-b00e-a6029a9e14c5",
-          "status": "approved",
-          "revenue": 1000.0,
-          "payout": 700.0,
-          "conversionAt": "2026-05-15T10:00:00.000Z",
-          "clickId": null,
-          "externalTransactionId": "order_555"
-        },
-        "errors": []
-      }
-    ]
-  },
-  "meta": null
-}
-```
+`POST /api/v1/admin/adjustments/:batchId/apply`
 
-##### Validation Rules
+Rules:
 
-- Preview does not write payable records into stats tables.
-- Validation must resolve public IDs and UUIDs.
-- `payout <= revenue` for manual conversions.
+- only previewed batches can be applied
+- apply is idempotent
+- successful apply writes manual clicks and conversions only for valid rows
 
-##### Error Cases
+##### Batch read endpoints
 
-- `400 VALIDATION_ERROR`
-- `413 PAYLOAD_TOO_LARGE` if upload limit is exceeded
+- `GET /api/v1/admin/adjustments/batches`
+- `GET /api/v1/admin/adjustments/batches/:id`
 
-##### Endpoint
-`POST /api/v1/admin/adjustments/batches/:batchId/apply`
+Returned batch status values currently include:
 
-##### Auth
-`admin`, `manager`
-
-##### Query Params
-None.
-
-##### Request Body
-
-```json
-{
-  "confirm": true
-}
-```
-
-##### Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "batch": {
-      "id": "0cb2b353-b014-4437-b304-cd4ef0c7407c",
-      "status": "applied",
-      "uploadType": "conversion",
-      "rowCount": 2,
-      "appliedRowCount": 1,
-      "invalidRowCount": 1,
-      "appliedAt": "2026-05-15T10:00:00.000Z"
-    }
-  },
-  "meta": null
-}
-```
-
-##### Validation Rules
-
-- Only previewed draft batch can be applied.
-- Apply must be idempotent.
-
-##### Error Cases
-
-- `400 VALIDATION_ERROR`
-- `404 NOT_FOUND`
-- `409 CONFLICT`
-
-##### Endpoint
-`GET /api/v1/admin/adjustments/batches`
-
-##### Auth
-`admin`, `manager`
-
-##### Query Params
-
-- `limit`: number, optional, default `20`
-- `offset`: number, optional, default `0`
-- `status`: `draft | applied | cancelled`, optional
-- `uploadType`: `conversion | payable_click`, optional
-
-##### Request Body
-None.
-
-##### Response
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "0cb2b353-b014-4437-b304-cd4ef0c7407c",
-      "status": "applied",
-      "uploadType": "conversion",
-      "partnerMode": "single_partner",
-      "rowCount": 2,
-      "appliedRowCount": 1,
-      "createdBy": "d2d2e881-40fb-4d78-b05e-8df9b50f55f1",
-      "createdAt": "2026-05-15T10:00:00.000Z",
-      "appliedAt": "2026-05-15T10:05:00.000Z",
-      "cancelledAt": null
-    }
-  ],
-  "meta": {
-    "total": 1,
-    "limit": 20,
-    "offset": 0
-  }
-}
-```
-
-##### Validation Rules
-
-- List returns batches only.
-
-##### Error Cases
-
-- `400 VALIDATION_ERROR`
-
-##### Endpoint
-`GET /api/v1/admin/adjustments/batches/:batchId`
-
-##### Auth
-`admin`, `manager`
-
-##### Query Params
-None.
-
-##### Request Body
-None.
-
-##### Response
-Batch summary plus normalized rows, errors, and apply/cancel state.
-
-##### Validation Rules
-
-- Detail endpoint must return enough data for audit review.
-
-##### Error Cases
-
-- `404 NOT_FOUND`
-
-##### Endpoint
-`POST /api/v1/admin/adjustments/batches/:batchId/cancel`
-
-##### Auth
-`admin`, `manager`
-
-##### Query Params
-None.
-
-##### Request Body
-
-```json
-{
-  "reason": "Operator cancelled batch"
-}
-```
-
-##### Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "batch": {
-      "id": "0cb2b353-b014-4437-b304-cd4ef0c7407c",
-      "status": "cancelled",
-      "cancelledAt": "2026-05-15T10:10:00.000Z"
-    }
-  },
-  "meta": null
-}
-```
-
-##### Validation Rules
-
-- Cancel must logically reverse batch financial/statistical effect.
-- Cancellation must be idempotent.
-
-##### Error Cases
-
-- `404 NOT_FOUND`
-- `409 CONFLICT`
+- `previewed`
+- `applied`
+- `failed`
 
 #### Tests
 
-- CSV parsing and validation tests.
-- Preview-only no-write tests.
-- Apply flow tests.
-- Cancel flow tests.
-- Manual conversion without click ID tests.
-- Recalculation trigger tests.
-- Audit tests.
+- CSV parsing and validation tests
+- preview-no-write tests
+- apply flow tests
+- manual conversion without click ID tests
+- manual stats inclusion tests
+- audit coverage tests
 
 #### DoD
 
-- Admin and manager can preview, apply, inspect, and cancel adjustment batches.
-- Manual conversions and payable clicks participate in payouts and statistics.
-- Test data remains excluded.
+- Admin and manager can preview, apply, and inspect adjustment batches.
+- Manual conversions and manual clicks participate in payouts and statistics.
+- Test data remains excluded from money.
 - Every manual record is linked to a batch and creator.
+- No cancellation or export flow is added in this stage.
 
 #### Open Questions
 
@@ -2957,74 +2651,50 @@ Audit/event history requirement:
 
 Make daily stats deterministic and compatible with normal, manual, cancelled, and test-excluded records.
 
-#### Backend tasks
+#### Current implemented behavior
 
-- Update daily stats logic to account for:
+- Daily stats include:
   - normal clicks
   - normal conversions
   - manual conversions
-  - manual payable clicks
-  - cancelled records
-  - conversion statuses
+  - manual clicks
+  - approved, pending, rejected, and cancelled separation
   - test exclusion
-- Recalculation must be deterministic from source tables.
-- Add recalculation service for date range.
-- Use queue execution for recalculation because BullMQ already exists in the stack.
-- Allow manual trigger from admin scope.
-
-#### Frontend tasks
-
-- Do not add new recalculation UI in this stage.
-- Keep this stage backend-driven and operator-triggered through API or internal tooling.
-
-#### Database migrations
-
-- Extend `daily_stats` schema to store every total required by Stages 14 and 15.
-- Include fields needed for approved, rejected, cancelled, manual, revenue, payout, and profit-related rollup values.
-- Do not create a second parallel daily stats table.
+- Recalculation is deterministic from source tables.
+- Recalculation is manually triggered by `admin` or `manager`.
+- There is no scheduled stats job in the current scope.
 
 #### API contracts
 
-Internal service contract:
+##### Endpoints
 
-`recalculateDailyStats({ dateFrom, dateTo, triggeredByUserId, triggeredByRole, reason })`
+- `GET /api/v1/admin/stats/dashboard`
+- `GET /api/v1/admin/stats/summary`
+- `POST /api/v1/admin/stats/recalculate`
+- `GET /api/v1/admin/stats/totals`
 
-Service guarantees:
-
-- deterministic output for the same committed source data
-- full overwrite of affected daily rollups
-- exclusion of test records
-- inclusion of manual records
-
-##### Endpoint
-`POST /api/v1/admin/stats/recalculate`
-
-##### Auth
-`admin`, `manager`
-
-##### Query Params
-None.
-
-##### Request Body
+##### Recalculation request
 
 ```json
 {
   "dateFrom": "2026-05-01",
   "dateTo": "2026-05-15",
-  "reason": "Adjustment batch apply"
+  "timezone": "UTC"
 }
 ```
 
-##### Response
+##### Recalculation response
 
 ```json
 {
   "success": true,
   "data": {
-    "jobId": "daily-stats-recalc-20260515-1",
-    "status": "queued",
+    "ok": true,
     "dateFrom": "2026-05-01",
-    "dateTo": "2026-05-15"
+    "dateTo": "2026-05-15",
+    "timezone": "UTC",
+    "daysRecalculated": 15,
+    "recalculatedAt": "2026-05-15T10:00:00.000Z"
   },
   "meta": null
 }
@@ -3032,27 +2702,23 @@ None.
 
 ##### Validation Rules
 
-- `dateFrom` and `dateTo` required.
-- `dateFrom <= dateTo`.
-
-##### Error Cases
-
-- `400 VALIDATION_ERROR`
-- `409 CONFLICT` when duplicate recalculation job for same range is already running
+- `dateFrom` and `dateTo` are required
+- recalculation is idempotent for the same committed source data
+- frontend consumes aggregated values from backend and does not aggregate raw click or conversion datasets
 
 #### Tests
 
-- Rollup determinism tests.
-- Financial consistency tests before and after recalculation.
-- Test exclusion tests.
-- Manual inclusion tests.
-- Queue job execution tests.
+- rollup determinism tests
+- financial consistency tests before and after recalculation
+- test exclusion tests
+- manual inclusion tests
+- idempotent recalculation coverage
 
 #### DoD
 
-- Daily stats reflect normal, manual, cancelled, and approved-only payable logic.
+- Daily stats reflect normal, manual, cancelled, pending, and approved-only payable logic.
 - Recalculation works for arbitrary date ranges.
-- Recalculation is deterministic.
+- Recalculation is deterministic and manually triggered.
 
 #### Open Questions
 
@@ -3175,118 +2841,73 @@ Error cases:
 
 Expand audit logging so all critical admin and financial actions are reviewable with old/new values and actor context.
 
-#### Backend tasks
+#### Current implemented behavior
 
-- Expand audit logging coverage for all critical actions from Section 2.6.
-- Standardize audit entry shape:
-  - `actorId`
-  - `actorRole`
-  - `action`
-  - `entityType`
-  - `entityId`
-  - `oldValue`
-  - `newValue`
-  - `createdAt`
-  - `metadata`
-- Keep audit writes inside the same transaction as the business change where possible.
-- Expose admin audit list endpoint.
+- Audit logs are readable by `admin` and `manager`.
+- Partners and advertisers are blocked from audit log APIs and UI.
+- Audit data is read-only through the API.
+- Critical financial, access, questionnaire, and status-changing operations are audited.
+- Sensitive values are redacted from stored payloads:
+  - passwords
+  - temporary passwords
+  - full tokens
+  - auth headers
+  - cookies
+  - raw CSV content
 
 #### Frontend tasks
 
-- Add a minimal admin-only audit log page.
-- Show:
-  - actor
-  - action
-  - entity
-  - timestamp
-  - before/after values
-  - metadata
-- Add filters by entity type, actor, and date range.
-
-#### Database migrations
-
-- Extend existing `audit_events` table if current schema does not already support the required fields.
-- Add indexes for:
-  - `entity_type`
-  - `entity_id`
-  - `actor_user_id`
-  - `created_at`
+- Provide an audit log page in the admin area.
+- Provide per-entity log modal access from object pages where implemented.
+- Show actor, action, entity, timestamp, and structured context.
 
 #### API contracts
 
-##### Endpoint
-`GET /api/v1/admin/audit-log`
+##### Endpoints
+
+- `GET /api/v1/admin/audit-logs`
+- `GET /api/v1/admin/audit-logs/entity/:entityType/:entityId`
 
 ##### Auth
+
 `admin`, `manager`
 
 ##### Query Params
 
-- `entityType`: string, optional
-- `entityId`: UUID or public ID string, optional
-- `actorId`: UUID, optional
-- `dateFrom`: string `YYYY-MM-DD`, optional
-- `dateTo`: string `YYYY-MM-DD`, optional
-- `limit`: number, optional, default `20`
-- `offset`: number, optional, default `0`
+- `search`: optional
+- `action`: optional
+- `entityType`: optional
+- `entityId`: optional
+- `actorId`: optional UUID
+- `dateFrom`: optional `YYYY-MM-DD`
+- `dateTo`: optional `YYYY-MM-DD`
+- `errorOnly`: optional boolean
+- `page`: optional, default `1`
+- `limit`: optional, default `20`
 
-##### Request Body
-None.
+##### Response shape
 
-##### Response
+The list response returns:
 
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "0d0ce48b-f649-48d5-9885-c7ff8e5e1960",
-      "actorId": "d2d2e881-40fb-4d78-b05e-8df9b50f55f1",
-      "actorRole": "manager",
-      "action": "conversion.status_changed",
-      "entityType": "conversion",
-      "entityId": "1be94604-93d6-4c22-a2ae-f0f5f7c4768d",
-      "oldValue": {
-        "status": "approved"
-      },
-      "newValue": {
-        "status": "cancelled"
-      },
-      "metadata": {
-        "reason": "Batch cancelled"
-      },
-      "createdAt": "2026-05-15T10:00:00.000Z"
-    }
-  ],
-  "meta": {
-    "total": 1,
-    "limit": 20,
-    "offset": 0
-  }
-}
-```
-
-##### Validation Rules
-
-- `oldValue` and `newValue` must be structured JSON objects where the action has a before/after diff.
-- `metadata` must hold non-core context only.
-
-##### Error Cases
-
-- `400 VALIDATION_ERROR`
-- `403 FORBIDDEN`
+- `items`
+- `page`
+- `limit`
+- `total`
+- `totalPages`
 
 #### Tests
 
-- Audit write tests for all listed critical actions.
-- Transactional consistency tests where audit and business write occur together.
-- Audit read endpoint tests.
+- audit write tests for critical actions
+- read endpoint tests
+- role restriction tests
+- pagination and filtering tests
+- secret redaction tests
 
 #### DoD
 
 - All critical actions from Section 2.6 create audit entries.
-- Audit entries contain actor, action, entity, old/new values, timestamp, and metadata.
-- Audit data is queryable in admin.
+- Audit entries are queryable in admin and manager tooling.
+- Sensitive values are redacted before persistence.
 
 #### Open Questions
 
@@ -3328,7 +2949,6 @@ Validation scenarios must cover:
 - advertiser
 - offer access
 - postback
-- test postback
 - manual CSV adjustment
 - statistics
 - audit
@@ -3342,18 +2962,19 @@ Required scenario list:
 5. Public, on-request, and private offer visibility behaves correctly.
 6. Goal revenue/payout/profit logic works and profit is backend-derived.
 7. Generated postback JS uses backend goal configuration.
-8. Test postback creates only test data and does not affect stats or money.
+8. If a test conversion flow is used, test records do not affect stats or money.
 9. Manual CSV adjustment updates stats and payouts after apply.
-10. Batch cancellation reverses manual batch effect.
-11. Conversion cancellation updates stats and payout logic.
-12. Dashboard and filtered stats exclude test data and include manual data.
-13. Audit log shows all critical actions with old/new values.
+10. Conversion cancellation updates stats and payout logic.
+11. Dashboard and filtered stats exclude test data and include manual data.
+12. Audit log shows all critical actions with old/new values.
+13. Batch cancellation, CSV export, Playwright E2E, seed/demo data, saved views, and scheduled stats jobs remain out of scope.
 
 #### DoD
 
 - All previous stages are validated together.
 - Admin, manager, partner, and advertiser behavior matches the business rules in this document.
 - Financial totals are backend-authoritative across normal, manual, cancelled, and test scenarios.
+- Documentation reflects the actual implemented behavior, including intentionally deferred items.
 - Final expansion is ready for user review without hidden product decisions by the coding agent.
 
 #### Open Questions

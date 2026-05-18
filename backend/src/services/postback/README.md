@@ -4,6 +4,8 @@
 
 The admin/manager offer page shows one example postback request per goal. Each example reuses the same offer token, sets a different `goal_id`, includes the required fields, and never sends trusted money values from the advertiser side.
 
+The postback token is a server-side secret. It must never be exposed in partner-facing UI, browser JavaScript bundles, or client-side analytics snippets.
+
 ## Request contract
 
 - `token`: required offer postback token.
@@ -11,6 +13,7 @@ The admin/manager offer page shows one example postback request per goal. Each e
 - `goalId` or `goal_id`: required goal UUID. No silent default-goal fallback is used.
 - `status`: optional conversion status, defaults to `pending`.
 - `externalTransactionId`: optional advertiser order/transaction id.
+- `externalId`, `external_id`, `transactionId`, and `transaction_id`: accepted aliases for the same external transaction field.
 - `signature`: required legacy request signature.
 
 Both `POST /track/postback` JSON bodies and `GET /track/postback` query params are supported.
@@ -57,3 +60,7 @@ curl -X POST "https://platform.example.com/track/postback" \
 - Revenue, payout, and profit are calculated on the backend from the selected goal/rate.
 - Request `revenue`, `payout`, and `profit` values are not trusted for conversion finance.
 - Legacy `payoutRub` input may still be present for signature compatibility, but it is not authoritative for stored money.
+- Approved conversions count as confirmed money.
+- Pending conversions count as unconfirmed money.
+- Rejected and cancelled conversions do not count as payable money.
+- Test conversions, if created through a dedicated test flow, must not affect money or main statistics.

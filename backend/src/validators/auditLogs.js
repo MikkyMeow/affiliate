@@ -67,7 +67,7 @@ export function validateAuditLogListQuery(payload = {}) {
     'errorOnly',
   );
   const { dateFrom, dateTo } = validateDateRange(payload, errors);
-  const pagination = validatePagination(payload, {
+  const { pagination, errors: paginationErrors } = validatePagination(payload, {
     defaultLimit: 20,
     maxLimit: 100,
   });
@@ -79,7 +79,7 @@ export function validateAuditLogListQuery(payload = {}) {
     ...entityIdErrors,
     ...actorIdErrors,
     ...errorOnlyErrors,
-    ...pagination.errors,
+    ...paginationErrors,
   );
 
   return {

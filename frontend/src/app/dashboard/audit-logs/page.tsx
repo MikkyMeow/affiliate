@@ -38,18 +38,89 @@ const INITIAL_FILTERS: FilterState = {
   errorOnly: false,
 };
 
+function buildRequestKey(query: AuditLogsQuery) {
+  return JSON.stringify(query);
+}
+
+function AuditLogsResults({
+  accessToken,
+  query,
+}: {
+  accessToken: string;
+  query: AuditLogsQuery;
+}) {
+  const [items, setItems] = useState<AuditLogItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchAuditLogs(accessToken, query)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setItems(response.items);
+        setTotal(response.total);
+        setTotalPages(response.totalPages);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((requestError) => {
+        if (!active) {
+          return;
+        }
+
+        setItems([]);
+        setTotal(0);
+        setTotalPages(0);
+        setError(
+          (requestError as ApiError).message ?? 'Не удалось загрузить audit log',
+        );
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accessToken, query]);
+
+  return (
+    <>
+      {error ? (
+        <div className="mb-4">
+          <InlineAlert variant="error">{error}</InlineAlert>
+        </div>
+      ) : null}
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+        <span>{loading ? 'Загружаем…' : `Всего записей: ${total}`}</span>
+        <span>
+          Страница {query.page ?? 1} из {Math.max(totalPages, 1)}
+        </span>
+      </div>
+
+      <AuditLogTable
+        items={items}
+        loading={loading}
+        error={null}
+        emptyMessage="По выбранным фильтрам логи не найдены."
+      />
+    </>
+  );
+}
+
 export default function AuditLogsPage() {
   const pathname = usePathname();
   const { user, accessToken, loading: authLoading } = useAuth();
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(INITIAL_FILTERS);
-  const [items, setItems] = useState<AuditLogItem[]>([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(DEFAULT_LIMIT);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Audit logs';
@@ -63,16 +134,8 @@ export default function AuditLogsPage() {
     };
   }, [pathname]);
 
-  useEffect(() => {
-    if (authLoading || !accessToken || !canAccessAdminArea(user)) {
-      return;
-    }
-
-    let active = true;
-    setLoading(true);
-    setError(null);
-
-    const query: AuditLogsQuery = {
+  const query = useMemo<AuditLogsQuery>(
+    () => ({
       page,
       limit,
       search: appliedFilters.search,
@@ -83,40 +146,11 @@ export default function AuditLogsPage() {
       dateFrom: appliedFilters.dateFrom,
       dateTo: appliedFilters.dateTo,
       errorOnly: appliedFilters.errorOnly,
-    };
+    }),
+    [appliedFilters, limit, page],
+  );
 
-    fetchAuditLogs(accessToken, query)
-      .then((response) => {
-        if (!active) {
-          return;
-        }
-
-        setItems(response.items);
-        setTotal(response.total);
-        setTotalPages(response.totalPages);
-      })
-      .catch((requestError) => {
-        if (!active) {
-          return;
-        }
-
-        setItems([]);
-        setTotal(0);
-        setTotalPages(0);
-        setError(
-          (requestError as ApiError).message ?? 'Не удалось загрузить audit log',
-        );
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [accessToken, appliedFilters, authLoading, limit, page, user]);
+  const requestKey = useMemo(() => buildRequestKey(query), [query]);
 
   if (authLoading) {
     return (
@@ -296,43 +330,24 @@ export default function AuditLogsPage() {
         </div>
       </section>
 
-      {error ? (
-        <div className="mb-4">
-          <InlineAlert variant="error">{error}</InlineAlert>
-        </div>
-      ) : null}
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-        <span>{loading ? 'Загружаем…' : `Всего записей: ${total}`}</span>
-        <span>
-          Страница {page} из {Math.max(totalPages, 1)}
-        </span>
-      </div>
-
-      <AuditLogTable
-        items={items}
-        loading={loading}
-        error={null}
-        emptyMessage="По выбранным фильтрам логи не найдены."
+      <AuditLogsResults
+        key={requestKey}
+        accessToken={accessToken}
+        query={query}
       />
 
       <div className="mt-6 flex flex-wrap justify-end gap-2">
         <button
           type="button"
           onClick={() => setPage((current) => Math.max(current - 1, 1))}
-          disabled={loading || page <= 1}
+          disabled={page <= 1}
           className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           Назад
         </button>
         <button
           type="button"
-          onClick={() =>
-            setPage((current) =>
-              totalPages > 0 ? Math.min(current + 1, totalPages) : current + 1,
-            )
-          }
-          disabled={loading || (totalPages > 0 && page >= totalPages)}
+          onClick={() => setPage((current) => current + 1)}
           className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           Вперёд

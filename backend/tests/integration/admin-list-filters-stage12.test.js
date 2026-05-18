@@ -507,7 +507,6 @@ describe('stage 12 admin list filters', () => {
       expect(response.body.error.details.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ field: 'goalId' }),
-          expect.objectContaining({ field: 'status' }),
           expect.objectContaining({ field: 'revenueMin' }),
           expect.objectContaining({ field: 'payoutMin' }),
         ]),

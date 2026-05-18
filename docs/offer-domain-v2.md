@@ -1,142 +1,130 @@
 # Offer Domain v2
 
-## 1. Что есть сейчас
+This document reflects the current implemented offer model and partner visibility behavior.
 
-### Таблица `offers`
-| Поле | Описание | Что делаем дальше |
-| --- | --- | --- |
-| `id` | UUID | оставить |
-| `title` | название оффера | оставить |
-| `advertiser_id` | владелец оффера | оставить |
-| `target_url` | URL куда ведём клики | переименовать в `trackingUrl`, добавить `previewUrl` и `fallbackUrl` |
-| `payout_rub` | выплата в рублях | перенести в `OfferGoal.payout` |
-| `status` | `active` \| `inactive` | заменить на `active`/`paused`/`archived` |
-| `postback_token` | токен для приёма постбеков | оставить |
-| `created_at`, `updated_at` | аудитные поля | оставить |
+## Offer Core
 
-Других связанных сущностей нет: payout хранится сразу в `offers`, целей несколько быть не может, таргетинга и списков аффилиатов нет. CRUD и валидаторы подразумевают монолитный оффер — create/update принимают один объект, а partner API просто отдаёт все активные офферы всем аффилиатам. На уровне конверсий `payout_rub` дублируется (значение копируется в момент создания конверсии). Цели, запросы доступа, таргетинг реализованы не были.
+An offer belongs to one advertiser and is managed from the admin area by `admin` and `manager`.
 
-**Ответы на вопросы ревью:**
-- Оффер монолитный объект, дополнительных таблиц для целей/таргетинга нет.
-- `payout` хранится на уровне оффера (`offers.payout_rub`) и копируется в конверсию.
-- Отдельной сущности goal нет.
-- Visibility не настроена: любой affiliate видит все активные офферы (`partner.routes -> listPartnerOffers`).
+Current operational fields include:
 
-## 2. Новая доменная модель
+- advertiser ownership
+- title and description
+- category
+- target URL
+- optional preview URL
+- optional fallback URL
+- status
+- visibility mode
+- targeting strict flag
+- postback token
 
-Ниже фиксируем сущности, которые придётся ввести к следующему этапу.
+Current status values:
 
-### Offer
-| Поле | Тип | Комментарий |
-| --- | --- | --- |
-| `id` | UUID | PK |
-| `advertiserId` | UUID | FK на advertisers |
-| `title` | text | обязательное |
-| `description` | text | markdown/plain, опционально |
-| `trackingUrl` | text | обязательное, то что было `target_url` |
-| `previewUrl` | text | опционально, ссылка для предпросмотра |
-| `fallbackUrl` | text | опционально, куда редиректить при строгом таргетинге |
-| `status` | `active`/`paused`/`archived` | влияет на показ и кэш |
-| `visibilityMode` | `public`/`on_request`/`private` | режим доступности |
-| `targetingStrict` | boolean | переключатель «только визуальный» vs «жёсткий редирект» |
-| `defaultGoalId` | UUID | FK на OfferGoal; null, если goal ещё не выбран |
-| `allowedGeo` | text[] | быстрая реализация на массиве до миграции в таблицу |
-| `deniedGeo` | text[] | аналогично |
-| `createdAt`, `updatedAt` | timestamptz | audit |
-| `postbackToken` | text | без изменений |
+- `active`
+- `paused`
+- `archived`
 
-### OfferGoal
-| Поле | Тип | Комментарий |
-| --- | --- | --- |
-| `id` | UUID | PK |
-| `offerId` | UUID | FK на offers |
-| `name` | text | обязательное |
-| `type` | `CPL`/`CPA`/`CPC` | enum |
-| `revenue` | numeric(12,2) | сколько получаем от рекламодателя |
-| `payout` | numeric(12,2) | сколько платим affiliate |
-| `currency` | char(3) | ISO-4217 |
-| `isDefault` | boolean | не больше одного true на оффер |
-| `isActive` | boolean | нельзя использовать для новых конверсий, если false |
-| `createdAt`, `updatedAt` | timestamptz | audit |
+Legacy `inactive` can still appear in old data paths, but partner access logic treats only active offers as available.
 
-### OfferAffiliateAccess (единая связка)
-| Поле | Тип | Комментарий |
-| --- | --- | --- |
-| `id` | UUID | PK |
-| `offerId` | UUID | FK |
-| `affiliateId` | UUID | FK |
-| `accessType` | `allowed`/`rejected`/`excluded` | поведение, описано ниже |
-| `source` | `manual`/`request_approved`/`request_rejected` | откуда взялась запись |
-| `createdAt`, `updatedAt` | timestamptz | audit |
+## Goals And Rates
 
-### OfferRequest
-| Поле | Тип |
-| --- | --- |
-| `id` | UUID |
-| `offerId` | UUID |
-| `affiliateId` | UUID |
-| `status` | `pending`/`approved`/`rejected` |
-| `message` | text, nullable |
-| `reviewedBy` | UUID, nullable |
-| `reviewedAt` | timestamptz, nullable |
-| `createdAt`, `updatedAt` | timestamptz |
+Offers now use goal-based finance instead of offer-level payout.
 
-### OfferGeoRule (предпочитаем отдельную таблицу)
-| Поле | Тип | Комментарий |
-| --- | --- | --- |
-| `id` | UUID | PK |
-| `offerId` | UUID | FK |
-| `ruleType` | `allow`/`deny` | enum |
-| `countryCode` | char(2) | ISO-3166 alpha-2 |
-| `createdAt` | timestamptz | для аудита |
+Each goal stores:
 
-## 3. Правила поведения
+- `name`
+- `type`
+- `revenue`
+- `payout`
+- backend-derived `profit`
+- default flag
+- optional limit configuration
 
-### VisibilityMode
-- `public`: оффер виден всем аффилиатам, кроме тех, кто в `excluded`.
-- `on_request`: оффер виден в усечённом виде всем, кто не в `excluded`. Можно отправить запрос, после approve запись переезжает в `allowed`, после reject — в `rejected`.
-- `private`: оффер скрыт для всех, кроме тех, кто явно в `allowed`.
+Rules:
 
-### Конфликты списков
-1. `excluded` сильнее любых других записей.
-2. `rejected` сильнее `allowed` (нельзя использовать оффер, пока не удалим запись).
-3. `private` без `allowed` никому не виден.
-4. `on_request` + нет записи = карточка видна частично, можно запросить доступ.
-5. `on_request` + `allowed` = полная карточка, ссылки выдаём.
-6. `on_request` + `rejected` = запросы запрещены.
-7. `public` + `excluded` = оффер скрыт.
+- `payout` cannot exceed `revenue`
+- postbacks must reference a concrete goal with `goalId` or `goal_id`
+- partner-specific goal rates can override base `revenue` and `payout`
+- conversions snapshot the selected goal and resolved money at creation time
+- goal limits are enforced per selected goal, not per whole offer
 
-### Правила целей
-- У оффера минимум одна goal.
-- `name`, `type`, `revenue`, `payout`, `currency` обязательны.
-- Одновременно может быть только одна `isDefault = true`.
-- `isActive = false` запрещает использовать goal в новых кликах/конверсиях; существующие конверсии хранят snapshot (`conversion.goalId`, `conversion.goalName`, ...), реализуем позже.
+## Visibility Model
 
-### Таргетинг
-- `allowedGeo` пустой => разрешены все страны кроме перечисленных в `deniedGeo`.
-- `allowedGeo` не пустой => разрешены только страны из списка.
-- `deniedGeo` всегда выигрывает конфликт.
-- `targetingStrict = false` => ограничение только визуальное (предупреждение аффилиату в UI/листинге).
-- `targetingStrict = true` => при неразрешённом geo редиректим на `fallbackUrl`.
-- Если одна страна одновременно в allow и deny — deny.
+Current visibility modes:
 
-## 4. Контракт и подготовка валидаторов
-- Create/Update offer должны принимать новые поля (`description`, `previewUrl`, `fallbackUrl`, `visibilityMode`, `targetingStrict`, `allowedGeo`, `deniedGeo`, `goals`).
-- Goals передаются массивом объектов `{ id?, name, type, revenue, payout, currency, isDefault, isActive }`.
-- Пока маршруты не используют эти поля — DTO-билдеры в `validators/offers.js` будут разделены: текущее прод-DTO (`dto`) остаётся без изменений, рядом появится `domainDraft` с полной схемой и TODO-меткой, чтобы этап миграций просто переключил `createOffer`/`updateOffer` на новую структуру.
-- Константы для перечислений выносим в `backend/src/constants/offers.js` и используем в валидаторах/сервисах, чтобы не размазывать строки.
+- `public`
+- `on_request`
+- `private`
 
-## 5. Проверка основных кейсов
-- **Кейс 1**: Public + нет записей ⇒ `visibilityMode=public`, `access.list=[]` — виден всем.
-- **Кейс 2**: Public + `excluded` ⇒ `OfferAffiliateAccess` содержит запись → оффер скрыт.
-- **Кейс 3**: On-request + нет записи ⇒ `visibilityMode=on_request`, `access=[]` — виден частично, можно создать `OfferRequest` (`status=pending`).
-- **Кейс 4**: On-request + approved ⇒ запись `accessType=allowed` ⇒ полная выдача.
-- **Кейс 5**: Private + нет allow ⇒ ничего не покажем, пока ручной allow не появится.
-- **Кейс 6**: Три goals ⇒ `OfferGoal` хранит несколько записей, конверсии смогут ссылаться на `goalId` (будущая миграция `conversions.goal_id`).
-- **Кейс 7**: Strict targeting + denied geo ⇒ `targetingStrict=true`, `fallbackUrl` обязателен, `OfferGeoRule`/`deniedGeo` даёт список стран, логика редиректа будет знать куда слать.
+Partner-facing behavior:
 
-## 6. Итог
-- Новые сущности: `OfferGoal`, `OfferAffiliateAccess`, `OfferRequest`, `OfferGeoRule` (+ массивы allow/deny для MVP).
-- Новые поля в offer: `description`, `trackingUrl`, `previewUrl`, `fallbackUrl`, `status(active|paused|archived)`, `visibilityMode`, `targetingStrict`, `defaultGoalId`, `allowedGeo`, `deniedGeo`.
-- Новые enum'ы: `offerStatuses`, `offerVisibilityModes`, `offerAccessTypes`, `offerAccessSources`, `offerRequestStatuses`, `offerGoalTypes`, `offerGeoRuleTypes`.
-- Правила конфликтов и таргетинга зафиксированы, допускаем быстрый старт на массивах со следующим шагом миграций.
+- `public` offers are fully visible unless a hidden override blocks them.
+- `on_request` offers are visible without full access, but only a restricted description-safe view is returned until access is granted.
+- `private` offers are not visible until explicit access is granted.
+
+Priority rules:
+
+1. Hidden partner override wins over everything else.
+2. Explicit exclusion or rejection blocks full access.
+3. Manual allow grants full access for `private` and `on_request`.
+4. `on_request` without access stays visible in restricted mode only.
+
+## Partner-Safe Data
+
+Partner offer APIs intentionally exclude internal and advertiser-facing data.
+
+Partners do not receive:
+
+- advertiser identity
+- postback token
+- revenue
+- profit
+- internal notes
+
+Partners can receive:
+
+- description
+- public offer metadata
+- payout or effective payout from allowed goals
+- access/request state
+- safe visibility status
+
+## Tracking And Postback
+
+Tracking uses:
+
+- `/track/click` to create the click and bind partner plus offer
+- `/track/postback` to create the conversion for a selected goal
+
+Postback rules:
+
+- one offer token authenticates the offer
+- `goalId` or `goal_id` is required
+- the goal must belong to the token-resolved offer
+- the click must belong to the same offer
+- offer visibility is rechecked for the partner before conversion creation
+- backend money values are authoritative
+
+## Manual Adjustments
+
+Manual adjustments participate in the same offer and goal model.
+
+- Manual conversions do not require synthetic clicks.
+- Manual records use `source = "manual"`.
+- Manual conversions store direct `affiliateId`, `offerId`, and `goalId`.
+- Manual clicks and conversions are linked to an adjustment batch and creator.
+- Manual records participate in stats and payouts.
+- Batch cancellation and CSV export are intentionally not implemented in the current scope.
+
+## Stats And Money
+
+Offer-related money rules are shared across dashboard and summary stats:
+
+- approved conversions count as confirmed money
+- pending conversions count as unconfirmed money
+- rejected and cancelled conversions do not count as payable money
+- manual records are included
+- test records are excluded
+
+Stats recalculation is manual through the admin API. There is no scheduled stats job in the current scope.
