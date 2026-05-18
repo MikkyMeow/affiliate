@@ -237,7 +237,7 @@ export function AppNavbar() {
               affiliate
             </Link>
             <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
-              {getRoleBadge(user.role)}
+              {user ? getRoleBadge(user.role) : null}
             </p>
           </div>
 
