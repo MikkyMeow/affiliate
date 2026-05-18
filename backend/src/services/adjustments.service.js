@@ -1711,12 +1711,15 @@ export async function listManualAdjustmentBatches(filter = {}, pagination = {}) 
     filter,
     pagination,
   );
+  const limit = pagination.limit ?? 20;
+  const page = pagination.page ?? 1;
 
   return {
     items,
-    page: pagination.page ?? 1,
-    limit: pagination.limit ?? 20,
+    page,
+    limit,
     total,
+    totalPages: total > 0 ? Math.ceil(total / Math.max(limit, 1)) : 0,
   };
 }
 

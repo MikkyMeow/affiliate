@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
@@ -21,6 +21,8 @@ type ManagersMeta = {
   total: number;
   limit: number;
   offset: number;
+  page?: number;
+  totalPages?: number;
 };
 
 type ManagerFormState = {
@@ -40,6 +42,21 @@ const EMPTY_FORM: ManagerFormState = {
   displayName: '',
   email: '',
 };
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+const SORT_OPTIONS = [
+  { value: 'createdAt:desc', label: 'Newest first' },
+  { value: 'createdAt:asc', label: 'Oldest first' },
+  { value: 'displayName:asc', label: 'Name A-Z' },
+  { value: 'email:asc', label: 'Email A-Z' },
+];
+
+function parsePositiveInteger(
+  value: string | null | undefined,
+  fallback: number,
+) {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 async function copyToClipboard(value: string) {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -64,13 +81,14 @@ async function copyToClipboard(value: string) {
 
 export default function ManagersPage() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, accessToken, loading: authLoading } = useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [meta, setMeta] = useState<ManagersMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState(searchParams?.get('search') ?? '');
   const [createForm, setCreateForm] = useState<ManagerFormState>(EMPTY_FORM);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -93,6 +111,22 @@ export default function ManagersPage() {
       register: `/auth/register?next=${next}`,
     };
   }, [pathname]);
+
+  const page = useMemo(
+    () => parsePositiveInteger(searchParams?.get('page'), 1),
+    [searchParams],
+  );
+  const limit = useMemo(
+    () => parsePositiveInteger(searchParams?.get('limit'), 20),
+    [searchParams],
+  );
+  const sort = searchParams?.get('sort') ?? 'createdAt';
+  const order = searchParams?.get('order') ?? 'desc';
+  const searchQuery = searchParams?.get('search') ?? '';
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
 
   const selectedManager = useMemo(
     () => managers.find((manager) => manager.id === selectedManagerId) ?? null,
@@ -122,8 +156,16 @@ export default function ManagersPage() {
     setError(null);
 
     try {
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('page', String(page));
+      params.set('sort', sort);
+      params.set('order', order);
+      if (searchQuery.trim()) {
+        params.set('search', searchQuery.trim());
+      }
       const response = await apiFetch<Manager[], ManagersMeta>(
-        `/admin/managers?limit=20${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`,
+        `/admin/managers?${params.toString()}`,
         {
           token: accessToken,
           withMeta: true,
@@ -151,7 +193,7 @@ export default function ManagersPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, searchQuery]);
+  }, [accessToken, limit, order, page, searchQuery, sort]);
 
   useEffect(() => {
     if (authLoading || !accessToken || !user || !isAdminRole(user.role)) {

@@ -78,6 +78,8 @@ export async function listManagers(filter, pagination) {
       search: filter.search ?? null,
       limit: pagination.limit,
       offset: pagination.offset,
+      sort: pagination.sort,
+      order: pagination.order,
     },
   );
 }

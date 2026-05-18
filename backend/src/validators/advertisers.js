@@ -1,4 +1,12 @@
 import { validateEmail, validateTelegramValue } from './affiliates.js';
+import {
+  getQueryValue,
+  validateDateRange,
+  validateOrder,
+  validatePagination,
+  validateSearch,
+  validateSort,
+} from '../utils/adminList.js';
 
 const allowedStatuses = new Set(['active', 'inactive']);
 const DEFAULT_LIMIT = 20;
@@ -6,6 +14,14 @@ const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+const ADVERTISER_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  name: 'name',
+  email: 'email',
+  publicId: 'publicId',
+  status: 'status',
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -312,7 +328,38 @@ function validateOffset(value) {
 export function validateAdvertiserListFilters(payload = {}) {
   const errors = [];
   const filter = {};
-  const pagination = {};
+  const { pagination, errors: paginationErrors } = validatePagination(payload, {
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateSearch(
+    getQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateSort(
+    getQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    ADVERTISER_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateOrder(
+    getQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
 
   if (Object.hasOwn(payload, 'status')) {
     const { value: status, errors: statusErrors } = validateAdvertiserStatusFilter(
@@ -352,16 +399,12 @@ export function validateAdvertiserListFilters(payload = {}) {
     }
   }
 
-  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
-  errors.push(...limitErrors);
-  if (typeof limit === 'number') {
-    pagination.limit = limit;
+  const { dateFrom, dateTo } = validateDateRange(payload, errors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
   }
-
-  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
-  errors.push(...offsetErrors);
-  if (typeof offset === 'number') {
-    pagination.offset = offset;
+  if (dateTo) {
+    filter.dateTo = dateTo;
   }
 
   return { filter, pagination, errors };

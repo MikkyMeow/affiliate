@@ -98,7 +98,14 @@ export async function findUserCredentialsById(id, { client } = {}) {
 }
 
 export async function listUsersByRole(
-  { role, search = null, limit = 20, offset = 0 },
+  {
+    role,
+    search = null,
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  },
   { client } = {},
 ) {
   const queryable = getQueryable(client);
@@ -106,6 +113,15 @@ export async function listUsersByRole(
     typeof search === 'string' && search.trim().length > 0
       ? `%${search.trim().toLowerCase()}%`
       : null;
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'u.created_at',
+    updatedAt: 'u.updated_at',
+    displayName: 'u.display_name',
+    email: 'u.email',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   const [itemsResult, countResult] = await Promise.all([
     queryable.query(
@@ -121,7 +137,7 @@ export async function listUsersByRole(
             OR LOWER(u.email) LIKE $2
             OR LOWER(COALESCE(u.display_name, '')) LIKE $2
           )
-        ORDER BY u.created_at DESC, u.id DESC
+        ORDER BY ${sortColumn} ${normalizedOrder}, u.id ${normalizedOrder}
         LIMIT $3
         OFFSET $4;
       `,

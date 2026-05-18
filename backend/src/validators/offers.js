@@ -7,6 +7,14 @@ import {
   OFFER_STATUSES,
   OFFER_VISIBILITY_MODES,
 } from '../constants/offers.js';
+import {
+  getQueryValue,
+  validateDateRange,
+  validateOrder,
+  validatePagination,
+  validateSearch,
+  validateSort,
+} from '../utils/adminList.js';
 
 const allowedStatuses = new Set([
   OFFER_STATUSES.ACTIVE,
@@ -26,6 +34,14 @@ const DEFAULT_OFFSET = 0;
 const DUPLICATE_CLICK_WINDOW_LIMITS = {
   min: 60,
   max: 2592000,
+};
+const OFFER_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  publicId: 'publicId',
+  status: 'status',
+  availability: 'availability',
 };
 
 function buildError(field, message) {
@@ -951,7 +967,40 @@ export function validateUpdateOfferDto(payload) {
 export function validateOfferFilters(payload = {}) {
   const errors = [];
   const filter = {};
-  const pagination = {};
+  const { pagination, errors: paginationErrors } = validatePagination(payload, {
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateSearch(
+    getQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateSort(
+    getQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    OFFER_LIST_SORTS,
+    {
+      defaultValue: 'createdAt',
+    },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateOrder(
+    getQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
 
   if (Object.hasOwn(payload, 'status')) {
     const { value: status, errors: statusErrors } = validateStatus(payload.status);
@@ -961,14 +1010,25 @@ export function validateOfferFilters(payload = {}) {
     }
   }
 
-  if (Object.hasOwn(payload, 'advertiserId')) {
+  if (Object.hasOwn(payload, 'advertiserId') || Object.hasOwn(payload, 'advertiser_id')) {
     const { value: advertiserId, errors: advertiserErrors } = validateUuid(
-      payload.advertiserId,
+      getQueryValue(payload, 'advertiserId', 'advertiser_id'),
       { field: 'advertiserId' },
     );
     errors.push(...advertiserErrors);
     if (advertiserId) {
       filter.advertiserId = advertiserId;
+    }
+  }
+
+  if (Object.hasOwn(payload, 'managerId') || Object.hasOwn(payload, 'manager_id')) {
+    const { value: managerUserId, errors: managerErrors } = validateUuid(
+      getQueryValue(payload, 'managerId', 'manager_id'),
+      { field: 'managerId' },
+    );
+    errors.push(...managerErrors);
+    if (managerUserId) {
+      filter.managerUserId = managerUserId;
     }
   }
 
@@ -1005,16 +1065,12 @@ export function validateOfferFilters(payload = {}) {
     }
   }
 
-  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
-  errors.push(...limitErrors);
-  if (typeof limit === 'number') {
-    pagination.limit = limit;
+  const { dateFrom, dateTo } = validateDateRange(payload, errors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
   }
-
-  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
-  errors.push(...offsetErrors);
-  if (typeof offset === 'number') {
-    pagination.offset = offset;
+  if (dateTo) {
+    filter.dateTo = dateTo;
   }
 
   return { filter, pagination, errors };

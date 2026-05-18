@@ -17,6 +17,7 @@ import {
   updateOffer,
 } from '../services/offers.service.js';
 import { getActorContext } from '../utils/actorContext.js';
+import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
 
@@ -91,11 +92,10 @@ router.get(
       includePostbackToken,
     });
     return sendSuccess(res, items, {
-      meta: {
-        total,
-        limit: pagination.limit,
-        offset: pagination.offset,
-      },
+      meta: buildPaginationMeta(total, pagination, {
+        sort: pagination.sort ?? 'createdAt',
+        order: pagination.order ?? 'desc',
+      }),
     });
   }),
 );

@@ -1,5 +1,9 @@
 import pool from '../db.js';
-import { attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import {
+  attachPublicIds,
+  formatPublicId,
+  PUBLIC_ID_PREFIXES,
+} from '../lib/public-id.js';
 
 const offerRequestFields = `
   id,
@@ -227,4 +231,146 @@ export async function listOfferRequestsForOffer(
       affiliate: affiliates[0],
     };
   });
+}
+
+export async function listAdminOfferRequests(
+  {
+    status,
+    offerId,
+    affiliateId,
+    dateFrom,
+    dateTo,
+    search,
+  } = {},
+  {
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  } = {},
+) {
+  const conditions = [];
+  const params = [];
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'orq.created_at',
+    updatedAt: 'orq.updated_at',
+    status: 'orq.status',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
+
+  if (status) {
+    params.push(status);
+    conditions.push(`orq.status = $${params.length}`);
+  }
+
+  if (offerId) {
+    params.push(offerId);
+    conditions.push(`orq.offer_id = $${params.length}`);
+  }
+
+  if (affiliateId) {
+    params.push(affiliateId);
+    conditions.push(`orq.affiliate_id = $${params.length}`);
+  }
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`orq.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`orq.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        orq.id::text ILIKE ${searchParam}
+        OR LOWER(o.title) LIKE ${searchParam}
+        OR LOWER('#O' || o.public_id_number::text) LIKE ${searchParam}
+        OR LOWER(a.name) LIKE ${searchParam}
+        OR LOWER(a.email) LIKE ${searchParam}
+        OR LOWER('#P' || a.public_id_number::text) LIKE ${searchParam}
+      )
+    `);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const fromClause = `
+    FROM offer_requests AS orq
+    INNER JOIN offers AS o ON o.id = orq.offer_id
+    INNER JOIN affiliates AS a ON a.id = orq.affiliate_id
+  `;
+
+  const totalResult = await pool.query(
+    `
+      SELECT COUNT(*)::int AS count
+      ${fromClause}
+      ${whereClause}
+    `,
+    params,
+  );
+
+  const result = await pool.query(
+    `
+      SELECT
+        orq.id,
+        orq.offer_id AS "offerId",
+        o.public_id_number AS "offerPublicIdNumber",
+        o.title AS "offerName",
+        orq.affiliate_id AS "affiliateId",
+        a.public_id_number AS "affiliatePublicIdNumber",
+        a.name AS "affiliateName",
+        a.email AS "affiliateEmail",
+        orq.status,
+        orq.message,
+        orq.reviewed_by AS "reviewedBy",
+        orq.reviewed_at AS "reviewedAt",
+        orq.created_at AS "createdAt",
+        orq.updated_at AS "updatedAt"
+      ${fromClause}
+      ${whereClause}
+      ORDER BY ${sortColumn} ${normalizedOrder}, orq.id ${normalizedOrder}
+      LIMIT $${params.length + 1}
+      OFFSET $${params.length + 2}
+    `,
+    [...params, limit, offset],
+  );
+
+  return {
+    items: result.rows.map((row) => ({
+      id: row.id,
+      offerId: row.offerId,
+      affiliateId: row.affiliateId,
+      status: row.status,
+      message: row.message ?? null,
+      reviewedBy: row.reviewedBy ?? null,
+      reviewedAt: row.reviewedAt ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      offer: {
+        id: row.offerId,
+        publicId: formatPublicId(
+          PUBLIC_ID_PREFIXES.offer,
+          Number(row.offerPublicIdNumber ?? 0),
+        ),
+        name: row.offerName ?? null,
+      },
+      affiliate: {
+        id: row.affiliateId,
+        publicId: formatPublicId(
+          PUBLIC_ID_PREFIXES.affiliate,
+          Number(row.affiliatePublicIdNumber ?? 0),
+        ),
+        name: row.affiliateName ?? null,
+        email: row.affiliateEmail ?? null,
+      },
+    })),
+    total: totalResult.rows[0]?.count ?? 0,
+  };
 }

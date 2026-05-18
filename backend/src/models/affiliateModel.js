@@ -72,11 +72,34 @@ export async function createAffiliate({
 }
 
 export async function listAffiliates(
-  { status, managerUserId } = {},
-  { limit = 20, offset = 0 } = {},
+  {
+    status,
+    managerUserId,
+    hasTelegram,
+    dateFrom,
+    dateTo,
+    search,
+  } = {},
+  {
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  } = {},
 ) {
   const params = [];
   const conditions = [];
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'a.created_at',
+    updatedAt: 'a.updated_at',
+    name: 'a.name',
+    email: 'a.email',
+    publicId: 'a.public_id_number',
+    status: 'a.status',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   if (status) {
     params.push(status);
@@ -86,6 +109,39 @@ export async function listAffiliates(
   if (managerUserId) {
     params.push(managerUserId);
     conditions.push(`a.manager_user_id = $${params.length}`);
+  }
+
+  if (typeof hasTelegram === 'boolean') {
+    conditions.push(
+      hasTelegram
+        ? `COALESCE(a.telegram, '') <> ''`
+        : `COALESCE(a.telegram, '') = ''`,
+    );
+  }
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`a.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`a.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        LOWER(a.name) LIKE ${searchParam}
+        OR LOWER(a.email) LIKE ${searchParam}
+        OR LOWER(COALESCE(a.telegram, '')) LIKE ${searchParam}
+        OR LOWER('#P' || a.public_id_number::text) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.display_name, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.email, '')) LIKE ${searchParam}
+      )
+    `);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -105,7 +161,7 @@ export async function listAffiliates(
       FROM affiliates AS a
       LEFT JOIN users AS mu ON mu.id = a.manager_user_id
       ${whereClause}
-      ORDER BY a.created_at DESC
+      ORDER BY ${sortColumn} ${normalizedOrder}, a.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,

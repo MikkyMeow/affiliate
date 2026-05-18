@@ -31,6 +31,14 @@ import { trackingFetch } from '@/lib/tracking';
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
+const SORT_OPTIONS = [
+  { value: 'createdAt:desc', label: 'Newest first' },
+  { value: 'createdAt:asc', label: 'Oldest first' },
+  { value: 'updatedAt:desc', label: 'Updated recently' },
+  { value: 'status:asc', label: 'Status A-Z' },
+  { value: 'revenue:desc', label: 'Revenue high-low' },
+  { value: 'payout:desc', label: 'Payout high-low' },
+];
 
 type OfferLookupResponse = {
   id: string;
@@ -55,6 +63,9 @@ type PostbackResponse = {
 };
 
 type ConversionFilterForm = {
+  search: string;
+  sort: string;
+  order: string;
   dateFrom: string;
   dateTo: string;
   offerId: string;
@@ -105,6 +116,9 @@ function buildFormFromSearchParams(
   searchParams: ReadonlyURLSearchParams | null,
 ): ConversionFilterForm {
   return {
+    search: searchParams?.get('search') ?? '',
+    sort: searchParams?.get('sort') ?? 'createdAt',
+    order: searchParams?.get('order') ?? 'desc',
     dateFrom: searchParams?.get('dateFrom') ?? '',
     dateTo: searchParams?.get('dateTo') ?? '',
     offerId: searchParams?.get('offerId') ?? '',
@@ -143,6 +157,9 @@ function buildQueryParamsFromForm(
   }
 
   const entries = [
+    ['search', form.search],
+    ['sort', form.sort],
+    ['order', form.order],
     ['dateFrom', form.dateFrom],
     ['dateTo', form.dateTo],
     ['offerId', form.offerId],
@@ -313,6 +330,9 @@ export default function ConversionsPage() {
     () => ({
       page,
       limit,
+      search: searchParams?.get('search') ?? undefined,
+      sort: searchParams?.get('sort') ?? undefined,
+      order: (searchParams?.get('order') as 'asc' | 'desc' | null) ?? undefined,
       dateFrom: searchParams?.get('dateFrom') ?? undefined,
       dateTo: searchParams?.get('dateTo') ?? undefined,
       offerId: searchParams?.get('offerId') ?? undefined,
@@ -1199,6 +1219,44 @@ export default function ConversionsPage() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 md:col-span-2">
+            Search
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+              placeholder="Conversion ID, click ID, external ID, offer, goal, partner, advertiser"
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            />
+          </label>
+
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Sorting
+            <select
+              value={`${filters.sort}:${filters.order}`}
+              onChange={(event) => {
+                const [sort, order] = event.target.value.split(':');
+                setFilters((current) => ({
+                  ...current,
+                  sort,
+                  order,
+                }));
+              }}
+              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Дата от
             <input

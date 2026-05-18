@@ -4,8 +4,8 @@ import { authorizeAdminArea } from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import { listAdminClicks } from '../services/stats/stats.service.js';
-import { validateClicksListFilters } from '../validators/stats.js';
+import { validateAdminPostbackLogListQuery } from '../validators/postback.js';
+import { listAdminPostbackLogs } from '../services/postback-logs.service.js';
 import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
@@ -16,7 +16,7 @@ router.use(authorizeAdminArea);
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { filter, pagination, errors } = validateClicksListFilters(
+    const { filter, pagination, errors } = validateAdminPostbackLogListQuery(
       req.query ?? {},
     );
 
@@ -29,7 +29,7 @@ router.get(
       );
     }
 
-    const { items, total } = await listAdminClicks(filter, pagination);
+    const { items, total } = await listAdminPostbackLogs(filter, pagination);
 
     return sendSuccess(res, items, {
       meta: buildPaginationMeta(total, pagination, {

@@ -11,6 +11,18 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+const ADJUSTMENT_BATCH_SORTS = new Set([
+  'createdAt',
+  'appliedAt',
+  'type',
+  'status',
+  'originalFilename',
+  'totalRows',
+  'validRows',
+  'invalidRows',
+  'createdRows',
+  'skippedRows',
+]);
 
 function buildError(field, message) {
   return { field, message };
@@ -317,6 +329,35 @@ export function validateAdjustmentBatchesQuery(query = {}) {
   );
   errors.push(...dateToErrors);
 
+  const search = normalizeOptionalString(getValue(query, 'search'));
+  if (search === null) {
+    errors.push(buildError('search', 'search должен быть строкой'));
+  }
+
+  const rawSort = normalizeOptionalString(
+    getValue(query, 'sort', 'sortBy', 'sort_by'),
+  );
+  if (rawSort === null) {
+    errors.push(buildError('sort', 'sort должен быть строкой'));
+  } else if (rawSort !== undefined && !ADJUSTMENT_BATCH_SORTS.has(rawSort)) {
+    errors.push(
+      buildError(
+        'sort',
+        `sort должен быть одним из: ${Array.from(ADJUSTMENT_BATCH_SORTS).join(', ')}`,
+      ),
+    );
+  }
+
+  const rawOrder = normalizeOptionalString(
+    getValue(query, 'order', 'sortOrder', 'sort_order'),
+  );
+  const order = rawOrder?.toLowerCase();
+  if (rawOrder === null) {
+    errors.push(buildError('order', 'order должен быть строкой'));
+  } else if (order !== undefined && order !== 'asc' && order !== 'desc') {
+    errors.push(buildError('order', 'order должен быть asc или desc'));
+  }
+
   const { value: limit, errors: limitErrors } = validateLimit(getValue(query, 'limit'));
   errors.push(...limitErrors);
   const { value: page, errors: pageErrors } = validatePage(getValue(query, 'page'));
@@ -331,6 +372,7 @@ export function validateAdjustmentBatchesQuery(query = {}) {
           createdById: createdById ?? undefined,
           dateFrom: dateFrom ?? undefined,
           dateTo: dateTo ?? undefined,
+          search: search ?? undefined,
         },
     pagination: errors.length
       ? null
@@ -338,6 +380,8 @@ export function validateAdjustmentBatchesQuery(query = {}) {
           limit,
           page,
           offset: (page - 1) * limit,
+          sort: rawSort ?? 'createdAt',
+          order: order ?? 'desc',
         },
     errors,
   };

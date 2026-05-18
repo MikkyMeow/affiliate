@@ -73,11 +73,33 @@ export async function createAdvertiser({
 }
 
 export async function listAdvertisers(
-  { status, managerUserId } = {},
-  { limit = 20, offset = 0 } = {},
+  {
+    status,
+    managerUserId,
+    dateFrom,
+    dateTo,
+    search,
+  } = {},
+  {
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  } = {},
 ) {
   const params = [];
   const conditions = [];
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'adv.created_at',
+    updatedAt: 'adv.updated_at',
+    name: 'adv.name',
+    email: 'u.email',
+    publicId: 'adv.public_id_number',
+    status: 'adv.status',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   if (status) {
     params.push(status);
@@ -87,6 +109,31 @@ export async function listAdvertisers(
   if (managerUserId) {
     params.push(managerUserId);
     conditions.push(`adv.manager_user_id = $${params.length}`);
+  }
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`adv.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`adv.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        LOWER(adv.name) LIKE ${searchParam}
+        OR LOWER(COALESCE(u.email, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(adv.telegram, '')) LIKE ${searchParam}
+        OR LOWER('#A' || adv.public_id_number::text) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.display_name, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.email, '')) LIKE ${searchParam}
+      )
+    `);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -107,7 +154,7 @@ export async function listAdvertisers(
       LEFT JOIN users AS u ON u.id = adv.user_id
       LEFT JOIN users AS mu ON mu.id = adv.manager_user_id
       ${whereClause}
-      ORDER BY adv.created_at DESC
+      ORDER BY ${sortColumn} ${normalizedOrder}, adv.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,

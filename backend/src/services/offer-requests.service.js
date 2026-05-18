@@ -16,6 +16,7 @@ import {
   createOfferRequest,
   findOfferRequestById,
   findPendingOfferRequest,
+  listAdminOfferRequests as listAdminOfferRequestsModel,
   updateOfferRequestReview,
   listOfferRequestsForOffer,
 } from '../models/offerRequests.model.js';
@@ -347,4 +348,8 @@ export async function listPendingOfferRequestsForOffer(offerId) {
   return listOfferRequestsForOffer(offerId, {
     status: OFFER_REQUEST_STATUSES.PENDING,
   });
+}
+
+export async function listAdminOfferRequests(filter = {}, pagination = {}) {
+  return listAdminOfferRequestsModel(filter, pagination);
 }

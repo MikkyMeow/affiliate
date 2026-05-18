@@ -13,25 +13,9 @@ import {
   updateConversionStatus as updateConversionStatusService,
 } from '../services/conversions.service.js';
 import { getActorContext } from '../utils/actorContext.js';
+import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
-
-function buildPaginationMeta(total, pagination) {
-  const limit = pagination.limit ?? 20;
-  const offset = pagination.offset ?? 0;
-  const page =
-    pagination.page ??
-    Math.floor(offset / Math.max(limit, 1)) + 1;
-  const totalPages = total > 0 ? Math.ceil(total / Math.max(limit, 1)) : 1;
-
-  return {
-    total,
-    limit,
-    offset,
-    page,
-    totalPages,
-  };
-}
 
 router.use(authenticate);
 router.use(authorizeAdminArea);
@@ -55,7 +39,10 @@ router.get(
     const { items, total } = await listAdminConversions(filter, pagination);
 
     return sendSuccess(res, items, {
-      meta: buildPaginationMeta(total, pagination),
+      meta: buildPaginationMeta(total, pagination, {
+        sort: pagination.sort ?? 'createdAt',
+        order: pagination.order ?? 'desc',
+      }),
     });
   }),
 );

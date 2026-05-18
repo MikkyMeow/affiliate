@@ -239,14 +239,32 @@ export async function listManualAdjustmentBatches(
     createdById,
     dateFrom,
     dateTo,
+    search,
   } = {},
   {
     limit = 20,
     offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
   } = {},
 ) {
   const conditions = [];
   const params = [];
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'b.created_at',
+    appliedAt: 'b.applied_at',
+    type: 'b.type',
+    status: 'b.status',
+    originalFilename: 'b.original_filename',
+    totalRows: 'b.total_rows',
+    validRows: 'b.valid_rows',
+    invalidRows: 'b.invalid_rows',
+    createdRows: 'b.created_rows',
+    skippedRows: 'b.skipped_rows',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   if (type) {
     params.push(type);
@@ -273,6 +291,19 @@ export async function listManualAdjustmentBatches(
     conditions.push(`b.created_at < ($${params.length}::date + INTERVAL '1 day')`);
   }
 
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        LOWER(COALESCE(b.original_filename, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(u.display_name, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(u.email, '')) LIKE ${searchParam}
+        OR LOWER(b.id::text) LIKE ${searchParam}
+      )
+    `);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const fromClause = `
     FROM manual_adjustment_batches AS b
@@ -293,7 +324,7 @@ export async function listManualAdjustmentBatches(
       SELECT ${batchFields}
       ${fromClause}
       ${whereClause}
-      ORDER BY b.created_at DESC, b.id DESC
+      ORDER BY ${sortColumn} ${normalizedOrder}, b.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
     `,

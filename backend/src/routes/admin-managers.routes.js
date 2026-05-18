@@ -22,6 +22,7 @@ import {
   updateManager,
 } from '../services/managers.service.js';
 import { getActorContext } from '../utils/actorContext.js';
+import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
 
@@ -84,11 +85,10 @@ router.get(
     const { items, total } = await listManagers(filter, pagination);
 
     return sendSuccess(res, items, {
-      meta: {
-        total,
-        limit: pagination.limit,
-        offset: pagination.offset,
-      },
+      meta: buildPaginationMeta(total, pagination, {
+        sort: pagination.sort ?? 'createdAt',
+        order: pagination.order ?? 'desc',
+      }),
     });
   }),
 );

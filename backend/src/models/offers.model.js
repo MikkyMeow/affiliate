@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import { attachPublicId, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const baseOfferColumns = [
   'id',
@@ -21,6 +21,31 @@ const baseOfferColumns = [
 ];
 
 const offerListFields = baseOfferColumns.map((column) => `  ${column}`).join(',\n');
+const adminOfferListFields = `
+  o.id,
+  o.public_id_number AS "publicIdNumber",
+  o.title,
+  o.category,
+  o.advertiser_id AS "advertiserId",
+  o.target_url AS "targetUrl",
+  o.status,
+  o.visibility_mode AS availability,
+  o.visibility_mode AS "visibilityMode",
+  o.targeting_strict AS "targetingStrict",
+  o.fallback_url AS "fallbackUrl",
+  o.preview_url AS "previewUrl",
+  o.allow_duplicate_clicks AS "allowDuplicateClicks",
+  o.duplicate_click_window_seconds AS "duplicateClickWindowSeconds",
+  o.created_at AS "createdAt",
+  o.updated_at AS "updatedAt",
+  adv.id AS "advertiser.id",
+  adv.public_id_number AS "advertiser.publicIdNumber",
+  adv.name AS "advertiser.name"
+`;
+const adminOfferListFieldsWithPostbackToken = `
+${adminOfferListFields},
+  o.postback_token AS "postbackToken"
+`;
 
 const offerDetailFields = `${offerListFields},\n  description`;
 const offerDetailFieldsWithPostbackToken = `${offerDetailFields},\n  postback_token AS "postbackToken"`;
@@ -84,41 +109,102 @@ export async function createOffer({
 }
 
 export async function listOffers(
-  { status, advertiserId, category, availability, visibilityMode } = {},
-  { limit = 20, offset = 0 } = {},
+  {
+    status,
+    advertiserId,
+    managerUserId,
+    category,
+    availability,
+    visibilityMode,
+    search,
+    dateFrom,
+    dateTo,
+  } = {},
+  {
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  } = {},
   { includePostbackToken = false } = {},
 ) {
   const params = [];
   const conditions = [];
-  const fields = includePostbackToken ? offerFieldsWithPostbackToken : offerListFields;
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'o.created_at',
+    updatedAt: 'o.updated_at',
+    title: 'o.title',
+    publicId: 'o.public_id_number',
+    status: 'o.status',
+    availability: 'o.visibility_mode',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
+  const fields = includePostbackToken
+    ? adminOfferListFieldsWithPostbackToken
+    : adminOfferListFields;
 
   if (status) {
     params.push(status);
-    conditions.push(`status = $${params.length}`);
+    conditions.push(`o.status = $${params.length}`);
   }
 
   if (advertiserId) {
     params.push(advertiserId);
-    conditions.push(`advertiser_id = $${params.length}`);
+    conditions.push(`o.advertiser_id = $${params.length}`);
+  }
+
+  if (managerUserId) {
+    params.push(managerUserId);
+    conditions.push(`adv.manager_user_id = $${params.length}`);
   }
 
   if (category) {
     params.push(category);
-    conditions.push(`category = $${params.length}`);
+    conditions.push(`o.category = $${params.length}`);
   }
 
   const resolvedAvailability = availability ?? visibilityMode;
   if (resolvedAvailability) {
     params.push(resolvedAvailability);
-    conditions.push(`visibility_mode = $${params.length}`);
+    conditions.push(`o.visibility_mode = $${params.length}`);
+  }
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`o.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`o.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        LOWER(o.title) LIKE ${searchParam}
+        OR LOWER(COALESCE(o.description, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(adv.name, '')) LIKE ${searchParam}
+        OR LOWER('#O' || o.public_id_number::text) LIKE ${searchParam}
+        OR LOWER('#A' || adv.public_id_number::text) LIKE ${searchParam}
+      )
+    `);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const fromClause = `
+    FROM offers AS o
+    LEFT JOIN advertisers AS adv ON adv.id = o.advertiser_id
+  `;
 
   const totalResult = await pool.query(
     `
       SELECT COUNT(*)::int AS count
-      FROM offers
+      ${fromClause}
       ${whereClause};
     `,
     params,
@@ -127,9 +213,9 @@ export async function listOffers(
   const result = await pool.query(
     `
       SELECT ${fields}
-      FROM offers
+      ${fromClause}
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${sortColumn} ${normalizedOrder}, o.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,
@@ -137,7 +223,49 @@ export async function listOffers(
   );
 
   return {
-    items: attachPublicIds(result.rows, PUBLIC_ID_PREFIXES.offer),
+    items: result.rows.map((row) => {
+      const offer = attachPublicId(
+        {
+          id: row.id,
+          publicIdNumber: row.publicIdNumber,
+          title: row.title,
+          category: row.category ?? null,
+          advertiserId: row.advertiserId ?? null,
+          targetUrl: row.targetUrl,
+          status: row.status,
+          availability: row.availability,
+          visibilityMode: row.visibilityMode,
+          targetingStrict: row.targetingStrict,
+          fallbackUrl: row.fallbackUrl ?? null,
+          previewUrl: row.previewUrl ?? null,
+          allowDuplicateClicks: row.allowDuplicateClicks,
+          duplicateClickWindowSeconds: row.duplicateClickWindowSeconds ?? null,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          ...(includePostbackToken
+            ? { postbackToken: row.postbackToken ?? null }
+            : {}),
+        },
+        PUBLIC_ID_PREFIXES.offer,
+      );
+
+      const advertiser =
+        row['advertiser.id'] && row['advertiser.publicIdNumber'] !== undefined
+          ? attachPublicId(
+              {
+                id: row['advertiser.id'],
+                publicIdNumber: row['advertiser.publicIdNumber'],
+                name: row['advertiser.name'] ?? null,
+              },
+              PUBLIC_ID_PREFIXES.advertiser,
+            )
+          : null;
+
+      return {
+        ...offer,
+        advertiser,
+      };
+    }),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }

@@ -3,6 +3,12 @@ import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
 import { RECORD_SOURCES } from '../constants/adjustments.js';
 import { MAX_STATS_RECALC_DAYS } from '../constants/stats.js';
 import { parsePublicIdNumber, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import {
+  getQueryValue as getAdminListQueryValue,
+  validateOrder as validateAdminListOrder,
+  validateSearch as validateAdminListSearch,
+  validateSort as validateAdminListSort,
+} from '../utils/adminList.js';
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -15,6 +21,27 @@ const ADMIN_SUMMARY_GROUP_VALUES = new Set(['partner', 'offer', 'advertiser']);
 const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
 const clickRedirectOutcomes = new Set(CLICK_REDIRECT_OUTCOME_VALUES);
 const conversionSources = new Set(Object.values(RECORD_SOURCES));
+const CLICK_LIST_SORTS = {
+  createdAt: 'createdAt',
+  clickId: 'clickId',
+  countryCode: 'countryCode',
+  redirectOutcome: 'redirectOutcome',
+  offerTitle: 'offerTitle',
+  affiliateName: 'affiliateName',
+  advertiserName: 'advertiserName',
+};
+const CONVERSION_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  status: 'status',
+  externalTransactionId: 'externalTransactionId',
+  revenue: 'revenue',
+  payout: 'payout',
+  offerTitle: 'offerTitle',
+  affiliateName: 'affiliateName',
+  advertiserName: 'advertiserName',
+  goalName: 'goalName',
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -616,6 +643,33 @@ export function validateClicksListFilters(payload = {}) {
   const { pagination, errors: paginationErrors } = validateAdminPagination(payload);
   errors.push(...paginationErrors);
 
+  const { value: search, errors: searchErrors } = validateAdminListSearch(
+    getAdminListQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateAdminListSort(
+    getAdminListQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    CLICK_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateAdminListOrder(
+    getAdminListQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
+
   applyOptionalDateFilters(payload, filter, errors);
   applyCommonEntityFilters(payload, filter, errors);
 
@@ -673,6 +727,33 @@ export function validateConversionsListFilters(payload = {}) {
   const filter = {};
   const { pagination, errors: paginationErrors } = validateAdminPagination(payload);
   errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateAdminListSearch(
+    getAdminListQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateAdminListSort(
+    getAdminListQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    CONVERSION_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateAdminListOrder(
+    getAdminListQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
 
   applyOptionalDateFilters(payload, filter, errors);
   applyCommonEntityFilters(payload, filter, errors);

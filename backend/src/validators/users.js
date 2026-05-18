@@ -1,5 +1,12 @@
 import { ACCOUNT_TYPE_VALUES } from '../constants/accountTypes.js';
 import { validateEmail, validateTelegramValue } from './affiliates.js';
+import {
+  getQueryValue,
+  validateOrder,
+  validatePagination,
+  validateSearch,
+  validateSort,
+} from '../utils/adminList.js';
 
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
@@ -7,6 +14,12 @@ const MIN_PASSWORD_LENGTH = 8;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
+const MANAGER_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  displayName: 'displayName',
+  email: 'email',
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -278,52 +291,45 @@ export function validateUpdateManagerDto(payload) {
 }
 
 export function validateManagerListQuery(payload) {
-  const source = payload ?? {};
   const errors = [];
   const filter = {};
-  let limit = DEFAULT_LIMIT;
-  let offset = DEFAULT_OFFSET;
+  const source = payload ?? {};
+  const { pagination, errors: paginationErrors } = validatePagination(source, {
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
+  errors.push(...paginationErrors);
 
-  if (Object.hasOwn(source, 'search')) {
-    if (source.search === null || source.search === undefined || source.search === '') {
-      filter.search = undefined;
-    } else if (typeof source.search !== 'string') {
-      errors.push(buildError('search', 'search должен быть строкой'));
-    } else if (source.search.trim().length > 0) {
-      filter.search = source.search.trim();
-    }
+  const { value: search, errors: searchErrors } = validateSearch(
+    getQueryValue(source, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
   }
 
-  if (Object.hasOwn(source, 'limit')) {
-    const parsedLimit = parseInteger(source.limit);
-    if (parsedLimit === null || parsedLimit < 1 || parsedLimit > MAX_LIMIT) {
-      errors.push(
-        buildError('limit', `limit должен быть целым числом от 1 до ${MAX_LIMIT}`),
-      );
-    } else {
-      limit = parsedLimit;
-    }
+  const { value: sort, errors: sortErrors } = validateSort(
+    getQueryValue(source, 'sort', 'sortBy', 'sort_by'),
+    MANAGER_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
   }
 
-  if (Object.hasOwn(source, 'offset')) {
-    const parsedOffset = parseInteger(source.offset);
-    if (parsedOffset === null || parsedOffset < 0) {
-      errors.push(buildError('offset', 'offset должен быть целым числом не меньше 0'));
-    } else {
-      offset = parsedOffset;
-    }
-  } else if (Object.hasOwn(source, 'page')) {
-    const parsedPage = parseInteger(source.page);
-    if (parsedPage === null || parsedPage < 1) {
-      errors.push(buildError('page', 'page должен быть целым числом не меньше 1'));
-    } else {
-      offset = (parsedPage - 1) * limit;
-    }
+  const { value: order, errors: orderErrors } = validateOrder(
+    getQueryValue(source, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
   }
 
   return {
     filter,
-    pagination: { limit, offset },
+    pagination,
     errors,
   };
 }

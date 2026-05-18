@@ -59,6 +59,7 @@ const adminClickListFields = `
   c.affiliate_id AS "affiliateId",
   a.public_id_number AS "affiliatePublicIdNumber",
   a.name AS "affiliateName",
+  a.email AS "affiliateEmail",
   adv.id AS "advertiserId",
   adv.public_id_number AS "advertiserPublicIdNumber",
   adv.name AS "advertiserName",
@@ -354,14 +355,30 @@ export async function listAdminClicks(
     sub4,
     sub5,
     ip,
+    search,
   } = {},
-  { limit = 20, offset = 0, order = 'desc' } = {},
+  {
+    limit = 20,
+    offset = 0,
+    order = 'desc',
+    sort = 'createdAt',
+  } = {},
 ) {
   const conditions = [];
   const params = [];
   const normalizedOrder = typeof order === 'string' && order.toLowerCase() === 'asc'
     ? 'ASC'
     : 'DESC';
+  const sortMap = {
+    createdAt: 'c.created_at',
+    clickId: 'c.click_id',
+    countryCode: 'c.country_code',
+    redirectOutcome: 'c.redirect_outcome',
+    offerTitle: 'o.title',
+    affiliateName: 'a.name',
+    advertiserName: 'adv.name',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   if (dateFrom) {
     params.push(dateFrom);
@@ -415,6 +432,29 @@ export async function listAdminClicks(
   addPartialMatchCondition({ value: sub5, column: 'c.sub5', conditions, params });
   addPartialMatchCondition({ value: ip, column: 'c.ip', conditions, params });
 
+  if (search) {
+    params.push(`%${search.trim()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        c.click_id ILIKE ${searchParam}
+        OR o.title ILIKE ${searchParam}
+        OR ('#O' || o.public_id_number::text) ILIKE ${searchParam}
+        OR a.name ILIKE ${searchParam}
+        OR a.email ILIKE ${searchParam}
+        OR ('#P' || a.public_id_number::text) ILIKE ${searchParam}
+        OR COALESCE(adv.name, '') ILIKE ${searchParam}
+        OR ('#A' || adv.public_id_number::text) ILIKE ${searchParam}
+        OR COALESCE(c.sub1, '') ILIKE ${searchParam}
+        OR COALESCE(c.sub2, '') ILIKE ${searchParam}
+        OR COALESCE(c.sub3, '') ILIKE ${searchParam}
+        OR COALESCE(c.sub4, '') ILIKE ${searchParam}
+        OR COALESCE(c.sub5, '') ILIKE ${searchParam}
+        OR COALESCE(c.ip, '') ILIKE ${searchParam}
+      )
+    `);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const fromClause = `
     FROM clicks AS c
@@ -437,7 +477,7 @@ export async function listAdminClicks(
       SELECT ${adminClickListFields}
       ${fromClause}
       ${whereClause}
-      ORDER BY c.created_at ${normalizedOrder}, c.id ${normalizedOrder}
+      ORDER BY ${sortColumn} ${normalizedOrder}, c.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,

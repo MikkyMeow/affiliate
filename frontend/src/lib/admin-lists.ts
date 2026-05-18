@@ -49,6 +49,9 @@ export type TransactionItem = {
 export type TransactionFilters = {
   page?: number;
   limit?: number;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
   dateFrom?: string;
   dateTo?: string;
   offerId?: string;
@@ -94,6 +97,9 @@ export type ConversionItem = {
 export type ConversionFilters = {
   page?: number;
   limit?: number;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
   dateFrom?: string;
   dateTo?: string;
   offerId?: string;
@@ -242,6 +248,9 @@ export function buildTransactionsQuery(filters: TransactionFilters) {
 
   appendDefinedParam(params, 'page', filters.page);
   appendDefinedParam(params, 'limit', filters.limit);
+  appendDefinedParam(params, 'search', filters.search);
+  appendDefinedParam(params, 'sort', filters.sort);
+  appendDefinedParam(params, 'order', filters.order);
   appendDefinedParam(params, 'dateFrom', filters.dateFrom);
   appendDefinedParam(params, 'dateTo', filters.dateTo);
   appendDefinedParam(params, 'offerId', filters.offerId);
@@ -265,6 +274,9 @@ export function buildConversionsQuery(filters: ConversionFilters) {
 
   appendDefinedParam(params, 'page', filters.page);
   appendDefinedParam(params, 'limit', filters.limit);
+  appendDefinedParam(params, 'search', filters.search);
+  appendDefinedParam(params, 'sort', filters.sort);
+  appendDefinedParam(params, 'order', filters.order);
   appendDefinedParam(params, 'dateFrom', filters.dateFrom);
   appendDefinedParam(params, 'dateTo', filters.dateTo);
   appendDefinedParam(params, 'offerId', filters.offerId);
