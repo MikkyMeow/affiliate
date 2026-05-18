@@ -225,19 +225,21 @@ export function AppNavbar() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  if (cabinetMode) {
+  const cabinetUser = user && cabinetMode ? user : null;
+
+  if (cabinetUser) {
     return (
       <>
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-zinc-200 bg-white lg:flex lg:flex-col dark:border-zinc-800 dark:bg-zinc-950">
           <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-800">
             <Link
-              href={getHomePathByRole(user)}
+              href={getHomePathByRole(cabinetUser)}
               className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
             >
               affiliate
             </Link>
             <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
-              {user ? getRoleBadge(user.role) : null}
+              {getRoleBadge(cabinetUser.role)}
             </p>
           </div>
 
@@ -288,14 +290,14 @@ export function AppNavbar() {
                   className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                    {(user.displayName ?? user.email)
+                    {(cabinetUser.displayName ?? cabinetUser.email)
                       .trim()
                       .charAt(0)
                       .toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      {user.displayName ?? user.email}
+                      {cabinetUser.displayName ?? cabinetUser.email}
                     </span>
                     {profilePublicId ? (
                       <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
@@ -307,14 +309,14 @@ export function AppNavbar() {
               ) : (
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                    {(user.displayName ?? user.email)
+                    {(cabinetUser.displayName ?? cabinetUser.email)
                       .trim()
                       .charAt(0)
                       .toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      {user.displayName ?? user.email}
+                      {cabinetUser.displayName ?? cabinetUser.email}
                     </span>
                     {profilePublicId ? (
                       <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
@@ -381,7 +383,7 @@ export function AppNavbar() {
                   {activeNavLabel}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-                  {getRoleBadge(user.role)}
+                  {getRoleBadge(cabinetUser.role)}
                 </p>
               </div>
               <button
@@ -443,14 +445,14 @@ export function AppNavbar() {
                     className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                      {(user.displayName ?? user.email)
+                      {(cabinetUser.displayName ?? cabinetUser.email)
                         .trim()
                         .charAt(0)
                         .toUpperCase()}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                        {user.displayName ?? user.email}
+                        {cabinetUser.displayName ?? cabinetUser.email}
                       </span>
                       {profilePublicId ? (
                         <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
@@ -462,14 +464,14 @@ export function AppNavbar() {
                 ) : (
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                      {(user.displayName ?? user.email)
+                      {(cabinetUser.displayName ?? cabinetUser.email)
                         .trim()
                         .charAt(0)
                         .toUpperCase()}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                        {user.displayName ?? user.email}
+                        {cabinetUser.displayName ?? cabinetUser.email}
                       </span>
                       {profilePublicId ? (
                         <span className="block truncate text-xs text-zinc-500 dark:text-zinc-500">
