@@ -55,6 +55,14 @@ for i in {1..30}; do
   sleep 2
 done
 
+log "Reload infra-proxy to refresh Docker DNS for recreated containers"
+if docker ps --format '{{.Names}}' | grep -qx 'infra-proxy-nginx'; then
+  docker exec infra-proxy-nginx nginx -s reload
+else
+  log "infra-proxy-nginx is not running"
+  exit 1
+fi
+
 log "External health check"
 for i in {1..20}; do
   HTTP_CODE="$(curl -k -s -o /dev/null -w "%{http_code}" https://staging.mikilead.ru/health || true)"
