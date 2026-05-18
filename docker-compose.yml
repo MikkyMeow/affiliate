@@ -93,9 +93,8 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "80:80"
-      - "443:443"
+    # Public 80/443 are owned by ~/infra-proxy.
+    # This nginx is internal only and must not publish host ports.
     volumes:
       - ./services/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
