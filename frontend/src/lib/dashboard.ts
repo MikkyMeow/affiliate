@@ -159,6 +159,30 @@ export function getPreferredTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
+export type TimeZoneOption = {
+  value: string;
+  label: string;
+};
+
+const TIME_ZONE_OPTIONS: TimeZoneOption[] = [
+  { value: 'UTC', label: 'UTC+0 (Лондон, Рейкьявик)' },
+  { value: 'Europe/Kaliningrad', label: 'UTC+2 (Калининград, Киев, Рига)' },
+  { value: 'Europe/Moscow', label: 'UTC+3 (Москва, Санкт-Петербург, Минск)' },
+  { value: 'Europe/Samara', label: 'UTC+4 (Самара, Дубай, Баку)' },
+  { value: 'Asia/Yekaterinburg', label: 'UTC+5 (Екатеринбург, Пермь, Ташкент)' },
+  { value: 'Asia/Omsk', label: 'UTC+6 (Омск, Новосибирск, Бишкек)' },
+  { value: 'Asia/Krasnoyarsk', label: 'UTC+7 (Красноярск, Томск, Бангкок)' },
+  { value: 'Asia/Irkutsk', label: 'UTC+8 (Иркутск, Улан-Удэ, Пекин)' },
+  { value: 'Asia/Yakutsk', label: 'UTC+9 (Якутск, Чита, Токио)' },
+  { value: 'Asia/Vladivostok', label: 'UTC+10 (Владивосток, Хабаровск, Сидней)' },
+  { value: 'Asia/Sakhalin', label: 'UTC+11 (Сахалин, Магадан, Соломоновы Острова)' },
+  { value: 'Asia/Kamchatka', label: 'UTC+12 (Петропавловск-Камчатский, Анадырь, Фиджи)' },
+];
+
+export function getAvailableTimeZones(): TimeZoneOption[] {
+  return TIME_ZONE_OPTIONS;
+}
+
 export function getCalendarDateString(
   date: Date,
   timeZone = getPreferredTimeZone(),

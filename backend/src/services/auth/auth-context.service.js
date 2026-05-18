@@ -10,6 +10,7 @@ function serializeAuthUser(user) {
     id: user.id,
     email: user.email,
     displayName: user.displayName ?? null,
+    timezone: user.timezone ?? null,
     createdAt: user.createdAt ?? null,
     role: user.role,
     affiliateId: user.affiliateId ?? null,

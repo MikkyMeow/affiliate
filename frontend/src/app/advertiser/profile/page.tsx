@@ -68,7 +68,9 @@ export default function AdvertiserProfilePage() {
       setSaveMessage(null);
 
       try {
-        await advertiserApi.updateProfile(accessToken, telegram.trim() || null);
+        await advertiserApi.updateProfile(accessToken, {
+          telegram: telegram.trim() || null,
+        });
         setSaveMessage("Telegram обновлён");
         await loadProfile();
       } catch (err) {

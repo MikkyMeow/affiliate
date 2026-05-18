@@ -282,7 +282,7 @@ export function DashboardMainPageContent() {
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
-    const preferredTimeZone = getPreferredTimeZone();
+    const preferredTimeZone = user?.timezone ?? getPreferredTimeZone();
     setTimezone(preferredTimeZone);
     setSelectedDate((currentDate) => {
       if (currentDate) {
@@ -291,7 +291,7 @@ export function DashboardMainPageContent() {
 
       return getCalendarDateString(new Date(), preferredTimeZone);
     });
-  }, []);
+  }, [user?.timezone]);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -536,57 +536,28 @@ export function DashboardMainPageContent() {
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
-      <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/60 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-400">
-              Admin Main
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Главная
+          </h1>
+          {dashboardUpdatedAt ? (
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Обновлено: {dashboardUpdatedAt}
             </p>
-            <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Главная
-            </h1>
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-              Админский срез за календарный день: транзакции, конверсии,
-              CR, деньги и approve rate без клиентского пересчёта сырого
-              трафика.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_auto]">
-            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Дата
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-              />
-            </label>
-
-            <div className="flex items-end">
-              <div className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
-                <span className="block text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  Timezone
-                </span>
-                <span className="mt-1 block font-medium text-zinc-900 dark:text-zinc-100">
-                  {timezone}
-                </span>
-                {dashboardUpdatedAt ? (
-                  <span className="mt-2 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Updated at {dashboardUpdatedAt}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          ) : null}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="text-sm text-zinc-600 dark:text-zinc-300">
-            Пересчёт использует текущий диапазон сводки, если он выбран. Иначе
-            пересчитывается только выбранный день.
-          </div>
-
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end lg:justify-end">
+          <label className="min-w-[220px] text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Дата
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            />
+          </label>
           <button
             type="button"
             onClick={() => void handleRecalculateStats()}
@@ -600,27 +571,29 @@ export function DashboardMainPageContent() {
             {recalculationLoading ? 'Пересчитываем…' : 'Пересчитать статистику'}
           </button>
         </div>
+      </div>
 
+      <div className="mt-4 overflow-hidden rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/60 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
         {recalculationMessage ? (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
             {recalculationMessage}
           </div>
         ) : null}
 
         {recalculationError ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
             Не удалось пересчитать статистику: {recalculationError}
           </div>
         ) : null}
 
         {loading && !hasLoadedStats ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-5 py-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-300">
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-5 py-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-300">
             Загружаем агрегированную статистику за выбранный день...
           </div>
         ) : null}
 
         {error ? (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
             Не удалось загрузить дашборд: {error}
           </div>
         ) : null}

@@ -7,6 +7,7 @@ import {
   findAdvertiserByUserId,
   updateAdvertiser,
 } from '../models/advertiserModel.js';
+import { updateUserById } from '../models/userModel.js';
 import { writeAuditEvent } from './audit.service.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
@@ -26,6 +27,21 @@ function buildTelegramAuditContext(previousTelegram, nextTelegram) {
   };
 }
 
+function buildTimeZoneAuditContext(previousTimeZone, nextTimeZone) {
+  return {
+    oldValues: {
+      timezone: previousTimeZone ?? null,
+    },
+    newValues: {
+      timezone: nextTimeZone ?? null,
+    },
+    metadata: {
+      updatedFields: ['timezone'],
+      changedBySelf: true,
+    },
+  };
+}
+
 export async function updateOwnProfile(
   user,
   dto,
@@ -33,6 +49,31 @@ export async function updateOwnProfile(
 ) {
   if (!user?.userId || !user?.role) {
     throw new Error('Authenticated user context is required');
+  }
+
+  const nextTimezone = Object.hasOwn(dto, 'timezone') ? dto.timezone : undefined;
+
+  if (nextTimezone !== undefined) {
+    const updatedUser = await updateUserById(user.userId, { timezone: nextTimezone });
+
+    if (!updatedUser) {
+      throw new ApiError(
+        ERROR_CODES.NOT_FOUND,
+        404,
+        'Пользователь не найден',
+        { userId: user.userId },
+      );
+    }
+
+    await writeAuditEvent({
+      entityType: 'user',
+      entityId: user.userId,
+      action: 'timezone_updated',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      context: buildTimeZoneAuditContext(user.timezone, updatedUser.timezone),
+    });
   }
 
   if (user.role === 'affiliate') {
@@ -47,23 +88,27 @@ export async function updateOwnProfile(
       );
     }
 
-    const updatedAffiliate = await updateAffiliate(
-      affiliate.id,
-      { telegram: dto.telegram },
-    );
+    let updatedAffiliate = affiliate;
 
-    await writeAuditEvent({
-      entityType: 'affiliate',
-      entityId: affiliate.id,
-      action: 'telegram_updated',
-      actorUserId: actor?.userId ?? null,
-      actorRole: actor?.role ?? null,
-      requestId,
-      context: buildTelegramAuditContext(
-        affiliate.telegram,
-        updatedAffiliate?.telegram ?? null,
-      ),
-    });
+    if (Object.hasOwn(dto, 'telegram')) {
+      updatedAffiliate = await updateAffiliate(
+        affiliate.id,
+        { telegram: dto.telegram },
+      );
+
+      await writeAuditEvent({
+        entityType: 'affiliate',
+        entityId: affiliate.id,
+        action: 'telegram_updated',
+        actorUserId: actor?.userId ?? null,
+        actorRole: actor?.role ?? null,
+        requestId,
+        context: buildTelegramAuditContext(
+          affiliate.telegram,
+          updatedAffiliate?.telegram ?? null,
+        ),
+      });
+    }
 
     const context = await getAuthContext(user.userId);
     return {
@@ -88,23 +133,27 @@ export async function updateOwnProfile(
       );
     }
 
-    const updatedAdvertiser = await updateAdvertiser(
-      advertiser.id,
-      { telegram: dto.telegram },
-    );
+    let updatedAdvertiser = advertiser;
 
-    await writeAuditEvent({
-      entityType: 'advertiser',
-      entityId: advertiser.id,
-      action: 'telegram_updated',
-      actorUserId: actor?.userId ?? null,
-      actorRole: actor?.role ?? null,
-      requestId,
-      context: buildTelegramAuditContext(
-        advertiser.telegram,
-        updatedAdvertiser?.telegram ?? null,
-      ),
-    });
+    if (Object.hasOwn(dto, 'telegram')) {
+      updatedAdvertiser = await updateAdvertiser(
+        advertiser.id,
+        { telegram: dto.telegram },
+      );
+
+      await writeAuditEvent({
+        entityType: 'advertiser',
+        entityId: advertiser.id,
+        action: 'telegram_updated',
+        actorUserId: actor?.userId ?? null,
+        actorRole: actor?.role ?? null,
+        requestId,
+        context: buildTelegramAuditContext(
+          advertiser.telegram,
+          updatedAdvertiser?.telegram ?? null,
+        ),
+      });
+    }
 
     const context = await getAuthContext(user.userId);
     return {
@@ -113,6 +162,14 @@ export async function updateOwnProfile(
         email: updatedAdvertiser?.email ?? advertiser.email ?? null,
         telegram: updatedAdvertiser?.telegram ?? null,
       },
+      context,
+    };
+  }
+
+  if (user.role === 'admin' || user.role === 'manager') {
+    const context = await getAuthContext(user.userId);
+    return {
+      profile: null,
       context,
     };
   }

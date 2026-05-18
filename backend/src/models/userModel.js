@@ -9,6 +9,7 @@ const userSelectFields = `
   u.email,
   u.display_name AS "displayName",
   u.role,
+  u.timezone AS "timezone",
   u.created_at AS "createdAt",
   u.updated_at AS "updatedAt",
   a.id AS "affiliateId",
@@ -182,6 +183,11 @@ export async function updateUserById(id, fields, { client } = {}) {
   if (Object.hasOwn(fields, 'role')) {
     values.push(fields.role ?? null);
     updates.push(`role = $${values.length}`);
+  }
+
+  if (Object.hasOwn(fields, 'timezone')) {
+    values.push(fields.timezone ?? null);
+    updates.push(`timezone = $${values.length}`);
   }
 
   if (updates.length === 0) {

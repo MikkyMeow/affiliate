@@ -1,5 +1,6 @@
 import { ACCOUNT_TYPE_VALUES } from '../constants/accountTypes.js';
 import { validateEmail, validateTelegramValue } from './affiliates.js';
+import { isValidTimeZone } from '../lib/timezone.js';
 import {
   getQueryValue,
   validateOrder,
@@ -23,6 +24,38 @@ const MANAGER_LIST_SORTS = {
 
 function buildError(field, message) {
   return { field, message };
+}
+
+function validateTimeZoneValue(value, { field = 'timezone' } = {}) {
+  if (value === undefined) {
+    return { value: undefined, errors: [] };
+  }
+
+  if (value === null) {
+    return { value: null, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой, null или опущен`)],
+    };
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return { value: null, errors: [] };
+  }
+
+  if (!isValidTimeZone(trimmed)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Некорректная timezone')],
+    };
+  }
+
+  return { value: trimmed, errors: [] };
 }
 
 function normalizeDisplayName(value) {
@@ -362,18 +395,36 @@ export function validateUpdateProfileDto(payload) {
   const source = payload ?? {};
   const dto = {};
 
-  if (!Object.hasOwn(source, 'telegram')) {
-    errors.push(buildError('telegram', 'telegram обязателен'));
+  if (!Object.hasOwn(source, 'telegram') && !Object.hasOwn(source, 'timezone')) {
+    errors.push(
+      buildError(
+        'profile',
+        'Нужно передать хотя бы одно поле: telegram или timezone',
+      ),
+    );
     return { dto, errors };
   }
 
-  const { value: telegram, errors: telegramErrors } = validateTelegramValue(
-    source.telegram,
-  );
-  errors.push(...telegramErrors);
+  if (Object.hasOwn(source, 'telegram')) {
+    const { value: telegram, errors: telegramErrors } = validateTelegramValue(
+      source.telegram,
+    );
+    errors.push(...telegramErrors);
 
-  if (telegram !== undefined) {
-    dto.telegram = telegram;
+    if (telegram !== undefined) {
+      dto.telegram = telegram;
+    }
+  }
+
+  if (Object.hasOwn(source, 'timezone')) {
+    const { value: timezone, errors: timezoneErrors } = validateTimeZoneValue(
+      source.timezone,
+    );
+    errors.push(...timezoneErrors);
+
+    if (timezone !== undefined) {
+      dto.timezone = timezone;
+    }
   }
 
   return { dto, errors };

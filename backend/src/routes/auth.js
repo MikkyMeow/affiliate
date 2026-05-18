@@ -85,6 +85,7 @@ async function issueAuthPackage(user, res) {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      timezone: user.timezone ?? null,
       createdAt: user.createdAt,
       role: user.role,
       affiliateId,

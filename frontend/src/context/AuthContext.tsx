@@ -52,6 +52,7 @@ export type AuthUser = {
   id: string;
   email: string;
   displayName?: string | null;
+  timezone?: string | null;
   createdAt?: string;
   role: UserRole;
   affiliateId: string | null;

@@ -177,13 +177,16 @@ export const advertiserApi = {
   getProfile: (token: string) =>
     apiFetch<AdvertiserProfile>("/advertiser/profile", { token }),
 
-  updateProfile: (token: string, telegram: string | null) =>
+  updateProfile: (
+    token: string,
+    payload: { telegram?: string | null; timezone?: string | null },
+  ) =>
     apiFetch<{ profile: { id: string; email: string | null; telegram: string | null } }>(
       "/profile",
       {
         method: "PATCH",
         token,
-        body: JSON.stringify({ telegram }),
+        body: JSON.stringify(payload),
       },
     ),
 
