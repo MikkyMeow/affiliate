@@ -1,16 +1,18 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { canAccessAdminArea } from '@/lib/auth/roles';
+import { useEffect, useState } from "react";
+import { DateInput } from "@/components/DateInput";
+import { useToast } from "@/components/toast";
+import { useAuth } from "@/context/AuthContext";
+import { canAccessAdminArea } from "@/lib/auth/roles";
 import {
   getAdminSummary,
   recalculateAdminStats,
   type AdminSummaryGroup,
   type AdminSummaryGroupBy,
   type AdminSummaryResponse,
-} from '@/lib/admin-stats';
-import { apiFetch } from '@/lib/api';
+} from "@/lib/admin-stats";
+import { apiFetch } from "@/lib/api";
 import {
   getCalendarDateString,
   getDashboardStats,
@@ -18,10 +20,10 @@ import {
   type DashboardMetricKey,
   type DashboardStatsResponse,
   type DashboardTotals,
-} from '@/lib/dashboard';
-import { formatCount, formatMoney, formatPercent } from '@/lib/format';
-import { DashboardMetricCard } from './DashboardMetricCard';
-import { DashboardMetricChart } from './DashboardMetricChart';
+} from "@/lib/dashboard";
+import { formatCount, formatMoney, formatPercent } from "@/lib/format";
+import { DashboardMetricCard } from "./DashboardMetricCard";
+import { DashboardMetricChart } from "./DashboardMetricChart";
 
 type MetricDefinition = {
   key: DashboardMetricKey;
@@ -35,7 +37,7 @@ type MetricDefinition = {
 };
 
 type SupplementalMetricDefinition = {
-  key: 'pendingRevenue' | 'pendingPayout' | 'pendingProfit';
+  key: "pendingRevenue" | "pendingPayout" | "pendingProfit";
   label: string;
   description: string;
   accentClassName: string;
@@ -43,83 +45,84 @@ type SupplementalMetricDefinition = {
 
 const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
-    key: 'transactions',
-    label: 'Транзакции',
-    description: 'Все click-события за выбранный календарный день.',
-    chartDescription: 'Почасовое распределение транзакций.',
-    accentClassName: 'text-sky-700 dark:text-sky-300',
-    stroke: '#0284c7',
-    fill: '#38bdf8',
+    key: "transactions",
+    label: "Транзакции",
+    description: "Все click-события за выбранный календарный день.",
+    chartDescription: "Почасовое распределение транзакций.",
+    accentClassName: "text-sky-700 dark:text-sky-300",
+    stroke: "#0284c7",
+    fill: "#38bdf8",
     formatValue: (value) => formatCount(value),
   },
   {
-    key: 'conversions',
-    label: 'Конверсии',
-    description: 'Все нетестовые конверсии за выбранный день.',
-    chartDescription: 'Почасовая динамика конверсий.',
-    accentClassName: 'text-violet-700 dark:text-violet-300',
-    stroke: '#7c3aed',
-    fill: '#a78bfa',
+    key: "conversions",
+    label: "Конверсии",
+    description: "Все нетестовые конверсии за выбранный день.",
+    chartDescription: "Почасовая динамика конверсий.",
+    accentClassName: "text-violet-700 dark:text-violet-300",
+    stroke: "#7c3aed",
+    fill: "#a78bfa",
     formatValue: (value) => formatCount(value),
   },
   {
-    key: 'cr',
-    label: 'CR',
-    description: 'Conversions / clicks * 100, рассчитывается на backend.',
-    chartDescription: 'Почасовой conversion rate.',
-    accentClassName: 'text-cyan-700 dark:text-cyan-300',
-    stroke: '#0891b2',
-    fill: '#22d3ee',
+    key: "cr",
+    label: "CR",
+    description: "Conversions / clicks * 100, рассчитывается на backend.",
+    chartDescription: "Почасовой conversion rate.",
+    accentClassName: "text-cyan-700 dark:text-cyan-300",
+    stroke: "#0891b2",
+    fill: "#22d3ee",
     formatValue: (value) => formatPercent(value),
   },
   {
-    key: 'revenue',
-    label: 'Confirmed Revenue',
-    description: 'Подтверждённый revenue только по approved конверсиям.',
-    chartDescription: 'Почасовой confirmed revenue в RUB.',
-    accentClassName: 'text-emerald-700 dark:text-emerald-300',
-    stroke: '#059669',
-    fill: '#34d399',
+    key: "revenue",
+    label: "Confirmed Revenue",
+    description: "Подтверждённый revenue только по approved конверсиям.",
+    chartDescription: "Почасовой confirmed revenue в RUB.",
+    accentClassName: "text-emerald-700 dark:text-emerald-300",
+    stroke: "#059669",
+    fill: "#34d399",
     formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'payout',
-    label: 'Confirmed Payout',
-    description: 'Подтверждённый payout только по approved конверсиям.',
-    chartDescription: 'Почасовой confirmed payout в RUB.',
-    accentClassName: 'text-amber-700 dark:text-amber-300',
-    stroke: '#d97706',
-    fill: '#fbbf24',
+    key: "payout",
+    label: "Confirmed Payout",
+    description: "Подтверждённый payout только по approved конверсиям.",
+    chartDescription: "Почасовой confirmed payout в RUB.",
+    accentClassName: "text-amber-700 dark:text-amber-300",
+    stroke: "#d97706",
+    fill: "#fbbf24",
     formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'profit',
-    label: 'Confirmed Profit',
-    description: 'Confirmed revenue - confirmed payout, рассчитывается на backend.',
-    chartDescription: 'Почасовой confirmed profit в RUB.',
-    accentClassName: 'text-teal-700 dark:text-teal-300',
-    stroke: '#0f766e',
-    fill: '#2dd4bf',
+    key: "profit",
+    label: "Confirmed Profit",
+    description:
+      "Confirmed revenue - confirmed payout, рассчитывается на backend.",
+    chartDescription: "Почасовой confirmed profit в RUB.",
+    accentClassName: "text-teal-700 dark:text-teal-300",
+    stroke: "#0f766e",
+    fill: "#2dd4bf",
     formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'epc',
-    label: 'EPC',
-    description: 'Revenue / clicks, рассчитывается на backend.',
-    chartDescription: 'Почасовой earnings per click.',
-    accentClassName: 'text-fuchsia-700 dark:text-fuchsia-300',
-    stroke: '#c026d3',
-    fill: '#e879f9',
+    key: "epc",
+    label: "EPC",
+    description: "Revenue / clicks, рассчитывается на backend.",
+    chartDescription: "Почасовой earnings per click.",
+    accentClassName: "text-fuchsia-700 dark:text-fuchsia-300",
+    stroke: "#c026d3",
+    fill: "#e879f9",
     formatValue: (value) => formatMoney(value),
   },
   {
-    key: 'approveRate',
-    label: 'Approve Rate',
-    description: 'Approved conversions / total conversions * 100.',
-    chartDescription: 'Почасовой approve rate.',
-    accentClassName: 'text-rose-700 dark:text-rose-300',
-    stroke: '#e11d48',
-    fill: '#fb7185',
+    key: "approveRate",
+    label: "Approve Rate",
+    description: "Approved conversions / total conversions * 100.",
+    chartDescription: "Почасовой approve rate.",
+    accentClassName: "text-rose-700 dark:text-rose-300",
+    stroke: "#e11d48",
+    fill: "#fb7185",
     formatValue: (value) => formatPercent(value),
   },
 ];
@@ -145,22 +148,22 @@ const EMPTY_TOTALS: DashboardTotals = {
 
 const SUPPLEMENTAL_METRICS: SupplementalMetricDefinition[] = [
   {
-    key: 'pendingRevenue',
-    label: 'Pending revenue',
-    description: 'Pending conversions only.',
-    accentClassName: 'text-sky-700 dark:text-sky-300',
+    key: "pendingRevenue",
+    label: "Pending revenue",
+    description: "Pending conversions only.",
+    accentClassName: "text-sky-700 dark:text-sky-300",
   },
   {
-    key: 'pendingPayout',
-    label: 'Pending payout',
-    description: 'Pending conversions only.',
-    accentClassName: 'text-indigo-700 dark:text-indigo-300',
+    key: "pendingPayout",
+    label: "Pending payout",
+    description: "Pending conversions only.",
+    accentClassName: "text-indigo-700 dark:text-indigo-300",
   },
   {
-    key: 'pendingProfit',
-    label: 'Pending profit',
-    description: 'Pending revenue - pending payout.',
-    accentClassName: 'text-fuchsia-700 dark:text-fuchsia-300',
+    key: "pendingProfit",
+    label: "Pending profit",
+    description: "Pending revenue - pending payout.",
+    accentClassName: "text-fuchsia-700 dark:text-fuchsia-300",
   },
 ];
 
@@ -188,26 +191,26 @@ type SummaryFilterState = {
   offerId: string;
   affiliateId: string;
   advertiserId: string;
-  groupBy: '' | AdminSummaryGroupBy;
+  groupBy: "" | AdminSummaryGroupBy;
 };
 
 const EMPTY_SUMMARY_FILTERS: SummaryFilterState = {
-  dateFrom: '',
-  dateTo: '',
-  offerId: '',
-  affiliateId: '',
-  advertiserId: '',
-  groupBy: '',
+  dateFrom: "",
+  dateTo: "",
+  offerId: "",
+  affiliateId: "",
+  advertiserId: "",
+  groupBy: "",
 };
 
 const GROUP_BY_OPTIONS: Array<{
-  value: '' | AdminSummaryGroupBy;
+  value: "" | AdminSummaryGroupBy;
   label: string;
 }> = [
-  { value: '', label: 'Без группировки' },
-  { value: 'partner', label: 'По партнёру' },
-  { value: 'offer', label: 'По офферу' },
-  { value: 'advertiser', label: 'По рекламодателю' },
+  { value: "", label: "Без группировки" },
+  { value: "partner", label: "По партнёру" },
+  { value: "offer", label: "По офферу" },
+  { value: "advertiser", label: "По рекламодателю" },
 ];
 
 function mapOfferLookup(item: OfferLookupResponse): LookupOption {
@@ -251,21 +254,23 @@ function formatUpdatedAt(value: string, timezone: string) {
     return value;
   }
 
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat("ru-RU", {
     timeZone: timezone,
-    dateStyle: 'short',
-    timeStyle: 'medium',
+    dateStyle: "short",
+    timeStyle: "medium",
   }).format(parsed);
 }
 
 export function DashboardMainPageContent() {
   const { user, accessToken, loading: authLoading } = useAuth();
+  const toast = useToast();
   const canAccess = canAccessAdminArea(user);
-  const [timezone, setTimezone] = useState('UTC');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [timezone, setTimezone] = useState("UTC");
+  const [selectedDate, setSelectedDate] = useState("");
   const [stats, setStats] = useState<DashboardStatsResponse | null>(null);
-  const [summaryFilters, setSummaryFilters] =
-    useState<SummaryFilterState>(EMPTY_SUMMARY_FILTERS);
+  const [summaryFilters, setSummaryFilters] = useState<SummaryFilterState>(
+    EMPTY_SUMMARY_FILTERS,
+  );
   const [summary, setSummary] = useState<AdminSummaryResponse | null>(null);
   const [offers, setOffers] = useState<LookupOption[]>([]);
   const [affiliates, setAffiliates] = useState<LookupOption[]>([]);
@@ -277,8 +282,6 @@ export function DashboardMainPageContent() {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [lookupsError, setLookupsError] = useState<string | null>(null);
   const [recalculationLoading, setRecalculationLoading] = useState(false);
-  const [recalculationError, setRecalculationError] = useState<string | null>(null);
-  const [recalculationMessage, setRecalculationMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
@@ -333,7 +336,7 @@ export function DashboardMainPageContent() {
         const response = await getDashboardStats(accessToken, {
           date: selectedDate,
           timezone,
-          bucket: 'hour',
+          bucket: "hour",
         });
 
         if (cancelled) {
@@ -350,7 +353,7 @@ export function DashboardMainPageContent() {
         setError(
           requestError instanceof Error
             ? requestError.message
-            : 'Не удалось загрузить главную страницу',
+            : "Не удалось загрузить главную страницу",
         );
       } finally {
         if (!cancelled) {
@@ -364,7 +367,15 @@ export function DashboardMainPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, canAccess, refreshVersion, selectedDate, timezone, user]);
+  }, [
+    accessToken,
+    authLoading,
+    canAccess,
+    refreshVersion,
+    selectedDate,
+    timezone,
+    user,
+  ]);
 
   useEffect(() => {
     if (authLoading || !accessToken || !user || !canAccess) {
@@ -376,13 +387,13 @@ export function DashboardMainPageContent() {
     setLookupsError(null);
 
     Promise.allSettled([
-      apiFetch<OfferLookupResponse[]>('/offers?limit=100&offset=0', {
+      apiFetch<OfferLookupResponse[]>("/offers?limit=100&offset=0", {
         token: accessToken,
       }),
-      apiFetch<NamedLookupResponse[]>('/affiliates?limit=100&offset=0', {
+      apiFetch<NamedLookupResponse[]>("/affiliates?limit=100&offset=0", {
         token: accessToken,
       }),
-      apiFetch<NamedLookupResponse[]>('/advertisers?limit=100&offset=0', {
+      apiFetch<NamedLookupResponse[]>("/advertisers?limit=100&offset=0", {
         token: accessToken,
       }),
     ])
@@ -391,15 +402,15 @@ export function DashboardMainPageContent() {
           return;
         }
 
-        if (offersResult.status === 'fulfilled') {
+        if (offersResult.status === "fulfilled") {
           setOffers(offersResult.value.map(mapOfferLookup));
         }
 
-        if (affiliatesResult.status === 'fulfilled') {
+        if (affiliatesResult.status === "fulfilled") {
           setAffiliates(affiliatesResult.value.map(mapNamedLookup));
         }
 
-        if (advertisersResult.status === 'fulfilled') {
+        if (advertisersResult.status === "fulfilled") {
           setAdvertisers(advertisersResult.value.map(mapNamedLookup));
         }
 
@@ -407,10 +418,12 @@ export function DashboardMainPageContent() {
           offersResult,
           affiliatesResult,
           advertisersResult,
-        ].filter((result) => result.status === 'rejected');
+        ].filter((result) => result.status === "rejected");
 
         if (rejected.length > 0) {
-          setLookupsError('Не удалось загрузить один или несколько справочников.');
+          setLookupsError(
+            "Не удалось загрузить один или несколько справочников.",
+          );
         }
       })
       .finally(() => {
@@ -460,7 +473,7 @@ export function DashboardMainPageContent() {
         setSummaryError(
           requestError instanceof Error
             ? requestError.message
-            : 'Не удалось загрузить агрегированную сводку',
+            : "Не удалось загрузить агрегированную сводку",
         );
       } finally {
         if (!cancelled) {
@@ -474,7 +487,15 @@ export function DashboardMainPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authLoading, canAccess, refreshVersion, summaryFilters, timezone, user]);
+  }, [
+    accessToken,
+    authLoading,
+    canAccess,
+    refreshVersion,
+    summaryFilters,
+    timezone,
+    user,
+  ]);
 
   const handleRecalculateStats = async () => {
     if (
@@ -487,8 +508,6 @@ export function DashboardMainPageContent() {
     }
 
     setRecalculationLoading(true);
-    setRecalculationError(null);
-    setRecalculationMessage(null);
 
     try {
       const result = await recalculateAdminStats(accessToken, {
@@ -497,16 +516,20 @@ export function DashboardMainPageContent() {
         timezone,
       });
 
-      setRecalculationMessage(
-        `Статистика пересчитана за ${result.dateFrom} - ${result.dateTo}.`,
-      );
+      toast.success({
+        title: "Статистика пересчитана",
+        description: `Период: ${result.dateFrom} - ${result.dateTo}.`,
+      });
       setRefreshVersion((current) => current + 1);
     } catch (requestError) {
-      setRecalculationError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'Не удалось пересчитать статистику',
-      );
+      toast.error({
+        title: "Не удалось пересчитать статистику",
+        description:
+          requestError instanceof Error
+            ? requestError.message
+            : "Попробуйте повторить позже.",
+        persistent: true,
+      });
     } finally {
       setRecalculationLoading(false);
     }
@@ -522,7 +545,9 @@ export function DashboardMainPageContent() {
   const summaryTotals = summary?.totals ?? EMPTY_TOTALS;
   const summaryGroups = summary?.groups ?? [];
   const hasSummaryData = summary !== null;
-  const isSummaryEmpty = Object.values(summaryTotals).every((value) => value === 0);
+  const isSummaryEmpty = Object.values(summaryTotals).every(
+    (value) => value === 0,
+  );
   const dashboardUpdatedAt = stats?.statsUpdatedAt
     ? formatUpdatedAt(stats.statsUpdatedAt, timezone)
     : null;
@@ -551,10 +576,9 @@ export function DashboardMainPageContent() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end lg:justify-end">
           <label className="min-w-[220px] text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Дата
-            <input
-              type="date"
+            <DateInput
               value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
+              onChange={setSelectedDate}
               className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
@@ -568,35 +592,9 @@ export function DashboardMainPageContent() {
             }
             className="rounded-2xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:border-emerald-200 disabled:bg-emerald-300 dark:border-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:border-emerald-900 dark:disabled:bg-emerald-900/60"
           >
-            {recalculationLoading ? 'Пересчитываем…' : 'Пересчитать статистику'}
+            {recalculationLoading ? "Пересчитываем…" : "Пересчитать статистику"}
           </button>
         </div>
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/60 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
-        {recalculationMessage ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
-            {recalculationMessage}
-          </div>
-        ) : null}
-
-        {recalculationError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-            Не удалось пересчитать статистику: {recalculationError}
-          </div>
-        ) : null}
-
-        {loading && !hasLoadedStats ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-5 py-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-300">
-            Загружаем агрегированную статистику за выбранный день...
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-            Не удалось загрузить дашборд: {error}
-          </div>
-        ) : null}
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -661,13 +659,12 @@ export function DashboardMainPageContent() {
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Дата от
-            <input
-              type="date"
+            <DateInput
               value={summaryFilters.dateFrom}
-              onChange={(event) =>
+              onChange={(value) =>
                 setSummaryFilters((currentFilters) => ({
                   ...currentFilters,
-                  dateFrom: event.target.value,
+                  dateFrom: value,
                 }))
               }
               className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
@@ -676,13 +673,12 @@ export function DashboardMainPageContent() {
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Дата до
-            <input
-              type="date"
+            <DateInput
               value={summaryFilters.dateTo}
-              onChange={(event) =>
+              onChange={(value) =>
                 setSummaryFilters((currentFilters) => ({
                   ...currentFilters,
-                  dateTo: event.target.value,
+                  dateTo: value,
                 }))
               }
               className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
@@ -759,7 +755,7 @@ export function DashboardMainPageContent() {
               onChange={(event) =>
                 setSummaryFilters((currentFilters) => ({
                   ...currentFilters,
-                  groupBy: event.target.value as SummaryFilterState['groupBy'],
+                  groupBy: event.target.value as SummaryFilterState["groupBy"],
                 }))
               }
               className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
@@ -821,7 +817,10 @@ export function DashboardMainPageContent() {
           ))}
         </div>
 
-        {!summaryLoading && !summaryError && hasSummaryData && isSummaryEmpty ? (
+        {!summaryLoading &&
+        !summaryError &&
+        hasSummaryData &&
+        isSummaryEmpty ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
             Нет данных по выбранным фильтрам.
           </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/toast";
 import { getHomePathByRole } from "@/lib/auth/routes";
 
 export default function LoginPage() {
@@ -18,9 +19,9 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, user, loading: authLoading } = useAuth();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const redirectParam = useMemo(() => {
@@ -35,14 +36,18 @@ function LoginPageContent() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       const loggedInUser = await login({ email, password });
       const target = redirectParam ?? getHomePathByRole(loggedInUser);
+      toast.success({ title: "Вход выполнен", description: "Перенаправляем в кабинет." });
       router.push(target);
     } catch (err) {
-      setError((err as Error).message ?? "Не удалось войти");
+      toast.error({
+        title: "Не удалось войти",
+        description: (err as Error).message ?? "Проверьте email и пароль.",
+        persistent: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -90,11 +95,6 @@ function LoginPageContent() {
               className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
           </label>
-          {error ? (
-            <p className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">
-              {error}
-            </p>
-          ) : null}
           <button
             type="submit"
             disabled={loading}

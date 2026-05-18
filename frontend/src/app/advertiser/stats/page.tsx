@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DateInput } from "@/components/DateInput";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -159,22 +160,20 @@ export default function AdvertiserStatsPage() {
       >
         <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Дата от
-          <input
-            type="date"
+          <DateInput
             value={form.dateFrom}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, dateFrom: event.target.value }))
+            onChange={(value) =>
+              setForm((prev) => ({ ...prev, dateFrom: value }))
             }
             className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
         <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Дата до
-          <input
-            type="date"
+          <DateInput
             value={form.dateTo}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, dateTo: event.target.value }))
+            onChange={(value) =>
+              setForm((prev) => ({ ...prev, dateTo: value }))
             }
             className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />

@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/toast";
 import { getHomePathByRole } from "@/lib/auth/routes";
 
 export default function RegisterPage() {
@@ -25,6 +26,7 @@ function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register, user, loading: authLoading } = useAuth();
+  const toast = useToast();
   type RegisterFormState = {
     email: string;
     password: string;
@@ -37,7 +39,6 @@ function RegisterPageContent() {
     name: "",
     accountType: "affiliate",
   });
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const redirectParam = useMemo(() => {
@@ -65,14 +66,18 @@ function RegisterPageContent() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       const registeredUser = await register(form);
       const target = redirectParam ?? getHomePathByRole(registeredUser);
+      toast.success({ title: "Аккаунт создан", description: "Переходим в кабинет." });
       router.push(target);
     } catch (err) {
-      setError((err as Error).message ?? "Не удалось создать аккаунт");
+      toast.error({
+        title: "Не удалось создать аккаунт",
+        description: (err as Error).message ?? "Попробуйте ещё раз.",
+        persistent: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -147,11 +152,6 @@ function RegisterPageContent() {
               className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
           </label>
-          {error ? (
-            <p className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">
-              {error}
-            </p>
-          ) : null}
           <button
             type="submit"
             disabled={loading}

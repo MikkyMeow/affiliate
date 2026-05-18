@@ -71,6 +71,12 @@ const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeStyle: 'short',
 });
 
+const shortDatePartsFormatter = new Intl.DateTimeFormat('ru-RU', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 function parseDate(value?: string | null): Date | null {
   if (!value) {
     return null;
@@ -92,4 +98,40 @@ export function formatDate(value?: string | null): string {
 export function formatDateTime(value?: string | null): string {
   const parsed = parseDate(value);
   return parsed ? dateTimeFormatter.format(parsed) : '—';
+}
+
+export function formatDateInputValue(value?: string | null): string {
+  const parsed = parseDate(value);
+  return parsed ? shortDatePartsFormatter.format(parsed) : '';
+}
+
+export function parseDateInputValue(value: string): string | null {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  const match = normalizedValue.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  const isoValue = `${year}-${month}-${day}`;
+  const parsed = new Date(`${isoValue}T00:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  if (
+    parsed.getFullYear() !== Number(year) ||
+    parsed.getMonth() + 1 !== Number(month) ||
+    parsed.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return isoValue;
 }

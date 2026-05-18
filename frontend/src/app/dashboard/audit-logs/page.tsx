@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuditLogTable } from '@/components/AuditLogTable';
+import { DateInput } from '@/components/DateInput';
 import { InlineAlert } from '@/components/InlineAlert';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -270,22 +271,20 @@ export default function AuditLogsPage() {
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
           Date from
-          <input
-            type="date"
+          <DateInput
             value={filters.dateFrom}
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, dateFrom: event.target.value }))
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, dateFrom: value }))
             }
             className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
           Date to
-          <input
-            type="date"
+          <DateInput
             value={filters.dateTo}
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, dateTo: event.target.value }))
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, dateTo: value }))
             }
             className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />

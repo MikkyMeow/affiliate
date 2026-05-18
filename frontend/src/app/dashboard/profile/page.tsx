@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/toast';
 import { apiFetch } from '@/lib/api';
-import { InlineAlert } from '@/components/InlineAlert';
 import { canAccessAdminArea, getRoleLabel } from '@/lib/auth/roles';
 import { getAvailableTimeZones, getPreferredTimeZone } from '@/lib/dashboard';
 
@@ -21,14 +21,11 @@ const EMPTY_FORM: PasswordFormState = {
 
 export default function DashboardProfilePage() {
   const { user, accessToken, loading: authLoading, refreshProfile } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState<PasswordFormState>(EMPTY_FORM);
   const [timezone, setTimezone] = useState(user?.timezone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [savingTimezone, setSavingTimezone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [timezoneError, setTimezoneError] = useState<string | null>(null);
-  const [timezoneSuccessMessage, setTimezoneSuccessMessage] = useState<string | null>(null);
 
   const roleLabel = useMemo(
     () => (user ? getRoleLabel(user.role) : null),
@@ -48,8 +45,6 @@ export default function DashboardProfilePage() {
     }
 
     setSavingTimezone(true);
-    setTimezoneError(null);
-    setTimezoneSuccessMessage(null);
 
     try {
       await apiFetch('/profile', {
@@ -58,11 +53,14 @@ export default function DashboardProfilePage() {
         body: JSON.stringify({ timezone: timezone || null }),
       });
       await refreshProfile();
-      setTimezoneSuccessMessage('Часовой пояс обновлён.');
+      toast.info({ title: 'Часовой пояс обновлён' });
     } catch (requestError) {
-      setTimezoneError(
-        (requestError as Error).message ?? 'Не удалось обновить часовой пояс',
-      );
+      toast.error({
+        title: 'Не удалось обновить часовой пояс',
+        description:
+          (requestError as Error).message ?? 'Попробуйте повторить позже.',
+        persistent: true,
+      });
     } finally {
       setSavingTimezone(false);
     }
@@ -74,11 +72,11 @@ export default function DashboardProfilePage() {
       return;
     }
 
-    setError(null);
-    setSuccessMessage(null);
-
     if (form.newPassword !== form.confirmPassword) {
-      setError('Подтверждение пароля не совпадает с новым паролем.');
+      toast.warning({
+        title: 'Пароли не совпадают',
+        description: 'Подтверждение пароля должно совпадать с новым паролем.',
+      });
       return;
     }
 
@@ -95,9 +93,14 @@ export default function DashboardProfilePage() {
       });
 
       setForm(EMPTY_FORM);
-      setSuccessMessage('Пароль обновлён.');
+      toast.success({ title: 'Пароль обновлён' });
     } catch (requestError) {
-      setError((requestError as Error).message ?? 'Не удалось обновить пароль');
+      toast.error({
+        title: 'Не удалось обновить пароль',
+        description:
+          (requestError as Error).message ?? 'Попробуйте повторить позже.',
+        persistent: true,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -189,14 +192,6 @@ export default function DashboardProfilePage() {
                   ))}
                 </select>
               </label>
-
-              {timezoneError ? (
-                <InlineAlert variant="error">{timezoneError}</InlineAlert>
-              ) : null}
-              {timezoneSuccessMessage ? (
-                <InlineAlert variant="success">{timezoneSuccessMessage}</InlineAlert>
-              ) : null}
-
               <button
                 type="submit"
                 disabled={savingTimezone}
@@ -258,12 +253,6 @@ export default function DashboardProfilePage() {
                 className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               />
             </label>
-
-            {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
-            {successMessage ? (
-              <InlineAlert variant="success">{successMessage}</InlineAlert>
-            ) : null}
-
             <button
               type="submit"
               disabled={submitting}
