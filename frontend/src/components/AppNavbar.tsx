@@ -82,7 +82,9 @@ export function AppNavbar() {
     }
 
     if (canAccessAdminArea(user)) {
-      return ADMIN_LINKS.filter((link) => !link.adminOnly || isAdminRole(user.role));
+      return ADMIN_LINKS.filter(
+        (link) => !link.adminOnly || isAdminRole(user.role),
+      );
     }
 
     if (user.role === "affiliate") {
@@ -247,28 +249,31 @@ export function AppNavbar() {
 
         <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
           <div className="flex flex-col gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900">
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleThemeToggle}
-                aria-label={
-                  theme === "dark" ? "Переключить на светлую тему" : "Переключить на тёмную тему"
-                }
-                title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
-              >
-                <span aria-hidden="true" className="text-base leading-none">
-                  {theme === "dark" ? "☀" : "☾"}
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleThemeToggle}
+              aria-label={
+                theme === "dark"
+                  ? "Переключить на светлую тему"
+                  : "Переключить на тёмную тему"
+              }
+              title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
+            >
+              <span aria-hidden="true" className="text-base leading-none">
+                {theme === "dark" ? "☀" : "☾"}
+              </span>
+            </button>
             {profileHref ? (
               <Link
                 href={profileHref}
                 className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                  {(user.displayName ?? user.email).trim().charAt(0).toUpperCase()}
+                  {(user.displayName ?? user.email)
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
@@ -284,7 +289,10 @@ export function AppNavbar() {
             ) : (
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                  {(user.displayName ?? user.email).trim().charAt(0).toUpperCase()}
+                  {(user.displayName ?? user.email)
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
