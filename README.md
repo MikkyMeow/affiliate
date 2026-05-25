@@ -35,7 +35,7 @@
    cd backend
    npm run dev
    ```
-   Сервер стартует на `http://localhost:4000`. Проверка БД: `GET http://localhost:4000/api/v1/health`.
+   Сервер стартует на `http://localhost:4000`. PostgreSQL из Docker доступен на host-порту `55432`, Redis на `56379`. Проверка БД: `GET http://localhost:4000/api/v1/health`.
    При запуске backend автоматически применяет все новые миграции БД через `node-pg-migrate`.
 
 2. **Async worker**
