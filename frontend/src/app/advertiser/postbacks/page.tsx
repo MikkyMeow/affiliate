@@ -8,6 +8,9 @@ import {
 } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DateInput } from "@/components/DateInput";
+import { ContextHelpCard } from "@/features/docs/ContextHelpCard";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -147,13 +150,23 @@ export default function AdvertiserPostbacksPage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Postbacks
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Логи postback
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Логи postback
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserPostbacks} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Только просмотр истории отправки. Фильтры помогают сужать выборку.
         </p>
       </header>
+
+      <ContextHelpCard
+        title="Postback должен передавать обязательные поля"
+        description="Postback должен передавать click id, goal и status. Без click id платформа не сможет связать конверсию с партнёром."
+        href={docsHelpLinks.advertiserPostbacks}
+        ctaLabel="Подробнее о postback"
+      />
 
       <form
         onSubmit={handleFilterSubmit}

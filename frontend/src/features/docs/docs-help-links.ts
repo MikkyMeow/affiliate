@@ -1,0 +1,45 @@
+export const docsHelpLinks = {
+  globalDocs: "/docs",
+  glossary: "/docs/guides/glossary",
+  roles: "/docs/roles",
+
+  adminDashboard: "/docs/admin/dashboard",
+  adminAffiliates: "/docs/admin/affiliates",
+  adminAdvertisers: "/docs/admin/advertisers",
+  adminOffers: "/docs/admin/offers",
+  adminOfferGoals: "/docs/admin/offer-goals",
+  adminOfferAccess: "/docs/admin/offer-access",
+  adminGeoTargeting: "/docs/admin/geo-targeting",
+  adminClicks: "/docs/admin/clicks",
+  adminConversions: "/docs/admin/conversions",
+  adminAdjustments: "/docs/admin/adjustments",
+  adminManagers: "/docs/admin/managers",
+  adminQuestionnaires: "/docs/admin/questionnaires",
+  adminAuditLogs: "/docs/admin/audit-logs",
+  adminProfile: "/docs/admin/profile",
+
+  partnerDashboard: "/docs/partner/dashboard",
+  partnerOffers: "/docs/partner/offers",
+  partnerOfferDetail: "/docs/partner/offer-detail",
+  partnerTrackingLinks: "/docs/partner/tracking-links",
+  partnerClicks: "/docs/partner/clicks",
+  partnerConversions: "/docs/partner/conversions",
+  partnerStats: "/docs/partner/stats",
+  partnerQuestionnaire: "/docs/partner/questionnaire",
+  partnerProfile: "/docs/partner/profile",
+
+  advertiserDashboard: "/docs/advertiser/dashboard",
+  advertiserOffers: "/docs/advertiser/offers",
+  advertiserOfferDetail: "/docs/advertiser/offer-detail",
+  advertiserPostbacks: "/docs/advertiser/postbacks",
+  advertiserFinance: "/docs/advertiser/finance",
+  advertiserStats: "/docs/advertiser/stats",
+  advertiserQuestionnaire: "/docs/advertiser/questionnaire",
+  advertiserProfile: "/docs/advertiser/profile",
+
+  quickStartAdmin: "/docs/guides/quick-start-admin",
+  quickStartPartner: "/docs/guides/quick-start-partner",
+  quickStartAdvertiser: "/docs/guides/quick-start-advertiser",
+} as const;
+
+export type DocsHelpLinkKey = keyof typeof docsHelpLinks;

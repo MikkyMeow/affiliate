@@ -2,16 +2,21 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { resolvePublicDocLink } from "@/features/docs/read-public-doc";
+import type { PublicDocHeading } from "@/features/docs/public-docs-utils";
 
 interface PublicMarkdownContentProps {
   markdown: string;
   sourcePath: string;
+  headings?: PublicDocHeading[];
 }
 
 export function PublicMarkdownContent({
   markdown,
   sourcePath,
+  headings = [],
 }: PublicMarkdownContentProps) {
+  let headingIndex = 0;
+
   return (
     <div className="max-w-none text-[15px] leading-7 text-zinc-700 dark:text-zinc-300">
       <ReactMarkdown
@@ -23,12 +28,18 @@ export function PublicMarkdownContent({
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mb-4 mt-10 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 first:mt-0">
+            <h2
+              id={headings[headingIndex++]?.id}
+              className="mb-4 mt-10 scroll-mt-24 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 first:mt-0"
+            >
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mb-3 mt-8 text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+            <h3
+              id={headings[headingIndex++]?.id}
+              className="mb-3 mt-8 scroll-mt-24 text-xl font-semibold text-zinc-950 dark:text-zinc-50"
+            >
               {children}
             </h3>
           ),
@@ -117,8 +128,20 @@ export function PublicMarkdownContent({
                   href={resolvedHref}
                   {...props}
                   className="font-medium text-sky-600 underline decoration-sky-300 underline-offset-4 transition hover:text-sky-500 dark:text-sky-400 dark:decoration-sky-700 dark:hover:text-sky-300"
-                  target={resolvedHref.startsWith("#") ? undefined : "_blank"}
-                  rel={resolvedHref.startsWith("#") ? undefined : "noreferrer"}
+                  target={
+                    resolvedHref.startsWith("#") ||
+                    resolvedHref.startsWith("/docs") ||
+                    resolvedHref.startsWith("/")
+                      ? undefined
+                      : "_blank"
+                  }
+                  rel={
+                    resolvedHref.startsWith("#") ||
+                    resolvedHref.startsWith("/docs") ||
+                    resolvedHref.startsWith("/")
+                      ? undefined
+                      : "noreferrer"
+                  }
                 >
                   {children}
                 </a>

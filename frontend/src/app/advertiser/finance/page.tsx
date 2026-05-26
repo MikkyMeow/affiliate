@@ -7,6 +7,8 @@ import {
 } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateInput } from "@/components/DateInput";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -147,9 +149,12 @@ export default function AdvertiserFinancePage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Финансы
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Финансовая сводка
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Финансовая сводка
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserFinance} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Показатели выплат и revenue. Только чтение, никаких кнопок.
         </p>

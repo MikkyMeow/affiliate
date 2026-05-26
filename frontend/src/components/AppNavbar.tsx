@@ -10,6 +10,7 @@ import {
   getProfilePathForRole,
   isAdminRole,
 } from "@/lib/auth/roles";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { getQuestionnaireRouteByRole } from "@/lib/questionnaires";
 
 const ADMIN_LINKS = [
@@ -40,6 +41,11 @@ const ADVERTISER_LINKS = [
   { href: "/advertiser/postbacks", label: "Postbacks" },
   { href: "/advertiser/finance", label: "Финансы" },
   { href: "/advertiser/profile", label: "Профиль" },
+];
+
+const DOCS_MENU_LINKS = [
+  { href: docsHelpLinks.globalDocs, label: "Документация" },
+  { href: docsHelpLinks.glossary, label: "Глоссарий" },
 ];
 
 const TOP_BUTTON_STYLES =
@@ -326,6 +332,17 @@ export function AppNavbar() {
                   </span>
                 </div>
               )}
+              <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white/80 p-3 dark:border-zinc-800 dark:bg-zinc-950/80">
+                {DOCS_MENU_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-zinc-50"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -481,6 +498,17 @@ export function AppNavbar() {
                     </span>
                   </div>
                 )}
+                <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white/80 p-3 dark:border-zinc-800 dark:bg-zinc-950/80">
+                  {DOCS_MENU_LINKS.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-zinc-50"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={handleLogout}

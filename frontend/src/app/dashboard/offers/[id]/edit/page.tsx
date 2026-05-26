@@ -3,6 +3,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
+import { ContextHelpCard } from '@/features/docs/ContextHelpCard';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { OfferGoalsSection } from './OfferGoalsSection';
@@ -617,7 +620,10 @@ export default function EditOfferPage() {
     <section className="mx-auto min-h-screen max-w-5xl px-6 py-10">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Редактировать оффер</h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Редактировать оффер</h1>
+          <HelpLink href={docsHelpLinks.adminOffers} />
+        </div>
         {offerPublicId && (
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{offerPublicId}</p>
         )}
@@ -908,9 +914,20 @@ export default function EditOfferPage() {
               <p className="text-sm uppercase tracking-wide text-zinc-500">
                 Доступ партнёров
               </p>
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                Гранты доступа
-              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  Гранты доступа
+                </h2>
+                <HelpLink href={docsHelpLinks.adminOfferAccess} />
+              </div>
+            </div>
+            <div className="mb-4">
+              <ContextHelpCard
+                title="Если партнёр не видит оффер"
+                description="Проверьте статус оффера, режим видимости и доступ партнёра."
+                href={docsHelpLinks.adminOfferAccess}
+                ctaLabel="Подробнее о доступах"
+              />
             </div>
             <div className="flex flex-col gap-3">
               <select
@@ -1063,6 +1080,12 @@ export default function EditOfferPage() {
       {offerId && (
         <div className="mt-10 space-y-8">
           <OfferStatsSection offerId={offerId} token={accessToken} />
+          <ContextHelpCard
+            title="GEO влияет на доступность трафика"
+            description="Проверьте allow/deny rules и strict targeting, если оффер недоступен для части стран."
+            href={docsHelpLinks.adminGeoTargeting}
+            ctaLabel="Подробнее о GEO"
+          />
           <OfferGeoTargetingSection
             offerId={offerId}
             token={accessToken}
@@ -1076,6 +1099,12 @@ export default function EditOfferPage() {
             offerPublicId={offerPublicId}
             postbackToken={offerPostbackToken}
             goals={offerGoals}
+          />
+          <ContextHelpCard
+            title="Цели оффера определяют postback и выплаты"
+            description="Проверьте goal по умолчанию, лимиты и ставки, если статистика или выплаты выглядят некорректно."
+            href={docsHelpLinks.adminOfferGoals}
+            ctaLabel="Подробнее о целях оффера"
           />
           <OfferGoalsSection
             offerId={offerId}

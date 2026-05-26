@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { canAccessAdminArea, isAdminRole } from '@/lib/auth/roles';
@@ -231,9 +233,12 @@ export default function AdminQuestionnairesPage() {
     <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Анкеты регистрации
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Анкеты регистрации
+          </h1>
+          <HelpLink href={docsHelpLinks.adminQuestionnaires} />
+        </div>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           Отдельные схемы для партнёров и рекламодателей. Менеджеры могут
           просматривать ответы на карточках пользователей, но не редактируют

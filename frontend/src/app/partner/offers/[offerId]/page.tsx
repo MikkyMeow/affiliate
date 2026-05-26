@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { ContextHelpCard } from "@/features/docs/ContextHelpCard";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import { type ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
@@ -246,9 +249,12 @@ export default function PartnerOfferDetailsPage() {
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Partner Offer
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {offer?.title ?? "Детали оффера"}
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              {offer?.title ?? "Детали оффера"}
+            </h1>
+            <HelpLink href={docsHelpLinks.partnerOfferDetail} />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {offer ? "Вся актуальная информация по кампании" : "Загружаем данные оффера…"}
           </p>
@@ -450,9 +456,19 @@ export default function PartnerOfferDetailsPage() {
                   )}
                 </div>
                 {trackingLink ? (
-                  <code className="mt-4 block break-all rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
-                    {trackingLink}
-                  </code>
+                  <>
+                    <code className="mt-4 block break-all rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+                      {trackingLink}
+                    </code>
+                    <div className="mt-4">
+                      <ContextHelpCard
+                        title="Не меняйте служебные параметры tracking-ссылки"
+                        description="Если изменить click id, offer id или affiliate id, конверсии могут не связаться с кликом."
+                        href={docsHelpLinks.partnerTrackingLinks}
+                        ctaLabel="Подробнее о tracking-ссылках"
+                      />
+                    </div>
+                  </>
                 ) : (
                   <p className="mt-4 text-xs text-red-600 dark:text-red-300">
                     Нет affiliateId — обновите профиль, чтобы получить трекинг ссылку.

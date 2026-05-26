@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
 import { getHomePathByRole } from "@/lib/auth/routes";
@@ -80,6 +82,10 @@ export function UserQuestionnairePage({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const docsHref =
+    targetRole === "affiliate"
+      ? docsHelpLinks.partnerQuestionnaire
+      : docsHelpLinks.advertiserQuestionnaire;
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(
@@ -355,9 +361,12 @@ export function UserQuestionnairePage({
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
             Questionnaire
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {data.questionnaire.title?.trim() || "Регистрационная анкета"}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              {data.questionnaire.title?.trim() || "Регистрационная анкета"}
+            </h1>
+            <HelpLink href={docsHref} />
+          </div>
           {data.questionnaire.description ? (
             <p className="max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
               {data.questionnaire.description}

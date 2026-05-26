@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { RoleQuickStartCard } from "@/features/docs/RoleQuickStartCard";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -113,14 +116,22 @@ export default function AdvertiserOverviewPage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Read-only раздел
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Обзор рекламодателя
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Обзор рекламодателя
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserDashboard} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Карточки ниже показывают чисто аналитические данные. Управляющих
           действий здесь нет.
         </p>
       </header>
+
+      <RoleQuickStartCard
+        href={docsHelpLinks.quickStartAdvertiser}
+        description="Быстрый старт для рекламодателя полезен, если нужно быстро проверить офферы, статистику и postback-интеграцию."
+      />
 
       <section>
         {loading ? (

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { DateInput } from "@/components/DateInput";
 import { useToast } from "@/components/toast";
 import { useAuth } from "@/context/AuthContext";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { RoleQuickStartCard } from "@/features/docs/RoleQuickStartCard";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { canAccessAdminArea } from "@/lib/auth/roles";
 import {
   getAdminSummary,
@@ -563,9 +566,12 @@ export function DashboardMainPageContent() {
     <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Главная
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Главная
+            </h1>
+            <HelpLink href={docsHelpLinks.adminDashboard} />
+          </div>
           {dashboardUpdatedAt ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
               Обновлено: {dashboardUpdatedAt}
@@ -595,6 +601,13 @@ export function DashboardMainPageContent() {
             {recalculationLoading ? "Пересчитываем…" : "Пересчитать статистику"}
           </button>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <RoleQuickStartCard
+          href={docsHelpLinks.quickStartAdmin}
+          description="Откройте быстрый старт для администратора, если нужно быстро вспомнить структуру кабинета и базовые сценарии."
+        />
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">

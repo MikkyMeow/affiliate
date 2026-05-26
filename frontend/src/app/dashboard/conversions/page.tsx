@@ -11,6 +11,9 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import { DateInput } from '@/components/DateInput';
 import { InlineAlert } from '@/components/InlineAlert';
+import { ContextHelpCard } from '@/features/docs/ContextHelpCard';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { canAccessAdminArea } from '@/lib/auth/roles';
 import {
@@ -1038,12 +1041,24 @@ export default function ConversionsPage() {
     <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Конверсии
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Конверсии
+          </h1>
+          <HelpLink href={docsHelpLinks.adminConversions} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Список использует серверные фильтры и пагинацию; URL сохраняет текущее состояние.
         </p>
+      </div>
+
+      <div className="mb-8">
+        <ContextHelpCard
+          title="Статусы конверсий влияют на статистику и выплаты"
+          description="Статусы pending, approved и rejected влияют на статистику и выплаты."
+          href={docsHelpLinks.adminConversions}
+          ctaLabel="Подробнее о конверсиях"
+        />
       </div>
 
       <section className="mb-10 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

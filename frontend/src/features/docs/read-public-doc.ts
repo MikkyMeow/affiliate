@@ -54,11 +54,13 @@ export function resolvePublicDocLink(currentSourcePath: string, href: string): s
   }
 
   const currentDir = path.posix.dirname(normalizeSourcePath(currentSourcePath));
-  const resolved = path.posix.normalize(path.posix.join(currentDir, href));
+  const [pathPart, suffix = ""] = href.split(/(?=[?#])/);
+  const resolved = path.posix.normalize(path.posix.join(currentDir, pathPart));
   const cleanResolved = resolved.replace(/^\.\//, "");
 
   if (cleanResolved.endsWith(".md")) {
-    return sourceToHrefMap.get(cleanResolved) ?? null;
+    const mappedHref = sourceToHrefMap.get(cleanResolved);
+    return mappedHref ? `${mappedHref}${suffix}` : null;
   }
 
   return href;

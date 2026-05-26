@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { formatCount, formatMoney } from '@/lib/format';
@@ -157,9 +159,12 @@ export default function PartnerStatsPage() {
           <p className="text-sm uppercase tracking-wide text-zinc-500">
             Partner Stats
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Ключевые показатели
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Ключевые показатели
+            </h1>
+            <HelpLink href={docsHelpLinks.partnerStats} />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Видите свои approved/pending/rejected суммы без похода в Postman.
           </p>

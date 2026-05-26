@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ContextHelpCard } from "@/features/docs/ContextHelpCard";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { RoleQuickStartCard } from "@/features/docs/RoleQuickStartCard";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
 import { formatCount, formatMoney } from "@/lib/format";
@@ -293,9 +297,15 @@ export default function PartnerDashboardPage() {
           <p className="text-sm uppercase tracking-wide text-zinc-500">
             Partner
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Кабинет аффилиата
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Кабинет аффилиата
+            </h1>
+            <HelpLink
+              href={docsHelpLinks.partnerDashboard}
+              label="Помощь по кабинету"
+            />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Следите за статистикой и активными офферами в одном месте.
           </p>
@@ -334,6 +344,11 @@ export default function PartnerDashboardPage() {
           </Link>
         ))}
       </div>
+
+      <RoleQuickStartCard
+        href={docsHelpLinks.quickStartPartner}
+        description="Быстрый старт для партнёра помогает не вспоминать по памяти, где взять ссылку, как читать статусы и куда смотреть по первым конверсиям."
+      />
 
       {profileError && (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
@@ -401,9 +416,15 @@ export default function PartnerDashboardPage() {
           )}
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Трекер
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm uppercase tracking-wide text-zinc-500">
+              Трекер
+            </p>
+            <HelpLink
+              href={docsHelpLinks.partnerTrackingLinks}
+              label="Tracking docs"
+            />
+          </div>
           <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
             <p>
               Используйте базовый URL:{" "}
@@ -425,6 +446,14 @@ export default function PartnerDashboardPage() {
               </p>
             )}
           </div>
+          <div className="mt-4">
+            <ContextHelpCard
+              title="Не меняйте служебные параметры tracking-ссылки"
+              description="Если изменить click id, offer id или affiliate id, конверсии могут не связаться с кликом."
+              href={docsHelpLinks.partnerTrackingLinks}
+              ctaLabel="Подробнее о tracking-ссылках"
+            />
+          </div>
         </div>
       </div>
 
@@ -434,9 +463,12 @@ export default function PartnerDashboardPage() {
             <p className="text-sm uppercase tracking-wide text-zinc-500">
               Статистика
             </p>
-            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Лента показателей
-            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                Лента показателей
+              </h2>
+              <HelpLink href={docsHelpLinks.partnerStats} />
+            </div>
           </div>
           {statsError && (
             <span className="text-sm text-red-600 dark:text-red-300">
@@ -496,9 +528,12 @@ export default function PartnerDashboardPage() {
             <p className="text-sm uppercase tracking-wide text-zinc-500">
               Открытые офферы
             </p>
-            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Доступные кампании
-            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                Доступные кампании
+              </h2>
+              <HelpLink href={docsHelpLinks.partnerOffers} />
+            </div>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <label

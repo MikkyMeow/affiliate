@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { AuditLogTable } from '@/components/AuditLogTable';
 import { DateInput } from '@/components/DateInput';
 import { InlineAlert } from '@/components/InlineAlert';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import {
   fetchAuditLogs,
@@ -205,9 +207,12 @@ export default function AuditLogsPage() {
     <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Audit logs
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Audit logs
+          </h1>
+          <HelpLink href={docsHelpLinks.adminAuditLogs} />
+        </div>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           Только просмотр. Из интерфейса записи audit log не редактируются и не удаляются.
         </p>

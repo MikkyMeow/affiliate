@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { canAccessAdminArea, isAdminRole } from '@/lib/auth/roles';
 
 type Manager = {
@@ -419,9 +421,12 @@ export default function ManagersPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Менеджеры
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Менеджеры
+            </h1>
+            <HelpLink href={docsHelpLinks.adminManagers} />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Создавайте внутренних пользователей с ролью manager и передавайте пароль
             только один раз.

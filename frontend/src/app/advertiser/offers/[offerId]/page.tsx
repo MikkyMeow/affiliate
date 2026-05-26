@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DateInput } from "@/components/DateInput";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -137,9 +139,12 @@ export default function AdvertiserOfferDetailsPage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Оффер
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {offer?.name ?? "Карточка оффера"}
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            {offer?.name ?? "Карточка оффера"}
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserOfferDetail} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Здесь можно просмотреть условия и статистику. Редактирование отключено.
         </p>

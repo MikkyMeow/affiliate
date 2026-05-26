@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, type ApiError } from "@/lib/api";
 import type { QuestionnaireAnswerItem } from "@/lib/questionnaires";
@@ -107,9 +109,12 @@ export default function PartnerProfilePage() {
           <p className="text-xs uppercase tracking-widest text-zinc-500">
             Профиль
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Данные партнёра
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Данные партнёра
+            </h1>
+            <HelpLink href={docsHelpLinks.partnerProfile} />
+          </div>
         </header>
 
         {loading ? (

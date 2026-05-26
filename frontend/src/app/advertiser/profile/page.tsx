@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import { advertiserApi, type AdvertiserProfile } from "@/lib/advertiser.api";
 import { formatDateTime } from "@/lib/format";
@@ -143,9 +145,12 @@ export default function AdvertiserProfilePage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Профиль
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Данные рекламодателя
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Данные рекламодателя
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserProfile} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Email и контакт в Telegram можно держать в актуальном состоянии без
           обращения в поддержку.

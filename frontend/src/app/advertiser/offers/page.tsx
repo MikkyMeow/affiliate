@@ -7,6 +7,8 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HelpLink } from "@/features/docs/HelpLink";
+import { docsHelpLinks } from "@/features/docs/docs-help-links";
 import { useAuth } from "@/context/AuthContext";
 import {
   advertiserApi,
@@ -143,9 +145,12 @@ export default function AdvertiserOffersPage() {
         <p className="text-xs uppercase tracking-widest text-emerald-500">
           Офферы
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Просмотр офферов
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Просмотр офферов
+          </h1>
+          <HelpLink href={docsHelpLinks.advertiserOffers} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Можно только изучать состояние и метрики. Чтобы изменить условия,
           обратитесь к менеджеру.

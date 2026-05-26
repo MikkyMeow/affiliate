@@ -1,6 +1,8 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/toast';
 import { apiFetch } from '@/lib/api';
@@ -131,9 +133,12 @@ export default function DashboardProfilePage() {
     <section className="mx-auto min-h-screen max-w-4xl px-6 py-10">
       <div className="mb-8 space-y-2">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Мой профиль
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Мой профиль
+          </h1>
+          <HelpLink href={docsHelpLinks.adminProfile} />
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Здесь можно проверить текущую учётную запись, выбрать часовой пояс и сменить пароль.
         </p>

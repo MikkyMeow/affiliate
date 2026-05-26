@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { buildTrackingUrl } from '@/lib/tracking';
 import { canAccessAdminArea } from '@/lib/auth/roles';
 import type { OfferAvailability } from '@/lib/offers';
@@ -356,9 +358,12 @@ export default function OffersPage() {
           <p className="text-sm uppercase tracking-wide text-zinc-500">
             Dashboard
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Офферы
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Офферы
+            </h1>
+            <HelpLink href={docsHelpLinks.adminOffers} />
+          </div>
         </div>
         <Link
           href="/dashboard/offers/create"
