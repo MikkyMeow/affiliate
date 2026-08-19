@@ -6,15 +6,26 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
 import { InlineAlert } from '@/components/InlineAlert';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { buildTrackingUrl } from '@/lib/tracking';
+import { canAccessAdminArea } from '@/lib/auth/roles';
+import type { OfferAvailability } from '@/lib/offers';
+import {
+  getOfferCategoryLabel,
+  type OfferCategoryValue,
+} from '@/lib/offerCategories';
 
 type Offer = {
   id: string;
+  publicId: string | null;
+  publicIdNumber: number | null;
   title: string;
+  category: OfferCategoryValue | null;
   advertiserId: string | null;
   targetUrl: string;
-  payoutRub: number;
   status: 'active' | 'inactive';
+  availability: OfferAvailability;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,6 +38,7 @@ type OffersMeta = {
 
 type AffiliateOption = {
   id: string;
+  publicId: string | null;
   name: string;
   email: string;
 };
@@ -54,6 +66,7 @@ export default function OffersPage() {
   const [copyState, setCopyState] = useState<CopyState>('idle');
 
   const pageParam = searchParams?.get('page') ?? '1';
+  const availabilityFilter = searchParams?.get('availability') ?? '';
   const pageFromQuery = Number.parseInt(pageParam, 10);
   const page = Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
   const offset = (page - 1) * PAGE_SIZE;
@@ -78,8 +91,14 @@ export default function OffersPage() {
       setError(null);
 
       try {
+        const availabilityQuery =
+          availabilityFilter === 'public' ||
+          availabilityFilter === 'on_request' ||
+          availabilityFilter === 'private'
+            ? `&availability=${availabilityFilter}`
+            : '';
         const { data, meta } = await apiFetch<Offer[], OffersMeta>(
-          `/offers?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/offers?limit=${PAGE_SIZE}&offset=${offset}${availabilityQuery}`,
           {
             token: accessToken,
             withMeta: true,
@@ -123,7 +142,7 @@ export default function OffersPage() {
     return () => {
       active = false;
     };
-  }, [accessToken, authLoading, offset]);
+  }, [accessToken, authLoading, availabilityFilter, offset]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
@@ -145,6 +164,24 @@ export default function OffersPage() {
     [page, pathname, router, searchParams],
   );
 
+  const handleAvailabilityFilterChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      params.delete('page');
+
+      if (value) {
+        params.set('availability', value);
+      } else {
+        params.delete('availability');
+      }
+
+      const qs = params.toString();
+      const targetPath = pathname ?? '/dashboard/offers';
+      router.push(qs ? `${targetPath}?${qs}` : targetPath);
+    },
+    [pathname, router, searchParams],
+  );
+
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat('ru-RU', {
@@ -153,16 +190,6 @@ export default function OffersPage() {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }),
-    [],
-  );
-
-  const payoutFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        maximumFractionDigits: 2,
       }),
     [],
   );
@@ -196,7 +223,7 @@ export default function OffersPage() {
       setAffiliateOptions(data);
     } catch (affError) {
         const apiError = affError as ApiError;
-        setAffiliateError(apiError.message ?? 'Не удалось загрузить аффилиатов');
+        setAffiliateError(apiError.message ?? 'Не удалось загрузить партнёров');
       setAffiliateOptions([]);
     } finally {
       setAffiliateLoading(false);
@@ -305,20 +332,20 @@ export default function OffersPage() {
     );
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminArea(user)) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Управление офферами доступно только администраторам.
+          Управление офферами доступно только администраторам и менеджерам.
         </p>
         <Link
-          href="/partner"
+          href="/"
           className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В кабинет партнера
+          На главную
         </Link>
       </section>
     );
@@ -331,9 +358,12 @@ export default function OffersPage() {
           <p className="text-sm uppercase tracking-wide text-zinc-500">
             Dashboard
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Офферы
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Офферы
+            </h1>
+            <HelpLink href={docsHelpLinks.adminOffers} />
+          </div>
         </div>
         <Link
           href="/dashboard/offers/create"
@@ -341,6 +371,19 @@ export default function OffersPage() {
         >
           Создать оффер
         </Link>
+      </div>
+
+      <div className="mb-6 flex justify-end">
+        <select
+          value={availabilityFilter}
+          onChange={(event) => handleAvailabilityFilterChange(event.target.value)}
+          className="min-w-[220px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+        >
+          <option value="">Все доступности</option>
+          <option value="public">Open / public</option>
+          <option value="on_request">On request / on_request</option>
+          <option value="private">Private / private</option>
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -381,8 +424,9 @@ export default function OffersPage() {
                 <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                   <tr>
                     <th className="px-6 py-3 font-medium">Название</th>
+                    <th className="px-6 py-3 font-medium">Категория</th>
                     <th className="px-6 py-3 font-medium">Рекламодатель</th>
-                    <th className="px-6 py-3 font-medium">Выплата</th>
+                    <th className="px-6 py-3 font-medium">Доступность</th>
                     <th className="px-6 py-3 font-medium">Статус</th>
                     <th className="px-6 py-3 font-medium">Создан</th>
                     <th className="px-6 py-3 text-right font-medium">Действия</th>
@@ -396,7 +440,12 @@ export default function OffersPage() {
                     >
                       <td className="px-6 py-4">
                         <div className="font-medium">{offer.title}</div>
-                        <p className="text-xs text-zinc-500">#{offer.id.slice(0, 8)}</p>
+                        <p className="text-xs text-zinc-500">
+                          {offer.publicId ?? `#${offer.id.slice(0, 8)}`}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                        {getOfferCategoryLabel(offer.category ?? undefined)}
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                         {offer.advertiserId ? (
@@ -407,8 +456,8 @@ export default function OffersPage() {
                           '—'
                         )}
                       </td>
-                      <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100">
-                        {payoutFormatter.format(offer.payoutRub)}
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
+                        {offer.availability}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -490,10 +539,12 @@ export default function OffersPage() {
                   Генерация ссылки
                 </p>
                 <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  {linkOffer.title}
+                  {linkOffer.publicId
+                    ? `${linkOffer.publicId} · ${linkOffer.title}`
+                    : linkOffer.title}
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Укажите аффилиата и (опционально) sub1. Ссылка собирается на фронте из{' '}
+                  Укажите партнёра и (опционально) sub1. Ссылка собирается на фронте из{' '}
                   {buildTrackingUrl('/click')}.
                 </p>
               </div>
@@ -509,11 +560,11 @@ export default function OffersPage() {
 
             {affiliateLoading ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                Загружаем список аффилиатов...
+                Загружаем список партнёров...
               </div>
             ) : affiliateError ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/60 dark:bg-red-500/10 dark:text-red-200">
-                <p className="mb-2">Не удалось загрузить список аффилиатов: {affiliateError}</p>
+                <p className="mb-2">Не удалось загрузить список партнёров: {affiliateError}</p>
                 <button
                   type="button"
                   onClick={() => void loadAffiliates()}
@@ -525,16 +576,18 @@ export default function OffersPage() {
             ) : (
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                  Аффилиат
+                  Партнёр
                   <select
                     className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                     value={selectedAffiliateId}
                     onChange={(event) => setSelectedAffiliateId(event.target.value)}
                   >
-                    <option value="">Выберите аффилиата</option>
+                    <option value="">Выберите партнёра</option>
                     {affiliateOptions.map((affiliate) => (
-                      <option key={affiliate.id} value={affiliate.id}>
-                        {affiliate.name || affiliate.email || affiliate.id} · #{affiliate.id.slice(0, 8)}
+                    <option key={affiliate.id} value={affiliate.id}>
+                        {affiliate.publicId
+                          ? `${affiliate.publicId} · ${affiliate.name || affiliate.email || affiliate.id}`
+                          : `${affiliate.name || affiliate.email || affiliate.id} · #${affiliate.id.slice(0, 8)}`}
                       </option>
                     ))}
                   </select>
@@ -578,7 +631,7 @@ export default function OffersPage() {
                 </div>
               ) : (
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  Выберите аффилиата, чтобы получить ссылку вида{' '}
+                  Выберите партнёра, чтобы получить ссылку вида{' '}
                   {buildTrackingUrl('/click')}?offerId=...&affiliateId=...
                 </p>
               )}

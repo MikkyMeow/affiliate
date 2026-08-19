@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { InlineAlert } from '@/components/InlineAlert';
 import {
@@ -209,7 +211,7 @@ export default function PartnerConversionsPage() {
           Вы авторизованы как администратор. Перейдите в админ-панель.
         </p>
         <Link
-          href="/dashboard/stats"
+          href="/dashboard"
           className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           В админку
@@ -223,9 +225,12 @@ export default function PartnerConversionsPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">Partner Conversions</p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            История конверсий
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              История конверсий
+            </h1>
+            <HelpLink href={docsHelpLinks.partnerConversions} />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Следите за статусами и выплатами по своим кликам.
           </p>

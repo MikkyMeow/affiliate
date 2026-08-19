@@ -5,6 +5,7 @@ import {
   queueJobsProcessedCounter,
   queueJobsFailedCounter,
 } from '../lib/metrics.js';
+import { logError, logInfo } from '../lib/structuredLogger.js';
 
 function extractJobLabels(job) {
   const queueName = job?.queueName ?? queueConfig.name;
@@ -33,9 +34,13 @@ function createAsyncJobsWorker() {
   );
 
   worker.on('active', (job) => {
-    console.log(
-      `🧵 [async-worker] Processing job ${job.id} (${job.name}) attempt ${job.attemptsMade + 1}`,
-    );
+    logInfo('worker_job_active', {
+      jobId: job?.id ?? null,
+      jobName: job?.name ?? 'unknown',
+      attempt: (job?.attemptsMade ?? 0) + 1,
+      queueName: job?.queueName ?? queueConfig.name,
+      requestId: job?.data?.requestId ?? null,
+    });
   });
 
   worker.on('completed', (job) => {
@@ -44,7 +49,19 @@ function createAsyncJobsWorker() {
       queue_name: queueName,
       job_type: jobType,
     });
-    console.log(`✅ [async-worker] Job ${job.id} (${job.name}) completed`);
+    const durationMs =
+      typeof job?.finishedOn === 'number' && typeof job?.processedOn === 'number'
+        ? job.finishedOn - job.processedOn
+        : null;
+
+    logInfo('worker_job_completed', {
+      jobId: job?.id ?? null,
+      jobName: job?.name ?? 'unknown',
+      queueName,
+      jobType,
+      durationMs,
+      requestId: job?.data?.requestId ?? null,
+    });
   });
 
   worker.on('failed', (job, error) => {
@@ -53,13 +70,22 @@ function createAsyncJobsWorker() {
       queue_name: queueName,
       job_type: jobType,
     });
-    console.error(
-      `❌ [async-worker] Job ${job?.id} (${job?.name}) failed: ${error.message}`,
-    );
+    logError('worker_job_failed', {
+      jobId: job?.id ?? null,
+      jobName: job?.name ?? 'unknown',
+      queueName,
+      jobType,
+      attemptsMade: job?.attemptsMade ?? null,
+      reason: error.message,
+      requestId: job?.data?.requestId ?? null,
+    });
   });
 
   worker.on('error', (error) => {
-    console.error('❌ [async-worker] Worker error:', error);
+    logError('worker_runtime_error', {
+      queueName: queueConfig.name,
+      reason: error.message,
+    });
   });
 
   return worker;

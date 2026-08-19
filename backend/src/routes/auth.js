@@ -1,12 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {
-  createUser,
-  deleteUserById,
-  findUserByEmail,
-  findUserById,
-} from '../models/userModel.js';
+import { findUserByEmail, findUserById } from '../models/userModel.js';
 import {
   createRefreshTokenForUser,
   deleteRefreshToken,
@@ -21,12 +16,21 @@ import {
 } from '../utils/response.js';
 import { ApiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireAffiliateForUser } from '../services/affiliates.service.js';
+import { requireAdvertiserForUser } from '../services/advertisers.service.js';
+import { registerUser } from '../services/auth/register.service.js';
 import {
-  createAffiliate,
-  findAffiliateByEmail,
-  requireAffiliateForUser,
-} from '../services/affiliates.service.js';
-import { validateRegisterDto } from '../validators/users.js';
+  validateChangePasswordDto,
+  validateRegisterDto,
+} from '../validators/users.js';
+import {
+  clearRefreshTokenCookie,
+  getRefreshTokenFromRequest,
+  setRefreshTokenCookie,
+} from '../lib/refreshTokenCookie.js';
+import { getAuthContext } from '../services/auth/auth-context.service.js';
+import { changeOwnPassword } from '../services/managers.service.js';
+import { getActorContext } from '../utils/actorContext.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -49,6 +53,7 @@ function buildTokenPayload(user) {
     userId: user.id,
     role: user.role,
     affiliateId: user.affiliateId ?? null,
+    advertiserId: user.advertiserId ?? null,
   };
 }
 
@@ -56,27 +61,35 @@ function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-async function issueAuthPackage(user) {
+async function issueAuthPackage(user, res) {
   let affiliateId = user.affiliateId ?? null;
+  let advertiserId = user.advertiserId ?? null;
 
   if (user.role === 'affiliate' && !affiliateId) {
     const affiliate = await requireAffiliateForUser(user.id);
     affiliateId = affiliate.id;
   }
 
-  const token = signToken(buildTokenPayload({ ...user, affiliateId }));
+  if (user.role === 'advertiser' && !advertiserId) {
+    const advertiser = await requireAdvertiserForUser(user.id);
+    advertiserId = advertiser.id;
+  }
+
+  const token = signToken(buildTokenPayload({ ...user, affiliateId, advertiserId }));
   const refreshToken = await createRefreshTokenForUser(user.id);
+  setRefreshTokenCookie(res, refreshToken.token, refreshToken.expiresAt);
 
   return {
     token,
-    refreshToken: refreshToken.token,
     user: {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      timezone: user.timezone ?? null,
       createdAt: user.createdAt,
       role: user.role,
       affiliateId,
+      advertiserId,
     },
   };
 }
@@ -95,52 +108,14 @@ router.post(
       );
     }
 
-    const existingUser = await findUserByEmail(dto.email);
+    const { user } = await registerUser({
+      email: dto.email,
+      password: dto.password,
+      displayName: dto.displayName,
+      accountType: dto.accountType,
+    });
 
-    if (existingUser) {
-      throw new ApiError(
-        ERROR_CODES.CONFLICT,
-        409,
-        'Пользователь с таким email уже существует',
-        { email: dto.email },
-      );
-    }
-
-    const existingAffiliate = await findAffiliateByEmail(dto.email);
-
-    if (existingAffiliate) {
-      throw new ApiError(
-        ERROR_CODES.CONFLICT,
-        409,
-        'Аффилиат с таким email уже существует',
-        { email: dto.email },
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    let user;
-    try {
-      user = await createUser({
-        email: dto.email,
-        passwordHash,
-        displayName: dto.displayName,
-        role: 'affiliate',
-      });
-
-      await createAffiliate({
-        name: dto.displayName,
-        email: dto.email,
-        userId: user.id,
-      });
-    } catch (error) {
-      if (user?.id) {
-        await deleteUserById(user.id);
-      }
-      throw error;
-    }
-
-    const response = await issueAuthPackage(user);
+    const response = await issueAuthPackage(user, res);
     return sendSuccess(res, response, { status: 201 });
   }),
 );
@@ -180,7 +155,7 @@ router.post(
     }
 
     const { passwordHash: _, ...sanitizedUser } = user;
-    const response = await issueAuthPackage(sanitizedUser);
+    const response = await issueAuthPackage(sanitizedUser, res);
 
     return sendSuccess(res, response);
   }),
@@ -189,19 +164,20 @@ router.post(
 router.post(
   '/refresh',
   asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body ?? {};
+    const refreshToken = getRefreshTokenFromRequest(req);
 
     if (!refreshToken) {
       throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        'Refresh token обязателен',
+        ERROR_CODES.TOKEN_INVALID,
+        401,
+        'Refresh token отсутствует или недействителен',
       );
     }
 
     const stored = await findRefreshToken(refreshToken);
 
     if (!stored) {
+      clearRefreshTokenCookie(res);
       throw new ApiError(
         ERROR_CODES.TOKEN_INVALID,
         401,
@@ -211,6 +187,7 @@ router.post(
 
     if (new Date(stored.expiresAt).getTime() < Date.now()) {
       await deleteRefreshTokenById(stored.id);
+      clearRefreshTokenCookie(res);
       throw new ApiError(
         ERROR_CODES.TOKEN_EXPIRED,
         401,
@@ -222,12 +199,13 @@ router.post(
     await deleteRefreshTokenById(stored.id);
 
     if (!user) {
+      clearRefreshTokenCookie(res);
       throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
         userId: stored.userId,
       });
     }
 
-    const response = await issueAuthPackage(user);
+    const response = await issueAuthPackage(user, res);
     return sendSuccess(res, response);
   }),
 );
@@ -235,10 +213,11 @@ router.post(
 router.post(
   '/logout',
   asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body ?? {};
+    const refreshToken = getRefreshTokenFromRequest(req);
     if (refreshToken) {
       await deleteRefreshToken(refreshToken);
     }
+    clearRefreshTokenCookie(res);
 
     return sendSuccess(res, { message: 'Выход выполнен' });
   }),
@@ -248,15 +227,42 @@ router.get(
   '/me',
   authenticate,
   asyncHandler(async (req, res) => {
-    const profile = await findUserById(req.user.userId);
+    const context = await getAuthContext(req.user.userId);
+    return sendSuccess(res, context);
+  }),
+);
 
-    if (!profile) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Пользователь не найден', {
-        userId: req.user.userId,
-      });
+router.post(
+  '/change-password',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateChangePasswordDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
     }
 
-    return sendSuccess(res, { user: profile });
+    await changeOwnPassword(
+      {
+        userId: req.user.userId,
+        currentPassword: dto.currentPassword,
+        newPassword: dto.newPassword,
+      },
+      {
+        actor: getActorContext(req.user),
+        requestId: req.id ?? null,
+      },
+    );
+
+    const refreshToken = await createRefreshTokenForUser(req.user.userId);
+    setRefreshTokenCookie(res, refreshToken.token, refreshToken.expiresAt);
+
+    return sendSuccess(res, { ok: true });
   }),
 );
 

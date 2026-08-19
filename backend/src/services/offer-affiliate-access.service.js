@@ -1,0 +1,465 @@
+import pool from '../db.js';
+import { ApiError } from '../utils/apiError.js';
+import { ERROR_CODES } from '../utils/response.js';
+import { getOfferById } from './offers.service.js';
+import { getAffiliateById } from './affiliates.service.js';
+import {
+  deleteOfferAffiliateAccess,
+  listOfferAffiliateAccessWithAffiliate,
+  upsertOfferAffiliateAccess,
+  findAffiliateAccessForOffer,
+} from '../models/offerAffiliateAccess.model.js';
+import { findHiddenAffiliateForOffer } from '../models/offerAffiliateHidden.model.js';
+import {
+  OFFER_ACCESS_SOURCES,
+  OFFER_ACCESS_TYPES,
+  OFFER_REQUEST_STATUSES,
+  OFFER_VISIBILITY_MODES,
+} from '../constants/offers.js';
+import {
+  findPendingOfferRequest,
+  updateOfferRequestReview,
+} from '../models/offerRequests.model.js';
+import { logAuditError, writeAuditEvent } from './audit.service.js';
+
+const supportedManualAccessTypes = new Set(Object.values(OFFER_ACCESS_TYPES));
+
+const allowedManualAccessByVisibility = {
+  [OFFER_VISIBILITY_MODES.PUBLIC]: new Set(),
+  [OFFER_VISIBILITY_MODES.ON_REQUEST]: new Set([
+    OFFER_ACCESS_TYPES.ALLOWED,
+    OFFER_ACCESS_TYPES.REJECTED,
+    OFFER_ACCESS_TYPES.EXCLUDED,
+  ]),
+  [OFFER_VISIBILITY_MODES.PRIVATE]: new Set([OFFER_ACCESS_TYPES.ALLOWED]),
+};
+
+function resolveVisibilityMode(offer) {
+  return offer.visibilityMode ?? OFFER_VISIBILITY_MODES.PUBLIC;
+}
+
+function normalizeAccessType(accessType) {
+  if (typeof accessType !== 'string') {
+    return null;
+  }
+
+  const normalized = accessType.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function assertAccessTypeSupported(accessType) {
+  if (!supportedManualAccessTypes.has(accessType)) {
+    throw new ApiError(
+      ERROR_CODES.VALIDATION_ERROR,
+      400,
+      'Недопустимый accessType',
+      { accessType },
+    );
+  }
+}
+
+function assertAccessAllowed(visibilityMode, accessType) {
+  const allowedSet = allowedManualAccessByVisibility[visibilityMode];
+
+  if (!allowedSet || !allowedSet.has(accessType)) {
+    throw new ApiError(
+      ERROR_CODES.VALIDATION_ERROR,
+      400,
+      'Недопустимый manual access для текущего visibilityMode',
+      { visibilityMode, accessType },
+    );
+  }
+}
+
+function resolvePendingRequestStatus(accessType) {
+  if (accessType === OFFER_ACCESS_TYPES.ALLOWED) {
+    return OFFER_REQUEST_STATUSES.APPROVED;
+  }
+
+  if (
+    accessType === OFFER_ACCESS_TYPES.REJECTED ||
+    accessType === OFFER_ACCESS_TYPES.EXCLUDED
+  ) {
+    return OFFER_REQUEST_STATUSES.REJECTED;
+  }
+
+  return null;
+}
+
+function buildAccessEntityId(offerId, affiliateId) {
+  return `${offerId}:${affiliateId}`;
+}
+
+function buildAccessSnapshot(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    accessType: record.accessType ?? null,
+    source: record.source ?? null,
+    updatedAt: record.updatedAt ?? null,
+  };
+}
+
+function buildAccessValue(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    status: record.accessType ?? null,
+    source: record.source ?? null,
+    updatedAt: record.updatedAt ?? null,
+  };
+}
+
+function buildAffiliateAccessResponse(record) {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    offerId: record.offerId,
+    affiliateId: record.affiliateId,
+    status: record.accessType,
+    accessType: record.accessType,
+    source: record.source ?? null,
+    createdAt: record.createdAt ?? null,
+    updatedAt: record.updatedAt ?? null,
+    affiliate: record.affiliate ?? null,
+  };
+}
+
+export async function setManualOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  accessType,
+  actorId,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to set access');
+  }
+
+  if (!accessType) {
+    throw new Error('accessType is required to set access');
+  }
+
+  if (!actorId) {
+    throw new Error('actorId is required to set access');
+  }
+
+  const normalizedAccessType = normalizeAccessType(accessType);
+  assertAccessTypeSupported(normalizedAccessType);
+
+  const offer = await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const visibilityMode = resolveVisibilityMode(offer);
+  assertAccessAllowed(visibilityMode, normalizedAccessType);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAccess = await findAffiliateAccessForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    const access = await upsertOfferAffiliateAccess(
+      {
+        offerId,
+        affiliateId,
+        accessType: normalizedAccessType,
+        source: OFFER_ACCESS_SOURCES.MANUAL,
+      },
+      { client },
+    );
+
+    const pendingRequest = await findPendingOfferRequest(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    if (pendingRequest) {
+      const nextStatus = resolvePendingRequestStatus(normalizedAccessType);
+
+      if (nextStatus) {
+        await updateOfferRequestReview(
+          pendingRequest.id,
+          {
+            status: nextStatus,
+            reviewedBy: actorId,
+            reviewedAt: new Date(),
+          },
+          { client },
+        );
+      }
+    }
+
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.manual_access_set',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      client,
+      oldValue: buildAccessValue(existingAccess),
+      newValue: buildAccessValue(access),
+      metadata: {
+        offerId,
+        affiliateId,
+        visibilityMode,
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return access;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось обновить доступ партнёра к офферу',
+    );
+  } finally {
+    client.release();
+  }
+}
+
+export async function grantOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId || !actorId) {
+    throw new Error('offerId, affiliateId, and actorId are required to grant access');
+  }
+
+  const offer = await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAccess = await findAffiliateAccessForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    const access = await upsertOfferAffiliateAccess(
+      {
+        offerId,
+        affiliateId,
+        accessType: OFFER_ACCESS_TYPES.ALLOWED,
+        source: OFFER_ACCESS_SOURCES.MANUAL,
+      },
+      { client },
+    );
+
+    const hiddenRecord = await findHiddenAffiliateForOffer(
+      offerId,
+      affiliateId,
+      { client, forUpdate: true },
+    );
+
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_granted',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      client,
+      oldValue: {
+        status: existingAccess?.accessType ?? null,
+      },
+      newValue: {
+        status: access?.accessType ?? null,
+      },
+      metadata: {
+        offerId,
+        affiliateId,
+        availability: offer.availability ?? offer.visibilityMode ?? null,
+        previousStatus: existingAccess?.accessType ?? null,
+        newStatus: access?.accessType ?? null,
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return {
+      access: buildAffiliateAccessResponse(access),
+      visibilityWarning: hiddenRecord
+        ? 'Partner is hidden from this offer'
+        : null,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    await logAuditError({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_grant_failed',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      metadata: {
+        offerId,
+        affiliateId,
+      },
+      error,
+    });
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось выдать доступ партнёру к офферу',
+    );
+  } finally {
+    client.release();
+  }
+}
+
+export async function removeManualOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId = null,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to remove access');
+  }
+
+  await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId);
+
+  if (deleted) {
+    await writeAuditEvent({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.manual_access_removed',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      oldValue: buildAccessValue(deleted),
+      newValue: null,
+      metadata: {
+        offerId,
+        affiliateId,
+      },
+    });
+  }
+
+  return deleted;
+}
+
+export async function revokeOfferAffiliateAccess({
+  offerId,
+  affiliateId,
+  actorId = null,
+  actorRole = null,
+  requestId = null,
+}) {
+  if (!offerId || !affiliateId) {
+    throw new Error('offerId and affiliateId are required to revoke access');
+  }
+
+  await getOfferById(offerId);
+  await getAffiliateById(affiliateId);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const deleted = await deleteOfferAffiliateAccess(offerId, affiliateId, { client });
+
+    if (deleted) {
+      await writeAuditEvent({
+        entityType: 'offer_access',
+        entityId: buildAccessEntityId(offerId, affiliateId),
+        action: 'offer.access_revoked',
+        actorUserId: actorId,
+        actorRole,
+        requestId,
+        client,
+        oldValue: {
+          status: deleted.accessType ?? null,
+        },
+        newValue: {
+          status: null,
+        },
+        metadata: {
+          offerId,
+          affiliateId,
+          previousStatus: deleted.accessType ?? null,
+          newStatus: null,
+        },
+      });
+    }
+
+    await client.query('COMMIT');
+
+    return deleted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    await logAuditError({
+      entityType: 'offer_access',
+      entityId: buildAccessEntityId(offerId, affiliateId),
+      action: 'offer.access_revoke_failed',
+      actorUserId: actorId,
+      actorRole,
+      requestId,
+      metadata: {
+        offerId,
+        affiliateId,
+      },
+      error,
+    });
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось отозвать доступ партнёра к офферу',
+    );
+  } finally {
+    client.release();
+  }
+}
+
+export async function listOfferAffiliateAccessRecords(offerId) {
+  if (!offerId) {
+    throw new Error('offerId is required to list access records');
+  }
+
+  await getOfferById(offerId);
+  const records = await listOfferAffiliateAccessWithAffiliate(offerId);
+  return records.map(buildAffiliateAccessResponse);
+}

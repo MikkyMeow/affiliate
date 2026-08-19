@@ -5,18 +5,32 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, type ApiError } from '@/lib/api';
+import {
+  DuplicateClickSettings,
+  DuplicateWindowUnit,
+  windowPartsToSeconds,
+} from '../components/DuplicateClickSettings';
+import {
+  OFFER_CATEGORY_OPTIONS,
+  type OfferCategoryValue,
+} from '@/lib/offerCategories';
 
 type Advertiser = {
   id: string;
+  publicId: string | null;
   name: string;
 };
 
 type FormState = {
   title: string;
   advertiserId: string;
+  category: OfferCategoryValue | '';
   targetUrl: string;
-  payoutRub: string;
   status: 'active' | 'inactive';
+  allowDuplicateClicks: boolean;
+  duplicateClickWindowValue: string;
+  duplicateClickWindowUnit: DuplicateWindowUnit;
+  description: string;
 };
 
 type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
@@ -28,9 +42,13 @@ export default function CreateOfferPage() {
   const [form, setForm] = useState<FormState>({
     title: '',
     advertiserId: '',
+    category: '',
     targetUrl: '',
-    payoutRub: '',
     status: 'inactive',
+    allowDuplicateClicks: true,
+    duplicateClickWindowValue: '',
+    duplicateClickWindowUnit: 'minutes',
+    description: '',
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -84,15 +102,22 @@ export default function CreateOfferPage() {
   const isFormValid = useMemo(() => {
     const normalizedTitle = form.title.trim();
     const normalizedTargetUrl = form.targetUrl.trim();
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    const duplicateSettingsValid =
+      form.allowDuplicateClicks || duplicateWindowSeconds !== null;
 
     return (
       normalizedTitle.length > 0 &&
       form.advertiserId.length > 0 &&
+      form.category.length > 0 &&
       /^https?:\/\//i.test(normalizedTargetUrl) &&
-      Number.isFinite(payoutValue) &&
-      payoutValue > 0 &&
-      ['active', 'inactive'].includes(form.status)
+      ['active', 'inactive'].includes(form.status) &&
+      duplicateSettingsValid
     );
   }, [form]);
 
@@ -116,17 +141,32 @@ export default function CreateOfferPage() {
       return;
     }
 
+    if (!form.category) {
+      setErrors({ category: 'Выберите категорию' });
+      return;
+    }
+
     const normalizedUrl = form.targetUrl.trim();
     if (!/^https?:\/\//i.test(normalizedUrl)) {
       setErrors({ targetUrl: 'Введите корректный URL (http/https)' });
       return;
     }
 
-    const payoutValue = Number.parseFloat(form.payoutRub.replace(',', '.'));
-    if (!Number.isFinite(payoutValue) || payoutValue <= 0) {
-      setErrors({ payoutRub: 'Введите корректную сумму больше 0' });
+    const duplicateWindowSeconds = form.allowDuplicateClicks
+      ? null
+      : windowPartsToSeconds(
+          form.duplicateClickWindowValue,
+          form.duplicateClickWindowUnit,
+        );
+    if (!form.allowDuplicateClicks && duplicateWindowSeconds === null) {
+      setErrors({
+        duplicateClickWindowValue: 'Укажите окно от 1 минуты до 30 дней',
+      });
       return;
     }
+
+    const normalizedDescription = form.description.trim();
+    const description = normalizedDescription.length > 0 ? normalizedDescription : null;
 
     setSubmitting(true);
 
@@ -137,9 +177,12 @@ export default function CreateOfferPage() {
         body: JSON.stringify({
           title: normalizedTitle,
           advertiserId: form.advertiserId,
+          category: form.category,
           targetUrl: normalizedUrl,
-          payoutRub: Number(payoutValue.toFixed(2)),
           status: form.status,
+          allowDuplicateClicks: form.allowDuplicateClicks,
+          duplicateClickWindowSeconds: duplicateWindowSeconds,
+          description,
         }),
       });
       router.push('/dashboard/offers');
@@ -160,11 +203,18 @@ export default function CreateOfferPage() {
           switch (field) {
             case 'title':
             case 'advertiserId':
+            case 'category':
             case 'targetUrl':
-            case 'payoutRub':
             case 'status':
+            case 'allowDuplicateClicks':
+            case 'description':
               if (!fieldErrors[field]) {
                 fieldErrors[field] = message;
+              }
+              break;
+            case 'duplicateClickWindowSeconds':
+              if (!fieldErrors.duplicateClickWindowValue) {
+                fieldErrors.duplicateClickWindowValue = message;
               }
               break;
             default:
@@ -288,7 +338,9 @@ export default function CreateOfferPage() {
             <option value="">Выберите рекламодателя</option>
             {advertisers.map((advertiser) => (
               <option key={advertiser.id} value={advertiser.id}>
-                {advertiser.name}
+                {advertiser.publicId
+                  ? `${advertiser.publicId} · ${advertiser.name}`
+                  : advertiser.name}
               </option>
             ))}
           </select>
@@ -298,6 +350,34 @@ export default function CreateOfferPage() {
             </p>
           )}
           {errors.advertiserId && <p className="text-sm text-red-600">{errors.advertiserId}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            htmlFor="category"
+          >
+            Категория
+          </label>
+          <select
+            id="category"
+            value={form.category}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                category: event.target.value as OfferCategoryValue | '',
+              }))
+            }
+            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+          >
+            <option value="">Выберите категорию</option>
+            {OFFER_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p className="text-sm text-red-600">{errors.category}</p>}
         </div>
 
         <div className="space-y-2">
@@ -323,23 +403,24 @@ export default function CreateOfferPage() {
         <div className="space-y-2">
           <label
             className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
-            htmlFor="payoutRub"
+            htmlFor="description"
           >
-            Выплата, ₽
+            Описание
           </label>
-          <input
-            id="payoutRub"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.payoutRub}
+          <textarea
+            id="description"
+            value={form.description}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, payoutRub: event.target.value.slice(0, 20) }))
+              setForm((prev) => ({
+                ...prev,
+                description: event.target.value,
+              }))
             }
-            placeholder="500"
+            placeholder="Опишите требования к трафику, ограничения и ценность оффера"
+            rows={6}
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
-          {errors.payoutRub && <p className="text-sm text-red-600">{errors.payoutRub}</p>}
+          {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
         </div>
 
         <div className="space-y-2">
@@ -361,6 +442,34 @@ export default function CreateOfferPage() {
             <option value="inactive">Неактивен</option>
           </select>
         </div>
+
+        <DuplicateClickSettings
+          allowDuplicateClicks={form.allowDuplicateClicks}
+          duplicateClickWindowValue={form.duplicateClickWindowValue}
+          duplicateClickWindowUnit={form.duplicateClickWindowUnit}
+          onAllowDuplicateClicksChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              allowDuplicateClicks: value,
+            }))
+          }
+          onDuplicateClickWindowValueChange={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowValue: value,
+            }))
+          }
+          onDuplicateClickWindowUnitChange={(unit) =>
+            setForm((prev) => ({
+              ...prev,
+              duplicateClickWindowUnit: unit,
+            }))
+          }
+          errors={{
+            allowDuplicateClicks: errors.allowDuplicateClicks,
+            duplicateClickWindow: errors.duplicateClickWindowValue,
+          }}
+        />
 
         {errors.form && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">

@@ -1,0 +1,4 @@
+partner_id,offer_id,country,sub1,sub2,ip,created_at,comment
+#P1,#O2,RU,campaign1,bannerA,127.0.0.1,2026-05-17T10:00:00Z,manual payable click demo
+#P1,#O2,KZ,campaign1,bannerB,127.0.0.2,2026-05-17T10:05:00Z,manual payable click demo
+#P2,#O3,UZ,campaign2,landingC,127.0.0.3,2026-05-17T11:10:00Z,second partner click demo

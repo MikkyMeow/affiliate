@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { getRoleLabel } from '@/lib/auth/roles';
 
 export function AuthStatus() {
-  const { user, loading, logout } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
 
   if (loading) {
     return (
@@ -38,6 +39,15 @@ export function AuthStatus() {
     );
   }
 
+  const roleLabel = getRoleLabel(user.role);
+
+  const profileName =
+    user.role === 'affiliate' && profile && profile.type === 'affiliate'
+      ? profile.name
+      : user.role === 'advertiser' && profile && profile.type === 'advertiser'
+        ? profile.name
+        : null;
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm dark:border-emerald-900/70 dark:bg-emerald-900/40 dark:text-emerald-100">
       <div>
@@ -48,14 +58,21 @@ export function AuthStatus() {
           Статус: авторизован
         </p>
         <p className="text-emerald-700 dark:text-emerald-200">
-          Роль:{' '}
-          {user.role === 'admin'
-            ? 'Администратор'
-            : 'Аффилиат'}
+          Роль: {roleLabel}
         </p>
+        {profileName ? (
+          <p className="text-emerald-700 dark:text-emerald-200">
+            Профиль: {profileName}
+          </p>
+        ) : null}
         {user.role === 'affiliate' && (
           <p className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-200">
             <Link href="/partner">Перейти в кабинет партнера →</Link>
+          </p>
+        )}
+        {user.role === 'advertiser' && (
+          <p className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-200">
+            <Link href="/advertiser">Перейти в кабинет рекламодателя →</Link>
           </p>
         )}
       </div>

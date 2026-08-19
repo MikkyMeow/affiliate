@@ -1,0 +1,4 @@
+partner_id,offer_id,goal_id,status,external_id,created_at,comment
+#P1,#O2,42732082-5aa0-4340-979f-aee88f6b28ad,approved,ORDER-1001,2026-05-17T10:00:00Z,manual import demo
+#P1,#O2,invalid goal,pending,ORDER-1002,2026-05-17T10:15:00Z,manual import demo
+#P2,#O3,274adff2-7d87-47e7-8611-d35ed4d20f20,approved,ORDER-1003,2026-05-17T11:00:00Z,second partner demo

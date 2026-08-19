@@ -28,7 +28,8 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.STAGING_PORT }}" -H "${{ secrets.STAGING_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Run staging deploy script
+      - name: Run staging deploy
         run: |
-          ssh -p "${{ secrets.STAGING_PORT }}" "${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}" \
-            "cd /opt/mikilead && /opt/mikilead/scripts/deploy-staging.sh"
+          ssh -vvv -p "${{ secrets.STAGING_PORT }}" \
+            "${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}" \
+            "cd /home/deploy/affiliate && bash /home/deploy/affiliate/scripts/deploy-staging.sh"

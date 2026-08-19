@@ -1,7 +1,27 @@
+import {
+  getQueryValue,
+  validateBoolean,
+  validateDateRange,
+  validateOrder,
+  validatePagination,
+  validateSearch,
+  validateSort,
+} from '../utils/adminList.js';
+
 const allowedStatuses = new Set(['active', 'inactive']);
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+const AFFILIATE_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  name: 'name',
+  email: 'email',
+  publicId: 'publicId',
+  status: 'status',
+};
 
 /**
  * @typedef {Object} CreateAffiliateDto
@@ -65,8 +85,57 @@ function normalizeEmail(value) {
   return trimmed.length > 0 ? trimmed.toLowerCase() : null;
 }
 
+function normalizeOptionalText(value) {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateManagerUserId(value, { allowNull = false, field = 'managerUserId' } = {}) {
+  if (value === null) {
+    return allowNull
+      ? { value: null, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, `${field} не может быть null`)],
+        };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} обязателен`)],
+    };
+  }
+
+  if (!UUID_REGEX.test(trimmed)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, `Некорректный ${field}`)],
+    };
+  }
+
+  return { value: trimmed, errors: [] };
 }
 
 export function validateStatus(status, { allowMissing = true } = {}) {
@@ -203,6 +272,43 @@ export function validateUpdateAffiliateDto(payload) {
   return { dto, errors };
 }
 
+export function validateUpdateAffiliateInternalNoteDto(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (!Object.hasOwn(source, 'internalNote') && !Object.hasOwn(source, 'internal_note')) {
+    errors.push(buildError('internalNote', 'internalNote обязателен'));
+    return { dto, errors };
+  }
+
+  const rawValue = Object.hasOwn(source, 'internalNote')
+    ? source.internalNote
+    : source.internal_note;
+
+  if (rawValue !== null && typeof rawValue !== 'string') {
+    errors.push(buildError('internalNote', 'internalNote должен быть строкой или null'));
+    return { dto, errors };
+  }
+
+  dto.internalNote = normalizeOptionalText(rawValue);
+  return { dto, errors };
+}
+
+export function validateTelegramValue(value, { field = 'telegram' } = {}) {
+  if (value !== null && typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой или null`)],
+    };
+  }
+
+  return {
+    value: normalizeOptionalText(value),
+    errors: [],
+  };
+}
+
 export function validateAffiliateStatusFilter(value) {
   return validateStatus(value);
 }
@@ -267,7 +373,38 @@ function validateOffset(value) {
 export function validateAffiliateListFilters(payload = {}) {
   const errors = [];
   const filter = {};
-  const pagination = {};
+  const { pagination, errors: paginationErrors } = validatePagination(payload, {
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateSearch(
+    getQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateSort(
+    getQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    AFFILIATE_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateOrder(
+    getQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
 
   if (Object.hasOwn(payload, 'status')) {
     const { value: status, errors: statusErrors } = validateAffiliateStatusFilter(
@@ -279,17 +416,79 @@ export function validateAffiliateListFilters(payload = {}) {
     }
   }
 
-  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
-  errors.push(...limitErrors);
-  if (typeof limit === 'number') {
-    pagination.limit = limit;
+  if (Object.hasOwn(payload, 'managerUserId')) {
+    const {
+      value: managerUserId,
+      errors: managerErrors,
+    } = validateManagerUserId(payload.managerUserId, {
+      allowNull: false,
+      field: 'managerUserId',
+    });
+    errors.push(...managerErrors);
+    if (managerUserId) {
+      filter.managerUserId = managerUserId;
+    }
   }
 
-  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
-  errors.push(...offsetErrors);
-  if (typeof offset === 'number') {
-    pagination.offset = offset;
+  if (Object.hasOwn(payload, 'manager_id')) {
+    const {
+      value: managerUserId,
+      errors: managerErrors,
+    } = validateManagerUserId(payload.manager_id, {
+      allowNull: false,
+      field: 'manager_id',
+    });
+    errors.push(...managerErrors);
+    if (managerUserId) {
+      filter.managerUserId = managerUserId;
+    }
+  }
+
+  const { value: hasTelegram, errors: hasTelegramErrors } = validateBoolean(
+    getQueryValue(payload, 'hasTelegram', 'has_telegram'),
+    'hasTelegram',
+  );
+  errors.push(...hasTelegramErrors);
+  if (typeof hasTelegram === 'boolean') {
+    filter.hasTelegram = hasTelegram;
+  }
+
+  const { dateFrom, dateTo } = validateDateRange(payload, errors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
+  }
+  if (dateTo) {
+    filter.dateTo = dateTo;
   }
 
   return { filter, pagination, errors };
+}
+
+export function validateAssignAffiliateManagerDto(payload) {
+  const source = payload ?? {};
+  const errors = [];
+  const dto = {};
+
+  if (!Object.hasOwn(source, 'managerUserId') && !Object.hasOwn(source, 'manager_id')) {
+    errors.push(buildError('managerUserId', 'managerUserId обязателен'));
+    return { dto, errors };
+  }
+
+  const {
+    value: managerUserId,
+    errors: managerErrors,
+  } = validateManagerUserId(
+    Object.hasOwn(source, 'managerUserId') ? source.managerUserId : source.manager_id,
+    {
+      allowNull: true,
+      field: Object.hasOwn(source, 'manager_id') ? 'manager_id' : 'managerUserId',
+    },
+  );
+  errors.push(...managerErrors);
+
+  if (managerErrors.length === 0) {
+    dto.managerUserId = managerUserId;
+  }
+
+  return { dto, errors };
 }

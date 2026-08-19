@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '@/features/docs/HelpLink';
+import { docsHelpLinks } from '@/features/docs/docs-help-links';
 import { useAuth } from '@/context/AuthContext';
 import { InlineAlert } from '@/components/InlineAlert';
 import {
@@ -177,7 +179,7 @@ export default function PartnerClicksPage() {
           Вы авторизованы как администратор. Перейдите в админ-панель.
         </p>
         <Link
-          href="/dashboard/stats"
+          href="/dashboard"
           className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           В админку
@@ -191,9 +193,12 @@ export default function PartnerClicksPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">Partner Clicks</p>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            История кликов
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              История кликов
+            </h1>
+            <HelpLink href={docsHelpLinks.partnerClicks} />
+          </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Список реальных переходов по вашим ссылкам с пагинацией.
           </p>
@@ -218,13 +223,14 @@ export default function PartnerClicksPage() {
                 <th className="px-4 py-3">Click ID</th>
                 <th className="px-4 py-3">Offer ID</th>
                 <th className="px-4 py-3">Sub1</th>
+                <th className="px-4 py-3">Device</th>
                 <th className="px-4 py-3">Создан</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {clicks.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     {loading ? 'Загружаем клики…' : 'Пока нет данных.'}
                   </td>
                 </tr>
@@ -235,6 +241,9 @@ export default function PartnerClicksPage() {
                     <td className="px-4 py-3 font-mono text-xs">{click.offerId ?? '—'}</td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                       {click.sub1 ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                      {click.device ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                       {dateFormatter.format(new Date(click.createdAt))}

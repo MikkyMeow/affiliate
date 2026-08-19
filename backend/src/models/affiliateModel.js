@@ -1,43 +1,147 @@
 import pool from '../db.js';
+import { attachPublicId, attachPublicIds, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
 
 const affiliateFields = `
-  id,
-  name,
-  email,
-  status,
-  user_id AS "userId",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
+  a.id,
+  a.public_id_number AS "publicIdNumber",
+  a.name,
+  a.email,
+  a.status,
+  a.telegram,
+  a.internal_note AS "internalNote",
+  a.user_id AS "userId",
+  a.manager_user_id AS "managerUserId",
+  a.created_at AS "createdAt",
+  a.updated_at AS "updatedAt",
+  mu.id AS "manager.id",
+  mu.display_name AS "manager.displayName",
+  mu.email AS "manager.email"
 `;
+
+function getQueryable(client) {
+  return client ?? pool;
+}
+
+function normalizeAffiliate(row) {
+  if (!row) {
+    return null;
+  }
+
+  const managerId = row['manager.id'] ?? null;
+
+  return {
+    id: row.id,
+    publicIdNumber: row.publicIdNumber ?? null,
+    name: row.name,
+    email: row.email,
+    status: row.status,
+    telegram: row.telegram ?? null,
+    internalNote: row.internalNote ?? null,
+    userId: row.userId ?? null,
+    managerUserId: row.managerUserId ?? null,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+    manager: managerId
+      ? {
+          id: managerId,
+          displayName: row['manager.displayName'] ?? null,
+          email: row['manager.email'] ?? null,
+        }
+      : null,
+  };
+}
 
 export async function createAffiliate({
   name,
   email,
   status = 'active',
+  telegram = null,
   userId = null,
-}) {
-  const result = await pool.query(
+}, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
-      INSERT INTO affiliates (name, email, status, user_id)
-      VALUES ($1, $2, $3, $4)
-      RETURNING ${affiliateFields};
+      INSERT INTO affiliates (name, email, status, telegram, user_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id;
     `,
-    [name, email.toLowerCase(), status, userId],
+    [name, email.toLowerCase(), status, telegram, userId],
   );
 
-  return result.rows[0];
+  return findAffiliateById(result.rows[0]?.id, { client });
 }
 
 export async function listAffiliates(
-  { status } = {},
-  { limit = 20, offset = 0 } = {},
+  {
+    status,
+    managerUserId,
+    hasTelegram,
+    dateFrom,
+    dateTo,
+    search,
+  } = {},
+  {
+    limit = 20,
+    offset = 0,
+    sort = 'createdAt',
+    order = 'desc',
+  } = {},
 ) {
   const params = [];
   const conditions = [];
+  const normalizedOrder =
+    typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortMap = {
+    createdAt: 'a.created_at',
+    updatedAt: 'a.updated_at',
+    name: 'a.name',
+    email: 'a.email',
+    publicId: 'a.public_id_number',
+    status: 'a.status',
+  };
+  const sortColumn = sortMap[sort] ?? sortMap.createdAt;
 
   if (status) {
     params.push(status);
-    conditions.push(`status = $${params.length}`);
+    conditions.push(`a.status = $${params.length}`);
+  }
+
+  if (managerUserId) {
+    params.push(managerUserId);
+    conditions.push(`a.manager_user_id = $${params.length}`);
+  }
+
+  if (typeof hasTelegram === 'boolean') {
+    conditions.push(
+      hasTelegram
+        ? `COALESCE(a.telegram, '') <> ''`
+        : `COALESCE(a.telegram, '') = ''`,
+    );
+  }
+
+  if (dateFrom) {
+    params.push(dateFrom);
+    conditions.push(`a.created_at >= $${params.length}::date`);
+  }
+
+  if (dateTo) {
+    params.push(dateTo);
+    conditions.push(`a.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  if (search) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    const searchParam = `$${params.length}`;
+    conditions.push(`
+      (
+        LOWER(a.name) LIKE ${searchParam}
+        OR LOWER(a.email) LIKE ${searchParam}
+        OR LOWER(COALESCE(a.telegram, '')) LIKE ${searchParam}
+        OR LOWER('#P' || a.public_id_number::text) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.display_name, '')) LIKE ${searchParam}
+        OR LOWER(COALESCE(mu.email, '')) LIKE ${searchParam}
+      )
+    `);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -45,7 +149,7 @@ export async function listAffiliates(
   const totalResult = await pool.query(
     `
       SELECT COUNT(*)::int AS count
-      FROM affiliates
+      FROM affiliates AS a
       ${whereClause};
     `,
     params,
@@ -54,9 +158,10 @@ export async function listAffiliates(
   const result = await pool.query(
     `
       SELECT ${affiliateFields}
-      FROM affiliates
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${sortColumn} ${normalizedOrder}, a.id ${normalizedOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2};
     `,
@@ -64,65 +169,121 @@ export async function listAffiliates(
   );
 
   return {
-    items: result.rows,
+    items: attachPublicIds(result.rows.map(normalizeAffiliate), PUBLIC_ID_PREFIXES.affiliate),
     total: totalResult.rows[0]?.count ?? 0,
   };
 }
 
-export async function findAffiliateById(id) {
-  const result = await pool.query(
+export async function findAffiliateById(id, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
-      FROM affiliates
-      WHERE id = $1;
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.id = $1;
     `,
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(normalizeAffiliate(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.affiliate);
 }
 
-export async function findAffiliateByEmail(email) {
-  const result = await pool.query(
+export async function findAffiliateByPublicIdNumber(
+  publicIdNumber,
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
-      FROM affiliates
-      WHERE LOWER(email) = LOWER($1);
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.public_id_number = $1;
+    `,
+    [publicIdNumber],
+  );
+
+  return attachPublicId(
+    normalizeAffiliate(result.rows[0] ?? null),
+    PUBLIC_ID_PREFIXES.affiliate,
+  );
+}
+
+export async function findAffiliateByEmail(email, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${affiliateFields}
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE LOWER(a.email) = LOWER($1);
     `,
     [email],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(normalizeAffiliate(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.affiliate);
 }
 
-export async function findAffiliateByUserId(userId) {
-  const result = await pool.query(
+export async function findAffiliateByUserId(userId, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       SELECT ${affiliateFields}
-      FROM affiliates
-      WHERE user_id = $1;
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.user_id = $1;
     `,
     [userId],
   );
 
-  return result.rows[0] ?? null;
+  return attachPublicId(normalizeAffiliate(result.rows[0] ?? null), PUBLIC_ID_PREFIXES.affiliate);
 }
 
-export async function linkAffiliateToUser(id, userId) {
-  const result = await pool.query(
+export async function findAffiliatesByIds(ids = [], { client } = {}) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return [];
+  }
+
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      SELECT ${affiliateFields}
+      FROM affiliates AS a
+      LEFT JOIN users AS mu ON mu.id = a.manager_user_id
+      WHERE a.id = ANY($1::uuid[])
+      ORDER BY a.created_at DESC
+    `,
+    [ids],
+  );
+
+  return attachPublicIds(
+    result.rows.map(normalizeAffiliate),
+    PUBLIC_ID_PREFIXES.affiliate,
+  );
+}
+
+export async function linkAffiliateToUser(id, userId, { client } = {}) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
     `
       UPDATE affiliates
       SET user_id = $1, updated_at = NOW()
       WHERE id = $2
-      RETURNING ${affiliateFields};
+      RETURNING id;
     `,
     [userId, id],
   );
 
-  return result.rows[0] ?? null;
+  return result.rowCount > 0 ? findAffiliateById(id, { client }) : null;
 }
 
-export async function updateAffiliate(id, { name, email, status }) {
+export async function updateAffiliate(
+  id,
+  { name, email, status, telegram, internalNote },
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
   const assignments = [];
   const params = [];
 
@@ -141,19 +302,48 @@ export async function updateAffiliate(id, { name, email, status }) {
     assignments.push(`status = $${params.length}`);
   }
 
-  if (assignments.length === 0) {
-    return findAffiliateById(id);
+  if (telegram !== undefined) {
+    params.push(telegram ?? null);
+    assignments.push(`telegram = $${params.length}`);
   }
 
-  const result = await pool.query(
+  if (internalNote !== undefined) {
+    params.push(internalNote ?? null);
+    assignments.push(`internal_note = $${params.length}`);
+  }
+
+  if (assignments.length === 0) {
+    return findAffiliateById(id, { client });
+  }
+
+  const result = await queryable.query(
     `
       UPDATE affiliates
       SET ${assignments.join(', ')}, updated_at = NOW()
       WHERE id = $${params.length + 1}
-      RETURNING ${affiliateFields};
+      RETURNING id;
     `,
     [...params, id],
   );
 
-  return result.rows[0] ?? null;
+  return result.rowCount > 0 ? findAffiliateById(id, { client }) : null;
+}
+
+export async function updateAffiliateManager(
+  id,
+  managerUserId,
+  { client } = {},
+) {
+  const queryable = getQueryable(client);
+  const result = await queryable.query(
+    `
+      UPDATE affiliates
+      SET manager_user_id = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id;
+    `,
+    [managerUserId ?? null, id],
+  );
+
+  return result.rowCount > 0 ? findAffiliateById(id, { client }) : null;
 }

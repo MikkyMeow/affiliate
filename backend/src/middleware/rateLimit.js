@@ -5,6 +5,9 @@ import { getClientIp } from '../lib/getClientIp.js';
 import { redisClient } from '../lib/redis.js';
 
 let hasLoggedRedisFallback = false;
+const rateLimitDisabled =
+  (process.env.RATE_LIMIT_DISABLED ?? '').toLowerCase() === 'true' ||
+  process.env.NODE_ENV === 'test';
 
 function logRedisFallback(reason) {
   if (hasLoggedRedisFallback) {
@@ -22,9 +25,16 @@ function logRedisFallback(reason) {
 function createRedisBackedStore(name) {
   const memoryStore = new MemoryStore();
   let redisStore = null;
+  let initOptions = null;
 
   function shouldUseRedis() {
     return Boolean(redisClient?.isOpen && redisClient?.isReady);
+  }
+
+  function initStore(store) {
+    if (store && typeof store.init === 'function' && initOptions) {
+      store.init(initOptions);
+    }
   }
 
   function getRedisStore() {
@@ -38,6 +48,7 @@ function createRedisBackedStore(name) {
           prefix: `rl:${name}`,
           sendCommand: (...args) => redisClient.sendCommand(args),
         });
+        initStore(redisStore);
       } catch (error) {
         logRedisFallback(error);
         redisStore = null;
@@ -49,6 +60,13 @@ function createRedisBackedStore(name) {
   }
 
   return {
+    init(options) {
+      initOptions = options;
+      if (typeof memoryStore.init === 'function') {
+        memoryStore.init(options);
+      }
+      initStore(getRedisStore());
+    },
     async increment(key) {
       const store = getRedisStore();
       if (store) {
@@ -132,6 +150,10 @@ function buildHandler(message) {
 }
 
 function createLimiter({ windowMs, limit, message, name }) {
+  if (rateLimitDisabled) {
+    return (_req, _res, next) => next();
+  }
+
   return rateLimit({
     windowMs,
     limit,

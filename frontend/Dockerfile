@@ -1,12 +1,13 @@
 FROM node:20-alpine
 
-WORKDIR /app
+WORKDIR /app/frontend
 
 # Copy dependency manifests first to leverage cached layers
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm install --production=false
 
-COPY . .
+COPY frontend/ ./
+COPY docs/user /app/docs/user
 
 RUN npm run build
 

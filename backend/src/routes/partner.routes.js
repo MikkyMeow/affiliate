@@ -10,11 +10,22 @@ import {
   listPartnerOffers,
   listPartnerClicks,
   listPartnerConversions,
+  getPartnerOfferDetails,
 } from '../services/partner.service.js';
+import { validateUpdateProfileDto } from '../validators/users.js';
+import { updateOwnProfile } from '../services/profile.service.js';
+import { getActorContext } from '../utils/actorContext.js';
+import { requestOfferAccess } from '../services/offer-requests.service.js';
 import {
   validatePartnerClicksQuery,
   validatePartnerConversionsQuery,
 } from '../validators/stats.js';
+import {
+  validateOfferCategory,
+  validateUuid,
+} from '../validators/offers.js';
+import { validateOfferRequestPayload } from '../validators/offerRequests.js';
+import { requireQuestionnaireCompletion } from '../middleware/requireQuestionnaireCompletion.js';
 
 const router = express.Router();
 
@@ -41,6 +52,31 @@ router.get(
     return sendSuccess(res, profile);
   }),
 );
+
+router.patch(
+  '/profile',
+  asyncHandler(async (req, res) => {
+    const { dto, errors } = validateUpdateProfileDto(req.body);
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const result = await updateOwnProfile(req.user, dto, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
+
+    return sendSuccess(res, result);
+  }),
+);
+
+router.use(requireQuestionnaireCompletion());
 
 router.get(
   '/stats',
@@ -118,8 +154,81 @@ router.get(
 router.get(
   '/offers',
   asyncHandler(async (req, res) => {
-    const offers = await listPartnerOffers();
+    const { value: category, errors } = validateOfferCategory(
+      req.query?.category,
+      { allowMissing: true, field: 'category' },
+    );
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const offers = await listPartnerOffers(req.user.userId, {
+      category: typeof category === 'string' ? category : undefined,
+    });
     return sendSuccess(res, offers);
+  }),
+);
+
+router.get(
+  '/offers/:id',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'offerId',
+    });
+
+    if (errors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors },
+      );
+    }
+
+    const offer = await getPartnerOfferDetails(req.user.userId, offerId);
+    return sendSuccess(res, { offer });
+  }),
+);
+
+router.post(
+  '/offers/:id/request',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'offerId',
+    });
+    const { dto, errors: bodyErrors } = validateOfferRequestPayload(req.body);
+    const allErrors = [...errors, ...bodyErrors];
+
+    if (allErrors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors: allErrors },
+      );
+    }
+
+    const request = await requestOfferAccess({
+      affiliateId: req.user.affiliateId,
+      offerId,
+      message: dto.message ?? null,
+    });
+
+    return sendSuccess(
+      res,
+      {
+        request,
+      },
+      { status: 201 },
+    );
   }),
 );
 

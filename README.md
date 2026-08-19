@@ -20,14 +20,13 @@
    ```
 3. **Настроить переменные окружения**
    ```bash
-   cp backend/.env.local.example backend/.env.local
-   cp backend/.env.production.example backend/.env.production
-   # при необходимости скорректируй креды/порт и JWT секрет
-   cp frontend/.env.local.example frontend/.env.local
-   # можно поменять NEXT_PUBLIC_API_BASE (указывает полный URL до /api/v1)
+   cp .env.example .env
    ```
-   Backend и связанные CLI-скрипты автоматически загружают `backend/.env.local`
-   (или `backend/.env.production`, если запускать с `NODE_ENV=production`).
+   Отредактируй `.env`: блоки `DB_*`, Redis и JWT используются backend/воркером,
+   а `NEXT_PUBLIC_*` нужны Next.js (client-side). Backend, CLI-скрипты и фронтенд
+   автоматически загружают один и тот же файл из корня репозитория.
+   `APP_ORIGIN` укажи на origin фронтенда (например, `http://localhost:3000`), чтобы
+   backend корректно настраивал CORS и httpOnly cookie для refresh токена.
 
 ## Запуск сервисов
 
@@ -36,7 +35,7 @@
    cd backend
    npm run dev
    ```
-   Сервер стартует на `http://localhost:4000`. Проверка БД: `GET http://localhost:4000/api/v1/health`.
+   Сервер стартует на `http://localhost:4000`. PostgreSQL из Docker доступен на host-порту `55432`, Redis на `56379`. Проверка БД: `GET http://localhost:4000/api/v1/health`.
    При запуске backend автоматически применяет все новые миграции БД через `node-pg-migrate`.
 
 2. **Async worker**
@@ -69,9 +68,9 @@ Backend использует `node-pg-migrate` и хранит миграции 
 - Создать новую миграцию:  
   `npm run migrate:create --workspace backend -- add_new_table`
 
-CLI подхватывает параметры подключения из `backend/.env.local` (или `DATABASE_URL`).
-Запускай с `NODE_ENV=production`, чтобы считывать `backend/.env.production`. После
-создания миграции не забудь заполнить `up`/`down` функции в файле.
+CLI подхватывает параметры подключения из `.env` (или использует `DATABASE_URL`).
+При необходимости укажи `NODE_ENV=production`, чтобы загружать боевые креды.
+После создания миграции не забудь заполнить `up`/`down` функции в файле.
 
 ## Следующие шаги
 

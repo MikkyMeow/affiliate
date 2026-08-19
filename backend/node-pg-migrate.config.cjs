@@ -2,9 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-const envFile =
-  process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-const envPath = path.resolve(__dirname, envFile);
+const repoRoot = path.resolve(__dirname, '..');
+const envPath = path.resolve(repoRoot, '.env');
 
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });

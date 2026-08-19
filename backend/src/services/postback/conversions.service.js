@@ -1,11 +1,23 @@
 import crypto from 'crypto';
-import { createConversion, findByClickId } from '../../models/conversions.model.js';
-import { findOfferForPostback } from '../../models/offers.model.js';
+import { findOfferForPostbackByToken } from '../../models/offers.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
 import { dispatchAsyncJob } from '../async-jobs.service.js';
 import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
 import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
+import { createConversionWithResolvedGoal } from '../offer-goals.service.js';
+import { logError, logInfo, logWarn } from '../../lib/structuredLogger.js';
+import { canPartnerAccessOffer } from '../offers/affiliate-visibility.js';
+import { getPartnerOfferVisibilityState } from '../offer-visibility.service.js';
+import { getClickByClickId } from '../tracking/clicks.service.js';
+import {
+  createPostbackLog,
+  updatePostbackLogResult,
+} from '../../models/postback-logs.model.js';
+import {
+  CONVERSION_STATUS_VALUES,
+  CONVERSION_STATUSES,
+} from '../../constants/conversions.js';
 
 async function publishConversionCreatedJob(conversion) {
   const jobType = 'conversion_created';
@@ -15,6 +27,7 @@ async function publishConversionCreatedJob(conversion) {
     clickId: conversion.clickId,
     offerId: conversion.offerId,
     affiliateId: conversion.affiliateId,
+    goalId: conversion.goalId ?? null,
   };
 
   try {
@@ -24,24 +37,14 @@ async function publishConversionCreatedJob(conversion) {
       queue_name: queueConfig.name,
       job_type: jobType,
     });
-    console.error(
-      JSON.stringify({
-        event: 'queue_enqueue_failed',
-        queue: queueConfig.name,
-        job_type: jobType,
-        conversion_id: conversion.id,
-        reason: error.message,
-      }),
-    );
+    logError('queue_enqueue_failed', {
+      queue: queueConfig.name,
+      jobType,
+      conversionId: conversion.id,
+      reason: error.message,
+    });
   }
 }
-import { getClickByClickId } from '../tracking/clicks.service.js';
-import {
-  createPostbackLog,
-  updatePostbackLogResult,
-} from '../../models/postback-logs.model.js';
-
-export const CONVERSION_STATUSES = ['approved', 'rejected'];
 
 function maskSensitiveValue(value) {
   if (typeof value === 'string' && value.length <= 3) {
@@ -69,6 +72,16 @@ function sanitizePayload(payload) {
     'payout',
     'signature',
     'sig',
+    'goalId',
+    'goal_id',
+    'externalTransactionId',
+    'externalTransactionID',
+    'externalId',
+    'external_id',
+    'transactionId',
+    'transaction_id',
+    'revenue',
+    'profit',
   ];
 
   const sanitized = {};
@@ -106,54 +119,52 @@ function assertToken(token) {
   }
 }
 
-function parsePayout(value) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function ensureOfferExists(offer, { offerId, clickId }) {
+function ensureOfferExists(offer, { clickId }) {
   if (offer) {
     return offer;
   }
 
-  throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер для клика не найден', {
-    offerId,
-    clickId,
-  });
+  throw new ApiError(
+    ERROR_CODES.INVALID_POSTBACK_TOKEN,
+    403,
+    'Некорректный postback token',
+    {
+      clickId,
+    },
+  );
 }
 
-function assertTokenMatches({ provided, actual, offerId, clickId }) {
-  if (typeof actual !== 'string' || !actual.length) {
-    throw new ApiError(ERROR_CODES.INTERNAL_ERROR, 500, 'У оффера отсутствует token', {
-      offerId,
-    });
+function assertOfferMatchesClick({ offer, click }) {
+  if (offer.id === click.offerId) {
+    return;
   }
 
-  const providedBuffer = Buffer.from(provided);
-  const actualBuffer = Buffer.from(actual);
+  throw new ApiError(
+    ERROR_CODES.INVALID_POSTBACK_TOKEN,
+    403,
+    'Некорректный postback token',
+    {
+      offerId: offer.id,
+      clickId: click.clickId,
+      clickOfferId: click.offerId,
+    },
+  );
+}
 
-  if (
-    providedBuffer.length !== actualBuffer.length ||
-    !crypto.timingSafeEqual(providedBuffer, actualBuffer)
-  ) {
-    throw new ApiError(
-      ERROR_CODES.INVALID_POSTBACK_TOKEN,
-      403,
-      'Некорректный postback token',
-      {
-        offerId,
-        clickId,
-      },
-    );
+function assertPartnerCanConvertOffer(
+  visibilityState,
+  { clickId, offerId, affiliateId },
+) {
+  if (canPartnerAccessOffer(visibilityState)) {
+    return;
   }
+
+  throw new ApiError(ERROR_CODES.FORBIDDEN, 403, 'Оффер недоступен для этого партнёра', {
+    clickId,
+    offerId,
+    affiliateId,
+    denyReason: visibilityState?.denyReason ?? null,
+  });
 }
 
 function buildSignaturePayload({ clickId, status, payoutRub }) {
@@ -187,26 +198,6 @@ function verifySignature({ signature, secret, clickId, status, payoutRub }) {
   ) {
     throw new ApiError(ERROR_CODES.UNAUTHORIZED, 401, 'Подпись не прошла проверку');
   }
-}
-
-function resolvePayout({ offer, override, status }) {
-  if (typeof override === 'number') {
-    return override;
-  }
-
-  if (status === 'rejected') {
-    return 0;
-  }
-
-  const offerPayout = parsePayout(offer.payoutRub);
-
-  if (offerPayout === null) {
-    throw new ApiError(ERROR_CODES.INTERNAL_ERROR, 500, 'Некорректный payout оффера', {
-      offerId: offer.id,
-    });
-  }
-
-  return offerPayout;
 }
 
 async function createPostbackLifecycleLog({ requestId, clickId, payload }) {
@@ -252,6 +243,17 @@ async function updatePostbackLifecycleLog(logEntry, patch) {
   }
 }
 
+function ensureValidStatus(status) {
+  if (!CONVERSION_STATUS_VALUES.includes(status)) {
+    throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Недопустимый статус', {
+      status,
+      allowed: CONVERSION_STATUS_VALUES,
+    });
+  }
+
+  return status;
+}
+
 function resolveStatusForError(code) {
   if (code === ERROR_CODES.DUPLICATE_CONVERSION) {
     return 'duplicate';
@@ -260,8 +262,12 @@ function resolveStatusForError(code) {
   if (
     code === ERROR_CODES.INVALID_POSTBACK_TOKEN ||
     code === ERROR_CODES.NOT_FOUND ||
+    code === ERROR_CODES.GOAL_REQUIRED ||
+    code === ERROR_CODES.GOAL_NOT_FOUND_FOR_OFFER ||
+    code === ERROR_CODES.GOAL_LIMIT_REACHED ||
     code === ERROR_CODES.VALIDATION_ERROR ||
-    code === ERROR_CODES.UNAUTHORIZED
+    code === ERROR_CODES.UNAUTHORIZED ||
+    code === ERROR_CODES.FORBIDDEN
   ) {
     return 'rejected';
   }
@@ -277,7 +283,14 @@ export async function logPostbackValidationFailure({
   requestId = null,
   clickId = null,
   payload = null,
+  errorCode = ERROR_CODES.VALIDATION_ERROR,
 }) {
+  logWarn('postback_validation_failed', {
+    requestId,
+    clickId,
+    payload: buildLogPayload(payload).body,
+  });
+
   const logEntry = await createPostbackLifecycleLog({
     requestId,
     clickId,
@@ -286,13 +299,21 @@ export async function logPostbackValidationFailure({
 
   await updatePostbackLifecycleLog(logEntry, {
     status: 'rejected',
-    errorCode: ERROR_CODES.VALIDATION_ERROR,
+    errorCode,
     clickId: clickId ?? null,
   });
 }
 
 export async function registerConversion(
-  { token, clickId, signature, status = 'approved', payoutRub },
+  {
+    token,
+    clickId,
+    signature,
+    status = CONVERSION_STATUSES.PENDING,
+    payoutRub,
+    goalId = null,
+    externalTransactionId = null,
+  },
   { requestId = null, payload = null } = {},
 ) {
   const postbackLog = await createPostbackLifecycleLog({
@@ -303,82 +324,90 @@ export async function registerConversion(
   const logContext = {
     offerId: null,
     affiliateId: null,
+    resolvedGoalId: null,
+    resolvedGoalName: null,
   };
+  logInfo('postback_received', {
+    requestId,
+    clickId,
+    payload: buildLogPayload(payload).body,
+  });
 
   try {
     assertToken(token);
     assertClickId(clickId);
 
+    const offer = ensureOfferExists(
+      await findOfferForPostbackByToken(token),
+      { clickId },
+    );
+    logContext.offerId = offer.id;
+
     const click = await getClickByClickId(clickId);
-    logContext.offerId = click.offerId;
+    assertOfferMatchesClick({ offer, click });
     logContext.affiliateId = click.affiliateId;
     await updatePostbackLifecycleLog(postbackLog, {
       offerId: logContext.offerId,
       affiliateId: logContext.affiliateId,
     });
 
-    const offer = ensureOfferExists(await findOfferForPostback(click.offerId), {
-      offerId: click.offerId,
-      clickId,
-    });
-
-    assertTokenMatches({
-      provided: token,
-      actual: offer.postbackToken,
-      offerId: offer.id,
-      clickId,
-    });
+    const normalizedStatus = ensureValidStatus(status);
 
     verifySignature({
       signature,
       secret: offer.postbackToken,
       clickId,
-      status,
+      status: normalizedStatus,
       payoutRub,
     });
 
-    const existing = await findByClickId(clickId);
+    const visibilityState = await getPartnerOfferVisibilityState(
+      click.affiliateId,
+      offer.id,
+      { offer },
+    );
+    assertPartnerCanConvertOffer(visibilityState, {
+      clickId,
+      offerId: offer.id,
+      affiliateId: click.affiliateId,
+    });
 
-    if (existing) {
-      logContext.offerId = existing.offerId ?? logContext.offerId;
-      logContext.affiliateId = existing.affiliateId ?? logContext.affiliateId;
-
-      await updatePostbackLifecycleLog(postbackLog, {
-        status: 'duplicate',
-        errorCode: ERROR_CODES.DUPLICATE_CONVERSION,
-        offerId: logContext.offerId,
-        affiliateId: logContext.affiliateId,
-        clickId,
-      });
-
-      throw new ApiError(
-        ERROR_CODES.DUPLICATE_CONVERSION,
-        409,
-        'Конверсия уже существует',
-        {
-          clickId,
-          offerId: existing.offerId,
-          affiliateId: existing.affiliateId,
-          conversionId: existing.id,
-        },
-      );
-    }
-
-    const resolvedPayout = resolvePayout({ offer, override: payoutRub, status });
-
-    if (!Number.isFinite(resolvedPayout) || resolvedPayout < 0) {
-      throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Некорректный payout', {
-        payoutRub: payoutRub ?? offer.payoutRub,
-      });
-    }
+    let resolvedGoalSnapshot = null;
 
     try {
-      const conversion = await createConversion({
+      const { conversion, goalSnapshot } = await createConversionWithResolvedGoal(
+        {
+          clickId,
+          offerId: click.offerId,
+          affiliateId: click.affiliateId,
+          status: normalizedStatus,
+          goalId,
+          externalTransactionId,
+        },
+        {
+          requestId,
+        },
+      );
+      resolvedGoalSnapshot = goalSnapshot;
+      logContext.resolvedGoalId = goalSnapshot.id ?? logContext.resolvedGoalId;
+      logContext.resolvedGoalName = goalSnapshot.name ?? logContext.resolvedGoalName;
+
+      await updatePostbackLifecycleLog(postbackLog, {
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        resolvedGoalId: goalSnapshot.id ?? null,
+        resolvedGoalName: goalSnapshot.name ?? null,
+        goalError: null,
+      });
+
+      logInfo('postback_goal_resolved', {
+        requestId,
         clickId,
-        offerId: click.offerId,
-        affiliateId: click.affiliateId,
-        status,
-        payoutRub: resolvedPayout,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        goalId: goalSnapshot.id ?? null,
+        goalName: goalSnapshot.name ?? null,
+        goalRateSource: goalSnapshot.source ?? 'base',
       });
 
       await updatePostbackLifecycleLog(postbackLog, {
@@ -387,19 +416,51 @@ export async function registerConversion(
         offerId: conversion.offerId,
         affiliateId: conversion.affiliateId,
         clickId: conversion.clickId,
+        resolvedGoalId: conversion.goalId ?? null,
+        resolvedGoalName: conversion.goalName ?? null,
+        goalError: null,
       });
 
       await publishConversionCreatedJob(conversion);
 
-      return conversion;
+      logInfo('conversion_created', {
+        requestId,
+        clickId: conversion.clickId,
+        conversionId: conversion.id,
+        offerId: conversion.offerId,
+        affiliateId: conversion.affiliateId,
+        goalId: conversion.goalId ?? null,
+        externalTransactionId: conversion.externalTransactionId ?? null,
+        status: conversion.status,
+      });
+
+      return {
+        conversion,
+        goalSnapshot,
+      };
     } catch (error) {
       if (error?.code === '23505') {
+        const duplicateGoalId = resolvedGoalSnapshot?.id ?? goalId ?? null;
+        const duplicateGoalName = resolvedGoalSnapshot?.name ?? null;
+
         await updatePostbackLifecycleLog(postbackLog, {
           status: 'duplicate',
           errorCode: ERROR_CODES.DUPLICATE_CONVERSION,
           offerId: logContext.offerId,
           affiliateId: logContext.affiliateId,
           clickId,
+          resolvedGoalId: duplicateGoalId,
+          resolvedGoalName: duplicateGoalName,
+          goalError: null,
+        });
+
+        logWarn('postback_duplicate', {
+          requestId,
+          clickId,
+          offerId: logContext.offerId,
+          affiliateId: logContext.affiliateId,
+          goalId: duplicateGoalId,
+          externalTransactionId,
         });
 
         throw new ApiError(
@@ -408,8 +469,10 @@ export async function registerConversion(
           'Конверсия уже существует',
           {
             clickId,
-            offerId: click.offerId,
+            offerId: offer.id,
             affiliateId: click.affiliateId,
+            goalId: duplicateGoalId,
+            externalTransactionId,
           },
         );
       }
@@ -434,7 +497,31 @@ export async function registerConversion(
         patch.affiliateId = logContext.affiliateId;
       }
 
+      if (logContext.resolvedGoalId) {
+        patch.resolvedGoalId = logContext.resolvedGoalId;
+      } else if (error.details?.goalId) {
+        patch.resolvedGoalId = error.details.goalId;
+      }
+
+      if (logContext.resolvedGoalName) {
+        patch.resolvedGoalName = logContext.resolvedGoalName;
+      }
+
+      if (error.details?.goalError) {
+        patch.goalError = error.details.goalError;
+      }
+
       await updatePostbackLifecycleLog(postbackLog, patch);
+
+      logError('postback_failed', {
+        requestId,
+        clickId,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        status: patch.status,
+        errorCode: patch.errorCode,
+        reason: error.message,
+      });
     } else {
       const patch = {
         status: 'failed',
@@ -450,7 +537,24 @@ export async function registerConversion(
         patch.affiliateId = logContext.affiliateId;
       }
 
+      if (logContext.resolvedGoalId) {
+        patch.resolvedGoalId = logContext.resolvedGoalId;
+      }
+
+      if (logContext.resolvedGoalName) {
+        patch.resolvedGoalName = logContext.resolvedGoalName;
+      }
+
       await updatePostbackLifecycleLog(postbackLog, patch);
+      logError('postback_failed', {
+        requestId,
+        clickId,
+        offerId: logContext.offerId,
+        affiliateId: logContext.affiliateId,
+        status: patch.status,
+        errorCode: patch.errorCode,
+        reason: error.message,
+      });
     }
 
     throw error;

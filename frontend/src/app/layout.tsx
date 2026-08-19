@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { AppShell } from "@/components/AppShell";
 import { AppNavbar } from "@/components/AppNavbar";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "MikiLead — CPA сеть для арбитража трафика",
@@ -28,14 +18,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <Providers>
-          <>
+          <div className="min-h-screen bg-white dark:bg-black">
             <AppNavbar />
-            <Suspense fallback={<AppPageFallback />}>{children}</Suspense>
-          </>
+            <AppShell>
+              <Suspense fallback={<AppPageFallback />}>{children}</Suspense>
+            </AppShell>
+          </div>
         </Providers>
       </body>
     </html>

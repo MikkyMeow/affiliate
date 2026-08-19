@@ -10,88 +10,110 @@ import {
 } from "react";
 import { apiFetch, type ApiError } from "@/lib/api";
 
+export type UserRole = "admin" | "manager" | "affiliate" | "advertiser";
+
+export type AuthProfile =
+  | {
+      type: "affiliate";
+      id: string;
+      publicId: string | null;
+      publicIdNumber: number | null;
+      name: string | null;
+      status: string | null;
+      createdAt: string | null;
+      updatedAt: string | null;
+      manager: {
+        name: string | null;
+        email: string | null;
+      } | null;
+    }
+  | {
+      type: "advertiser";
+      id: string;
+      publicId: string | null;
+      publicIdNumber: number | null;
+      name: string | null;
+      status: string | null;
+      createdAt: string | null;
+      updatedAt: string | null;
+      manager: {
+        name: string | null;
+        email: string | null;
+      } | null;
+    }
+  | null;
+
+export type QuestionnaireStatus = {
+  required: boolean;
+  completed: boolean;
+};
+
 export type AuthUser = {
   id: string;
   email: string;
   displayName?: string | null;
+  timezone?: string | null;
   createdAt?: string;
-  role: "admin" | "affiliate";
-  affiliateId?: string | null;
+  role: UserRole;
+  affiliateId: string | null;
+  advertiserId: string | null;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
+  profile: AuthProfile;
+  questionnaire: QuestionnaireStatus | null;
   accessToken: string | null;
-  refreshToken: string | null;
   loading: boolean;
-  login(credentials: { email: string; password: string }): Promise<void>;
+  login(credentials: { email: string; password: string }): Promise<AuthUser>;
   register(payload: {
     email: string;
     password: string;
     name: string;
-  }): Promise<void>;
+    accountType: "affiliate" | "advertiser";
+  }): Promise<AuthUser>;
   logout(): void;
   refreshProfile(): Promise<void>;
 };
 
 const ACCESS_TOKEN_KEY = "affiliate_access_token";
-const REFRESH_TOKEN_KEY = "affiliate_refresh_token";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<AuthProfile>(null);
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireStatus | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const persistTokens = useCallback(
-    (tokens: { access?: string | null; refresh?: string | null }) => {
-      const { access = null, refresh = null } = tokens;
-      setAccessToken(access);
-      setRefreshToken(refresh);
+  const persistAccessToken = useCallback((token: string | null) => {
+    setAccessToken(token);
 
-      if (typeof window === "undefined") {
-        return;
-      }
+    if (typeof window === "undefined") {
+      return;
+    }
 
-      if (access) {
-        window.localStorage.setItem(ACCESS_TOKEN_KEY, access);
-      } else {
-        window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-      }
+    if (token) {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+  }, []);
 
-      if (refresh) {
-        window.localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-      } else {
-        window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-      }
-    },
-    [],
-  );
-
-  const refreshAccessToken = useCallback(
-    async (tokenOverride?: string | null) => {
-      const tokenToUse = tokenOverride ?? refreshToken;
-      if (!tokenToUse) {
-        throw new Error("Нет refresh токена");
-      }
-
-      const data = await apiFetch<{
-        token: string;
-        refreshToken: string;
-        user: AuthUser;
-      }>("/auth/refresh", {
+  const refreshAccessToken = useCallback(async () => {
+    const data = await apiFetch<{ token: string; user: AuthUser }>(
+      "/auth/refresh",
+      {
         method: "POST",
-        body: JSON.stringify({ refreshToken: tokenToUse }),
-      });
+        credentials: "include",
+      },
+    );
 
-      persistTokens({ access: data.token, refresh: data.refreshToken });
-      setUser(data.user);
-      return data.token;
-    },
-    [persistTokens, refreshToken],
-  );
+    persistAccessToken(data.token);
+    setUser(data.user);
+    return data.token;
+  }, [persistAccessToken]);
 
   const fetchProfile = useCallback(
     async ({
@@ -104,36 +126,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokenToUse = tokenOverride ?? accessToken;
       if (!tokenToUse) {
         setUser(null);
+        setProfile(null);
+        setQuestionnaire(null);
         return;
       }
 
       const attemptFetch = async (token: string, allowRetry: boolean) => {
         try {
-          const data = await apiFetch<{ user: AuthUser }>("/auth/me", {
+          const data = await apiFetch<{
+            user: AuthUser;
+            profile: AuthProfile;
+            questionnaire: QuestionnaireStatus;
+          }>("/auth/me", {
             token,
           });
           setUser(data.user);
+          setProfile(data.profile ?? null);
+          setQuestionnaire(data.questionnaire ?? null);
         } catch (error) {
           const status = (error as ApiError).status;
 
-          if (status === 401 && allowRetry && refreshToken) {
+          if (status === 401 && allowRetry) {
             try {
               const newToken = await refreshAccessToken();
               await attemptFetch(newToken, false);
               return;
             } catch (refreshError) {
-              console.warn("Refresh token invalid", refreshError);
+              console.warn("Unable to refresh access token", refreshError);
             }
           }
 
-          persistTokens({ access: null, refresh: null });
-          setUser(null);
+          if (status === 401) {
+            persistAccessToken(null);
+            setUser(null);
+            setProfile(null);
+            setQuestionnaire(null);
+          }
+
+          throw error;
         }
       };
 
       await attemptFetch(tokenToUse, retryOnUnauthorized);
     },
-    [accessToken, refreshToken, persistTokens, refreshAccessToken],
+    [accessToken, persistAccessToken, refreshAccessToken],
   );
 
   useEffect(() => {
@@ -146,40 +182,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const initialize = async () => {
-      await Promise.resolve();
-
       if (typeof window === "undefined") {
         settleLoading();
         return;
       }
 
       const storedAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-      const storedRefresh = window.localStorage.getItem(REFRESH_TOKEN_KEY);
-      persistTokens({
-        access: storedAccess ?? null,
-        refresh: storedRefresh ?? null,
-      });
 
       if (storedAccess) {
+        persistAccessToken(storedAccess);
         try {
           await fetchProfile({ tokenOverride: storedAccess });
-        } finally {
           settleLoading();
+          return;
+        } catch (error) {
+          console.warn("Stored access token invalid", error);
+          persistAccessToken(null);
         }
-        return;
       }
 
-      if (storedRefresh) {
-        try {
-          await refreshAccessToken(storedRefresh);
-          await fetchProfile({ retryOnUnauthorized: false });
-        } finally {
-          settleLoading();
-        }
-        return;
+      try {
+        await refreshAccessToken();
+        await fetchProfile({ retryOnUnauthorized: false });
+      } catch (error) {
+        console.warn("Failed to refresh session on init", error);
+        persistAccessToken(null);
+        setUser(null);
+        setProfile(null);
+        setQuestionnaire(null);
+      } finally {
+        settleLoading();
       }
-
-      settleLoading();
     };
 
     void initialize();
@@ -187,56 +220,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [fetchProfile, persistTokens, refreshAccessToken]);
+  }, [fetchProfile, persistAccessToken, refreshAccessToken]);
 
   const login = useCallback(
     async (credentials: { email: string; password: string }) => {
-      const data = await apiFetch<{
-        token: string;
-        refreshToken: string;
-        user: AuthUser;
-      }>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify(credentials),
-      });
+      const data = await apiFetch<{ token: string; user: AuthUser }>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(credentials),
+          credentials: "include",
+        },
+      );
 
-      persistTokens({ access: data.token, refresh: data.refreshToken });
+      persistAccessToken(data.token);
       setUser(data.user);
+      setProfile(null);
+      setQuestionnaire(null);
+      await fetchProfile({ tokenOverride: data.token, retryOnUnauthorized: false });
+      return data.user;
     },
-    [persistTokens],
+    [fetchProfile, persistAccessToken],
   );
 
   const register = useCallback(
-    async (payload: { email: string; password: string; name: string }) => {
-      const data = await apiFetch<{
-        token: string;
-        refreshToken: string;
-        user: AuthUser;
-      }>("/auth/register", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+    async (payload: {
+      email: string;
+      password: string;
+      name: string;
+      accountType: "affiliate" | "advertiser";
+    }) => {
+      const data = await apiFetch<{ token: string; user: AuthUser }>(
+        "/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+          credentials: "include",
+        },
+      );
 
-      persistTokens({ access: data.token, refresh: data.refreshToken });
+      persistAccessToken(data.token);
       setUser(data.user);
+      setProfile(null);
+      setQuestionnaire(null);
+      await fetchProfile({ tokenOverride: data.token, retryOnUnauthorized: false });
+      return data.user;
     },
-    [persistTokens],
+    [fetchProfile, persistAccessToken],
   );
 
   const logout = useCallback(() => {
-    const currentRefresh = refreshToken;
-    persistTokens({ access: null, refresh: null });
+    persistAccessToken(null);
     setUser(null);
+    setProfile(null);
+    setQuestionnaire(null);
 
-    if (currentRefresh) {
-      void apiFetch("/auth/logout", {
-        method: "POST",
-        body: JSON.stringify({ refreshToken: currentRefresh }),
-      }).catch((error) => {
-        console.warn("Failed to revoke refresh token", error);
-      });
-    }
-  }, [persistTokens, refreshToken]);
+    void apiFetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    }).catch((error) => {
+      console.warn("Failed to revoke session", error);
+    });
+  }, [persistAccessToken]);
 
   const refreshProfile = useCallback(async () => {
     await fetchProfile();
@@ -245,8 +290,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      profile,
+      questionnaire,
       accessToken,
-      refreshToken,
       loading,
       login,
       register,
@@ -255,8 +301,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       user,
+      profile,
+      questionnaire,
       accessToken,
-      refreshToken,
       loading,
       login,
       register,

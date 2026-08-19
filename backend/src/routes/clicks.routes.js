@@ -1,16 +1,17 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRole } from '../middleware/authorizeRole.js';
+import { authorizeAdminArea } from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
-import { listClicks } from '../services/stats/stats.service.js';
+import { listAdminClicks } from '../services/stats/stats.service.js';
 import { validateClicksListFilters } from '../validators/stats.js';
+import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
 
 router.use(authenticate);
-router.use(authorizeRole('admin'));
+router.use(authorizeAdminArea);
 
 router.get(
   '/',
@@ -28,14 +29,13 @@ router.get(
       );
     }
 
-    const { items, total } = await listClicks(filter, pagination);
+    const { items, total } = await listAdminClicks(filter, pagination);
 
     return sendSuccess(res, items, {
-      meta: {
-        total,
-        limit: pagination.limit,
-        offset: pagination.offset,
-      },
+      meta: buildPaginationMeta(total, pagination, {
+        sort: pagination.sort ?? 'createdAt',
+        order: pagination.order ?? 'desc',
+      }),
     });
   }),
 );

@@ -20,10 +20,15 @@ import {
 import {
   trackingClickRequestsCounter,
   trackingClickErrorsCounter,
+  trackingClickDuplicatesCounter,
   trackingPostbackRequestsCounter,
   trackingPostbackErrorsCounter,
   trackingPostbackDuplicatesCounter,
+  geoRedirectFallbackCounter,
 } from '../lib/metrics.js';
+import { detectRequestCountry } from '../lib/detectRequestCountry.js';
+import { detectDevice } from '../lib/detectDevice.js';
+import { logInfo } from '../lib/structuredLogger.js';
 
 const router = express.Router();
 
@@ -50,6 +55,20 @@ function resolvePostbackPayload(body) {
   return { raw: body };
 }
 
+function resolvePostbackQueryPayload(query) {
+  if (!query || typeof query !== 'object') {
+    return {};
+  }
+
+  const payload = {};
+
+  for (const [key, value] of Object.entries(query)) {
+    payload[key] = extractQueryParam(value);
+  }
+
+  return payload;
+}
+
 function extractPostbackClickId(payload) {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -66,14 +85,85 @@ function extractPostbackClickId(payload) {
   return null;
 }
 
+async function handlePostbackRequest(req, res, rawPayload) {
+  trackingPostbackRequestsCounter.inc();
+  const payload = rawPayload && typeof rawPayload === 'object' ? rawPayload : {};
+  const rawClickId = extractPostbackClickId(payload);
+  const { dto, errors } = validatePostbackParams(payload);
+
+  if (errors.length) {
+    const goalRequiredError = errors.find(
+      (error) => error.code === ERROR_CODES.GOAL_REQUIRED,
+    );
+    const errorCode = goalRequiredError?.code ?? ERROR_CODES.VALIDATION_ERROR;
+
+    await logPostbackValidationFailure({
+      requestId: req.id ?? null,
+      payload,
+      clickId: rawClickId,
+      errorCode,
+    });
+    trackingPostbackErrorsCounter.inc({ type: 'validation_error' });
+
+    throw new ApiError(errorCode, 400, 'Ошибка валидации', {
+      errors,
+    });
+  }
+
+  try {
+    const { conversion, goalSnapshot } = await registerConversion(dto, {
+      requestId: req.id ?? null,
+      payload,
+    });
+
+    return sendSuccess(res, {
+      clickId: conversion.clickId,
+      status: conversion.status,
+      conversion: {
+        id: conversion.id,
+        offerId: conversion.offerId,
+        goalId: conversion.goalId,
+        clickId: conversion.clickId,
+        externalTransactionId: conversion.externalTransactionId ?? null,
+        status: conversion.status,
+        isTest: false,
+      },
+      goal: {
+        id: goalSnapshot.id,
+        name: goalSnapshot.name,
+      },
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      const errorType =
+        error.code === ERROR_CODES.DUPLICATE_CONVERSION
+          ? 'duplicate'
+          : 'api_error';
+
+      trackingPostbackErrorsCounter.inc({ type: errorType });
+
+      if (errorType === 'duplicate') {
+        trackingPostbackDuplicatesCounter.inc();
+      }
+    } else {
+      trackingPostbackErrorsCounter.inc({ type: 'unexpected_error' });
+    }
+
+    throw error;
+  }
+}
+
 router.get('/click', clickRateLimiter, async (req, res, next) => {
   const startedAt = Date.now();
   trackingClickRequestsCounter.inc();
+  const userAgent = req.get('user-agent') ?? null;
+  const providedDevice = extractQueryParam(req.query.device);
   const clickPayload = {
     offerId: extractQueryParam(req.query.offerId),
     affiliateId: extractQueryParam(req.query.affiliateId),
     ip: getClientIp(req),
-    userAgent: req.get('user-agent') ?? null,
+    userAgent,
+    device: providedDevice ?? detectDevice(userAgent),
     referer: req.get('referer') ?? null,
   };
 
@@ -81,18 +171,26 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
     clickPayload[key] = extractQueryParam(req.query[key]);
   }
 
+  clickPayload.countryCode = detectRequestCountry(req);
+
   const logClickEvent = (status, extra = {}) => {
     const logEntry = {
       event: 'track_click',
-      request_id: req.id ?? null,
+      requestId: req.id ?? null,
       offerId: clickPayload.offerId ?? null,
       affiliateId: clickPayload.affiliateId ?? null,
       clickId: extra.clickId ?? null,
       status,
-      duration_ms: Date.now() - startedAt,
+      durationMs: Date.now() - startedAt,
+      country: extra.countryCode ?? clickPayload.countryCode ?? null,
+      targetingStrict: extra.targetingStrict ?? null,
+      redirectOutcome: extra.redirectOutcome ?? null,
+      redirectReason: extra.redirectReason ?? null,
+      destinationType: extra.destinationType ?? null,
+      deduplicated: extra.deduplicated ?? false,
     };
 
-    console.log(JSON.stringify(logEntry));
+    logInfo('track_click', logEntry);
   };
 
   const validationResult = validateTrackingQuery(clickPayload);
@@ -107,10 +205,69 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
   }
 
   try {
-    const { redirectUrl, clickId } = await registerClick(clickPayload);
-    logClickEvent('redirect', { clickId });
+    const internalFallbackUrl = `${req.baseUrl}/unavailable`;
+    const {
+      redirectUrl,
+      clickId,
+      redirectOutcome,
+      redirectReason,
+      destinationType,
+      countryCode,
+      targetingStrict,
+      deduplicated,
+    } = await registerClick(clickPayload, {
+      internalFallbackUrl,
+    });
 
-    return res.redirect(302, redirectUrl);
+    let finalRedirectUrl = redirectUrl;
+
+    if (destinationType === 'internal_unavailable') {
+      const params = new URLSearchParams();
+
+      if (redirectReason) {
+        params.set('reason', redirectReason);
+      }
+
+      if (clickPayload.offerId) {
+        params.set('offerId', clickPayload.offerId);
+      }
+
+      if (clickId) {
+        params.set('clickId', clickId);
+      }
+
+      if (clickPayload.affiliateId) {
+        params.set('affiliateId', clickPayload.affiliateId);
+      }
+
+      const query = params.toString();
+      finalRedirectUrl = query
+        ? `${internalFallbackUrl}?${query}`
+        : internalFallbackUrl;
+    }
+
+    logClickEvent('redirect', {
+      clickId,
+      redirectOutcome,
+      redirectReason,
+      destinationType,
+      countryCode,
+      targetingStrict,
+      deduplicated,
+    });
+
+    if (deduplicated) {
+      trackingClickDuplicatesCounter.inc();
+    }
+
+    if (
+      destinationType === 'fallback' ||
+      destinationType === 'internal_unavailable'
+    ) {
+      geoRedirectFallbackCounter.inc({ destination: destinationType });
+    }
+
+    return res.redirect(302, finalRedirectUrl);
   } catch (error) {
     if (error instanceof ApiError) {
       trackingClickErrorsCounter.inc({ type: 'api_error' });
@@ -131,54 +288,58 @@ router.get('/click', clickRateLimiter, async (req, res, next) => {
 router.post(
   '/postback',
   postbackRateLimiter,
-  asyncHandler(async (req, res) => {
-    trackingPostbackRequestsCounter.inc();
-    const payload = resolvePostbackPayload(req.body);
-    const rawClickId = extractPostbackClickId(payload);
-    const { dto, errors } = validatePostbackParams(payload);
-
-    if (errors.length) {
-      await logPostbackValidationFailure({
-        requestId: req.id ?? null,
-        payload,
-        clickId: rawClickId,
-      });
-      trackingPostbackErrorsCounter.inc({ type: 'validation_error' });
-
-      throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
-        errors,
-      });
-    }
-
-    try {
-      const conversion = await registerConversion(dto, {
-        requestId: req.id ?? null,
-        payload,
-      });
-
-      return sendSuccess(res, {
-        clickId: conversion.clickId,
-        status: conversion.status,
-      });
-    } catch (error) {
-      if (error instanceof ApiError) {
-        const errorType =
-          error.code === ERROR_CODES.DUPLICATE_CONVERSION
-            ? 'duplicate'
-            : 'api_error';
-
-        trackingPostbackErrorsCounter.inc({ type: errorType });
-
-        if (errorType === 'duplicate') {
-          trackingPostbackDuplicatesCounter.inc();
-        }
-      } else {
-        trackingPostbackErrorsCounter.inc({ type: 'unexpected_error' });
-      }
-
-      throw error;
-    }
-  }),
+  asyncHandler(async (req, res) => handlePostbackRequest(req, res, resolvePostbackPayload(req.body))),
 );
+
+router.get(
+  '/postback',
+  postbackRateLimiter,
+  asyncHandler(async (req, res) =>
+    handlePostbackRequest(req, res, resolvePostbackQueryPayload(req.query))),
+);
+
+const FALLBACK_REASON_MESSAGES = {
+  country_denied: 'Offer is unavailable in your country.',
+  not_in_allow_list: 'This offer is limited to a different region.',
+  unknown_country: 'We could not determine your location for this offer.',
+};
+
+router.get('/unavailable', (req, res) => {
+  const rawReason =
+    typeof req.query.reason === 'string'
+      ? req.query.reason
+      : 'country_denied';
+  const reason = /^[a-z0-9_]+$/i.test(rawReason)
+    ? rawReason
+    : 'country_denied';
+  const message =
+    FALLBACK_REASON_MESSAGES[reason] ??
+    'This offer is not available for your location.';
+
+  res
+    .status(200)
+    .set('Content-Type', 'text/html; charset=utf-8')
+    .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Offer unavailable</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; background: #fafafa; color: #111; }
+      .container { max-width: 480px; margin: 0 auto; }
+      h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+      p { line-height: 1.4; }
+      small { color: #555; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Offer unavailable</h1>
+      <p>${message}</p>
+      <small>Reason code: ${reason}</small>
+    </div>
+  </body>
+</html>`);
+});
 
 export default router;

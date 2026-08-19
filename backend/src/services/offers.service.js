@@ -9,6 +9,9 @@ import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { generatePostbackToken } from '../lib/generatePostbackToken.js';
 import { invalidateOfferCache } from './tracking/cache-invalidation.service.js';
+import { listOfferGoals as listOfferGoalsService } from './offer-goals.service.js';
+import { writeAuditEvent } from './audit.service.js';
+import { OFFER_CATEGORY_VALUES } from '../constants/offers.js';
 
 function throwValidationError(errors) {
   throw new ApiError(ERROR_CODES.VALIDATION_ERROR, 400, 'Ошибка валидации', {
@@ -48,21 +51,23 @@ function assertValidTargetUrl(targetUrl) {
   }
 }
 
-function assertValidPayout(payoutRub) {
-  if (typeof payoutRub !== 'number' || !Number.isFinite(payoutRub)) {
+const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
+
+function assertValidCategory(category) {
+  if (typeof category !== 'string' || !category.trim()) {
     throwValidationError([
       {
-        field: 'payoutRub',
-        message: 'Выплата должна быть числом',
+        field: 'category',
+        message: 'Категория обязательна',
       },
     ]);
   }
 
-  if (payoutRub <= 0) {
+  if (!allowedCategories.has(category.trim().toLowerCase())) {
     throwValidationError([
       {
-        field: 'payoutRub',
-        message: 'Выплата должна быть больше 0',
+        field: 'category',
+        message: 'Недопустимая категория',
       },
     ]);
   }
@@ -82,23 +87,115 @@ async function ensureAdvertiserExists(advertiserId) {
   }
 }
 
-export async function createOffer(dto) {
+function buildOfferSnapshot(offer) {
+  if (!offer) {
+    return null;
+  }
+
+  return {
+    title: offer.title ?? null,
+    category: offer.category ?? null,
+    advertiserId: offer.advertiserId ?? null,
+    status: offer.status ?? null,
+    availability: offer.availability ?? offer.visibilityMode ?? null,
+    visibilityMode: offer.visibilityMode ?? null,
+    targetingStrict: offer.targetingStrict ?? null,
+    fallbackUrl: offer.fallbackUrl ?? null,
+    targetUrl: offer.targetUrl ?? null,
+    description: offer.description ?? null,
+    allowDuplicateClicks:
+      typeof offer.allowDuplicateClicks === 'boolean'
+        ? offer.allowDuplicateClicks
+        : offer.allowDuplicateClicks == null
+          ? null
+          : Boolean(offer.allowDuplicateClicks),
+    duplicateClickWindowSeconds: (() => {
+      const raw = offer.duplicateClickWindowSeconds;
+      if (raw === null || raw === undefined) {
+        return null;
+      }
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    })(),
+  };
+}
+
+function getOfferActorMeta(actor) {
+  if (!actor) {
+    return { actorUserId: null, actorRole: null };
+  }
+
+  return {
+    actorUserId: actor.userId ?? null,
+    actorRole: actor.role ?? null,
+  };
+}
+
+function diffOfferSnapshots(previous, next) {
+  const trackedFields = [
+    'title',
+    'category',
+    'status',
+    'availability',
+    'advertiserId',
+    'targetUrl',
+    'visibilityMode',
+    'targetingStrict',
+    'fallbackUrl',
+    'description',
+    'allowDuplicateClicks',
+    'duplicateClickWindowSeconds',
+  ];
+
+  const changes = {};
+
+  for (const field of trackedFields) {
+    const before = previous?.[field] ?? null;
+    const after = next?.[field] ?? null;
+
+    if (before !== after) {
+      changes[field] = { old: before, new: after };
+    }
+  }
+
+  return changes;
+}
+
+export async function createOffer(dto, { actor = null, requestId = null } = {}) {
   await ensureAdvertiserExists(dto.advertiserId);
   assertValidTargetUrl(dto.targetUrl);
-  assertValidPayout(dto.payoutRub);
+  assertValidCategory(dto.category);
 
-  return createOfferModel({
+  const offer = await createOfferModel({
     ...dto,
+    visibilityMode: dto.visibilityMode ?? dto.availability ?? 'public',
     postbackToken: generatePostbackToken(),
   });
+
+  const { actorUserId, actorRole } = getOfferActorMeta(actor);
+  await writeAuditEvent({
+    entityType: 'offer',
+    entityId: offer.id,
+    action: 'offer.created',
+    actorUserId,
+    actorRole,
+    requestId,
+    oldValue: null,
+    newValue: buildOfferSnapshot(offer),
+  });
+
+  return offer;
 }
 
 export async function listOffers(filter, pagination, options = {}) {
   return listOffersModel(filter, pagination, options);
 }
 
-export async function getOfferById(id) {
-  const offer = await findOfferByIdModel(id);
+export async function getOfferById(
+  id,
+  { includeGoals = false, includePostbackToken = false } = {},
+) {
+  const offer = await findOfferByIdModel(id, { includePostbackToken });
 
   if (!offer) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
@@ -106,10 +203,37 @@ export async function getOfferById(id) {
     });
   }
 
-  return offer;
+  if (!includeGoals) {
+    return offer;
+  }
+
+  const goals = await listOfferGoalsService(id, { skipOfferValidation: true });
+  return { ...offer, goals };
 }
 
-export async function updateOffer(id, dto) {
+export async function getAdminOfferById(id, { includeGoals = false } = {}) {
+  const offer = await getOfferById(id, {
+    includeGoals,
+    includePostbackToken: true,
+  });
+  const advertiser = offer.advertiserId
+    ? await findAdvertiserById(offer.advertiserId)
+    : null;
+
+  return {
+    ...offer,
+    advertiser: advertiser
+      ? {
+          id: advertiser.id,
+          publicId: advertiser.publicId ?? null,
+          publicIdNumber: advertiser.publicIdNumber ?? null,
+          name: advertiser.name,
+        }
+      : null,
+  };
+}
+
+export async function updateOffer(id, dto, { actor = null, requestId = null } = {}) {
   if (dto.advertiserId) {
     await ensureAdvertiserExists(dto.advertiserId);
   }
@@ -118,11 +242,30 @@ export async function updateOffer(id, dto) {
     assertValidTargetUrl(dto.targetUrl);
   }
 
-  if (Object.hasOwn(dto, 'payoutRub')) {
-    assertValidPayout(dto.payoutRub);
+  if (Object.hasOwn(dto, 'category')) {
+    if (dto.category === null) {
+      throwValidationError([
+        {
+          field: 'category',
+          message: 'Категория не может быть пустой',
+        },
+      ]);
+    }
+    assertValidCategory(dto.category);
   }
 
-  const offer = await updateOfferModel(id, dto);
+  const existing = await findOfferByIdModel(id);
+
+  if (!existing) {
+    throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
+      offerId: id,
+    });
+  }
+
+  const offer = await updateOfferModel(id, {
+    ...dto,
+    visibilityMode: dto.visibilityMode ?? dto.availability,
+  });
 
   if (!offer) {
     throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Оффер не найден', {
@@ -131,6 +274,50 @@ export async function updateOffer(id, dto) {
   }
 
   await invalidateOfferCache(id);
+
+  const { actorUserId, actorRole } = getOfferActorMeta(actor);
+  const changes = diffOfferSnapshots(buildOfferSnapshot(existing), buildOfferSnapshot(offer));
+
+  if (Object.keys(changes).length > 0) {
+    await writeAuditEvent({
+      entityType: 'offer',
+      entityId: offer.id,
+      action: 'offer.updated',
+      actorUserId,
+      actorRole,
+      requestId,
+      oldValue: buildOfferSnapshot(existing),
+      newValue: buildOfferSnapshot(offer),
+      metadata: {
+        changes,
+      },
+    });
+  }
+
+  const previousAvailability =
+    existing.availability ?? existing.visibilityMode ?? null;
+  const nextAvailability = offer.availability ?? offer.visibilityMode ?? null;
+
+  if (previousAvailability !== nextAvailability) {
+    await writeAuditEvent({
+      entityType: 'offer',
+      entityId: offer.id,
+      action: 'offer.availability_changed',
+      actorUserId,
+      actorRole,
+      requestId,
+      oldValue: {
+        availability: previousAvailability,
+      },
+      newValue: {
+        availability: nextAvailability,
+      },
+      metadata: {
+        offerId: offer.id,
+        availability: nextAvailability,
+      },
+    });
+  }
 
   return offer;
 }

@@ -2,28 +2,39 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
+import { canAccessAdminArea, isAdminRole } from '@/lib/auth/roles';
 
 type FormState = {
   name: string;
+  email: string;
   status: 'active' | 'inactive';
 };
 
-type FieldErrors = Partial<Record<keyof FormState | 'form', string>>;
+type CreateResponse = {
+  advertiser: {
+    id: string;
+    publicId: string | null;
+    name: string;
+    email: string | null;
+  };
+  temporaryPassword: string;
+};
 
 export default function CreateAdvertiserPage() {
-  const router = useRouter();
   const pathname = usePathname();
   const { user, accessToken, loading: authLoading } = useAuth();
-  const [form, setForm] = useState<FormState>({ name: '', status: 'active' });
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    email: '',
+    status: 'active',
+  });
   const [submitting, setSubmitting] = useState(false);
-
-  const isFormValid = useMemo(() => {
-    return form.name.trim().length > 0 && ['active', 'inactive'].includes(form.status);
-  }, [form]);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<CreateResponse | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   const authLinks = useMemo(() => {
     const next = encodeURIComponent(pathname ?? '/dashboard/advertisers/create');
@@ -35,34 +46,48 @@ export default function CreateAdvertiserPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setErrors({});
+    setError(null);
+    setCopyMessage(null);
 
     if (!accessToken) {
-      setErrors({ form: 'Нет токена авторизации' });
-      return;
-    }
-
-    const normalizedName = form.name.trim();
-    if (!normalizedName) {
-      setErrors({ name: 'Введите название' });
+      setError('Нет токена авторизации');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      await apiFetch('/advertisers', {
+      const created = await apiFetch<CreateResponse>('/advertisers', {
         method: 'POST',
         token: accessToken,
-        body: JSON.stringify({ name: normalizedName, status: form.status }),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          status: form.status,
+        }),
       });
-      router.push('/dashboard/advertisers');
-    } catch (error) {
-      const message =
-        (error as { message?: string } | null)?.message ?? 'Не удалось создать рекламодателя';
-      setErrors({ form: message });
+      setResult(created);
+      setForm({ name: '', email: '', status: 'active' });
+    } catch (submitError) {
+      setError(
+        (submitError as { message?: string } | null)?.message ??
+          'Не удалось создать рекламодателя',
+      );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!result?.temporaryPassword) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(result.temporaryPassword);
+      setCopyMessage('Пароль скопирован');
+    } catch {
+      setCopyMessage('Не удалось скопировать пароль');
     }
   };
 
@@ -101,21 +126,15 @@ export default function CreateAdvertiserPage() {
     );
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminArea(user) || !isAdminRole(user.role)) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Создавать рекламодателей могут только администраторы.
+          Создавать рекламодателей может только администратор.
         </p>
-        <Link
-          href="/partner"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
-        >
-          В кабинет партнера
-        </Link>
       </section>
     );
   }
@@ -151,14 +170,25 @@ export default function CreateAdvertiserPage() {
             type="text"
             value={form.name}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, name: event.target.value.slice(0, 200) }))
+              setForm((prev) => ({ ...prev, name: event.target.value }))
             }
-            placeholder="Например, ACME Corp"
             className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
-          {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
         </div>
-
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, email: event.target.value }))
+            }
+            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+          />
+        </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="status">
             Статус
@@ -178,21 +208,54 @@ export default function CreateAdvertiserPage() {
             <option value="inactive">Неактивен</option>
           </select>
         </div>
-
-        {errors.form && (
+        {error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
-            {errors.form}
+            {error}
           </div>
-        )}
-
+        ) : null}
         <button
           type="submit"
-          disabled={submitting || !isFormValid}
+          disabled={submitting}
           className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
         >
-          {submitting ? 'Создаём…' : 'Создать'}
+          {submitting ? 'Создаём…' : 'Создать рекламодателя'}
         </button>
       </form>
+
+      {result ? (
+        <div className="mt-6 space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-8 shadow-sm dark:border-amber-700/40 dark:bg-amber-950/20">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Временный пароль
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+              {result.advertiser.publicId
+                ? `${result.advertiser.publicId} · ${result.advertiser.name}`
+                : result.advertiser.name}
+            </h2>
+          </div>
+          <div className="rounded-xl border border-amber-300 bg-white px-4 py-3 font-mono text-sm text-zinc-900 dark:border-amber-600 dark:bg-zinc-950 dark:text-zinc-100">
+            {result.temporaryPassword}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+            >
+              Copy password
+            </button>
+            {copyMessage ? (
+              <span className="text-sm text-zinc-600 dark:text-zinc-300">
+                {copyMessage}
+              </span>
+            ) : null}
+          </div>
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Пароль показывается только один раз. В базе хранится только его хэш.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,9 +1,48 @@
-const allowedStatuses = new Set(['active', 'inactive']);
+import {
+  LEGACY_OFFER_STATUS_INACTIVE,
+  OFFER_CATEGORY_VALUES,
+  OFFER_GOAL_CURRENCY,
+  OFFER_GOAL_LIMIT_TYPES,
+  OFFER_GOAL_TYPES,
+  OFFER_STATUSES,
+  OFFER_VISIBILITY_MODES,
+} from '../constants/offers.js';
+import {
+  getQueryValue,
+  validateDateRange,
+  validateOrder,
+  validatePagination,
+  validateSearch,
+  validateSort,
+} from '../utils/adminList.js';
+
+const allowedStatuses = new Set([
+  OFFER_STATUSES.ACTIVE,
+  LEGACY_OFFER_STATUS_INACTIVE, // TODO: заменить на paused/archived после миграций.
+]);
+const allowedVisibilityModes = new Set(Object.values(OFFER_VISIBILITY_MODES));
+const allowedGoalTypes = new Set(Object.values(OFFER_GOAL_TYPES));
+const allowedGoalLimitTypes = new Set(Object.values(OFFER_GOAL_LIMIT_TYPES));
+const allowedCategories = new Set(OFFER_CATEGORY_VALUES);
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const countryCodeRegex = /^[A-Z]{2}$/;
+const currencyCodeRegex = /^[A-Z]{3}$/;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
+const DUPLICATE_CLICK_WINDOW_LIMITS = {
+  min: 60,
+  max: 2592000,
+};
+const OFFER_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  publicId: 'publicId',
+  status: 'status',
+  availability: 'availability',
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -43,6 +82,51 @@ function normalizeMoney(value) {
   return null;
 }
 
+export function validateOfferCategory(
+  value,
+  { allowMissing = true, field = 'category' } = {},
+) {
+  if (value === undefined) {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Категория обязательна')],
+        };
+  }
+
+  if (value === null || value === '') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория обязательна')],
+    };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория должна быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Категория обязательна')],
+    };
+  }
+
+  if (!allowedCategories.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Недопустимое значение категории')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
 function parseInteger(value) {
   if (typeof value === 'number') {
     if (!Number.isFinite(value) || !Number.isInteger(value)) {
@@ -67,6 +151,193 @@ function parseInteger(value) {
   }
 
   return null;
+}
+
+function validateBoolean(value, { allowMissing = true, field } = {}) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (typeof value === 'boolean') {
+    return { value, errors: [] };
+  }
+
+  return {
+    value: undefined,
+    errors: [buildError(field, 'Значение должно быть булевым')],
+  };
+}
+
+function validateDuplicateClickWindowSeconds(
+  value,
+  { allowMissing = true, field = 'duplicateClickWindowSeconds' } = {},
+) {
+  if (value === undefined) {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (value === null || value === '') {
+    return { value: null, errors: [] };
+  }
+
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Окно должно быть целым числом')],
+    };
+  }
+
+  if (
+    parsed < DUPLICATE_CLICK_WINDOW_LIMITS.min ||
+    parsed > DUPLICATE_CLICK_WINDOW_LIMITS.max
+  ) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Окно должно быть от ${DUPLICATE_CLICK_WINDOW_LIMITS.min} до ${DUPLICATE_CLICK_WINDOW_LIMITS.max} секунд`,
+        ),
+      ],
+    };
+  }
+
+  return { value: parsed, errors: [] };
+}
+
+function validateVisibilityMode(
+  value,
+  { allowMissing = true, field = 'visibilityMode' } = {},
+) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: OFFER_VISIBILITY_MODES.PUBLIC, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Значение обязательно')],
+        };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Значение должно быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!allowedVisibilityModes.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(field, 'Недопустимый режим видимости'),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+export function validateOfferAvailability(
+  value,
+  { allowMissing = true, field = 'availability' } = {},
+) {
+  return validateVisibilityMode(value, { allowMissing, field });
+}
+
+function normalizeGeoInput(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    return trimmed.split(',').map((entry) => entry.trim());
+  }
+
+  return null;
+}
+
+function validateGeoList(
+  value,
+  { allowMissing = true, field = 'geo' } = {},
+) {
+  if (value === undefined || value === null || value === '') {
+    return allowMissing
+      ? { value: undefined, errors: [] }
+      : {
+          value: undefined,
+          errors: [buildError(field, 'Список стран обязателен')],
+        };
+  }
+
+  const asArray = normalizeGeoInput(value);
+
+  if (!asArray) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Список стран должен быть массивом строк')],
+    };
+  }
+
+  const result = [];
+  const seen = new Set();
+  const errors = [];
+
+  asArray.forEach((entry, index) => {
+    if (typeof entry !== 'string') {
+      errors.push(
+        buildError(
+          `${field}[${index}]`,
+          'Код страны должен быть строкой',
+        ),
+      );
+      return;
+    }
+
+    const normalized = entry.trim().toUpperCase();
+    if (!normalized) {
+      return;
+    }
+
+    if (!countryCodeRegex.test(normalized)) {
+      errors.push(
+        buildError(
+          `${field}[${index}]`,
+          'Используйте двухбуквенный код ISO-3166',
+        ),
+      );
+      return;
+    }
+
+    if (seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    result.push(normalized);
+  });
+
+  return {
+    value: result,
+    errors,
+  };
 }
 
 export function validateStatus(status, { allowMissing = true } = {}) {
@@ -171,32 +442,207 @@ export function validateUrl(
   return { value: trimmed, errors: [] };
 }
 
-export function validatePayoutRub(value, { allowMissing = true } = {}) {
+function validateGoalsPayload(value, { allowMissing = true } = {}) {
   if (value === undefined || value === null || value === '') {
     return allowMissing
       ? { value: undefined, errors: [] }
       : {
           value: undefined,
-          errors: [buildError('payoutRub', 'Выплата обязательна')],
+          errors: [buildError('goals', 'Нужно передать хотя бы одну цель')],
         };
   }
 
-  const normalized = normalizeMoney(value);
-  if (normalized === null) {
+  if (!Array.isArray(value)) {
     return {
       value: undefined,
-      errors: [buildError('payoutRub', 'Некорректная сумма выплаты')],
+      errors: [buildError('goals', 'Цели должны быть массивом объектов')],
     };
   }
 
-  if (normalized <= 0) {
-    return {
-      value: undefined,
-      errors: [buildError('payoutRub', 'Выплата должна быть больше 0')],
-    };
+  const goals = [];
+  const errors = [];
+  let defaultCount = 0;
+
+  value.forEach((rawGoal, index) => {
+    const path = `goals[${index}]`;
+
+    if (!rawGoal || typeof rawGoal !== 'object' || Array.isArray(rawGoal)) {
+      errors.push(buildError(path, 'Цель должна быть объектом'));
+      return;
+    }
+
+    const goal = {};
+    const errorsBefore = errors.length;
+
+    if (Object.hasOwn(rawGoal, 'id')) {
+      const { value: goalId, errors: idErrors } = validateUuid(rawGoal.id, {
+        allowMissing: false,
+        field: `${path}.id`,
+      });
+      errors.push(...idErrors);
+      if (goalId) {
+        goal.id = goalId;
+      }
+    }
+
+    const normalizedName = normalizeTitle(rawGoal.name);
+    if (!normalizedName) {
+      errors.push(
+        buildError(`${path}.name`, 'Название цели обязательно и не может быть пустым'),
+      );
+    } else {
+      goal.name = normalizedName;
+    }
+
+    const type =
+      typeof rawGoal.type === 'string' ? rawGoal.type.trim().toUpperCase() : null;
+    if (!type || !allowedGoalTypes.has(type)) {
+      errors.push(
+        buildError(
+          `${path}.type`,
+          `type должен быть одним из: ${Array.from(allowedGoalTypes).join(', ')}`,
+        ),
+      );
+    } else {
+      goal.type = type;
+    }
+
+    const revenue = normalizeMoney(rawGoal.revenue);
+    if (revenue === null || revenue < 0) {
+      errors.push(
+        buildError(
+          `${path}.revenue`,
+          'revenue должен быть неотрицательным числом',
+        ),
+      );
+    } else {
+      goal.revenue = revenue;
+    }
+
+    const payout = normalizeMoney(rawGoal.payout);
+    if (payout === null || payout < 0) {
+      errors.push(
+        buildError(`${path}.payout`, 'payout должен быть неотрицательным числом'),
+      );
+    } else {
+      goal.payout = payout;
+    }
+
+    const currency =
+      typeof rawGoal.currency === 'string'
+        ? rawGoal.currency.trim().toUpperCase()
+        : null;
+    if (!currency || !currencyCodeRegex.test(currency)) {
+      errors.push(
+        buildError(
+          `${path}.currency`,
+          'currency должен быть трёхбуквенным кодом ISO-4217',
+        ),
+      );
+    } else if (currency !== OFFER_GOAL_CURRENCY) {
+      errors.push(
+        buildError(
+          `${path}.currency`,
+          `Поддерживается только ${OFFER_GOAL_CURRENCY}`,
+        ),
+      );
+    } else {
+      goal.currency = currency;
+    }
+
+    let isDefault = false;
+    if (Object.hasOwn(rawGoal, 'isDefault')) {
+      if (typeof rawGoal.isDefault !== 'boolean') {
+        errors.push(
+          buildError(`${path}.isDefault`, 'isDefault должен быть булевым значением'),
+        );
+      } else {
+        isDefault = rawGoal.isDefault;
+      }
+    }
+    goal.isDefault = isDefault;
+
+    if (Object.hasOwn(rawGoal, 'isActive') || Object.hasOwn(rawGoal, 'status')) {
+      errors.push(
+        buildError(`${path}.isActive`, 'goal status удалён и больше не поддерживается'),
+      );
+    }
+
+    if (goal.revenue !== undefined && goal.payout !== undefined && goal.payout > goal.revenue) {
+      errors.push(
+        buildError(`${path}.payout`, 'payout не может быть больше revenue'),
+      );
+    }
+
+    let limitEnabled = false;
+    if (Object.hasOwn(rawGoal, 'limitEnabled')) {
+      if (typeof rawGoal.limitEnabled !== 'boolean') {
+        errors.push(
+          buildError(
+            `${path}.limitEnabled`,
+            'limitEnabled должен быть булевым значением',
+          ),
+        );
+      } else {
+        limitEnabled = rawGoal.limitEnabled;
+      }
+    }
+    goal.limitEnabled = limitEnabled;
+
+    if (limitEnabled) {
+      const limitType =
+        typeof rawGoal.limitType === 'string' ? rawGoal.limitType.trim() : null;
+      if (!limitType || !allowedGoalLimitTypes.has(limitType)) {
+        errors.push(
+          buildError(
+            `${path}.limitType`,
+            `limitType должен быть одним из: ${Array.from(allowedGoalLimitTypes).join(', ')}`,
+          ),
+        );
+      } else {
+        goal.limitType = limitType;
+      }
+
+      const limitValue =
+        typeof rawGoal.limitValue === 'number'
+          ? rawGoal.limitValue
+          : typeof rawGoal.limitValue === 'string' && /^\d+$/.test(rawGoal.limitValue.trim())
+            ? Number.parseInt(rawGoal.limitValue.trim(), 10)
+            : null;
+
+      if (!Number.isInteger(limitValue) || limitValue <= 0) {
+        errors.push(
+          buildError(
+            `${path}.limitValue`,
+            'limitValue должен быть положительным целым числом',
+          ),
+        );
+      } else {
+        goal.limitValue = limitValue;
+      }
+    } else {
+      goal.limitType = null;
+      goal.limitValue = null;
+    }
+
+    if (errors.length === errorsBefore) {
+      goals.push(goal);
+      if (goal.isDefault) {
+        defaultCount += 1;
+      }
+    }
+  });
+
+  if (defaultCount > 1) {
+    errors.push(
+      buildError('goals', 'Одновременно может быть только одна цель по умолчанию'),
+    );
   }
 
-  return { value: normalized, errors: [] };
+  return {
+    value: goals,
+    errors,
+  };
 }
 
 export function validateCreateOfferDto(payload) {
@@ -228,13 +674,13 @@ export function validateCreateOfferDto(payload) {
     dto.targetUrl = targetUrl;
   }
 
-  const { value: payoutRub, errors: payoutErrors } = validatePayoutRub(
-    source.payoutRub,
-    { allowMissing: false },
-  );
-  errors.push(...payoutErrors);
-  if (typeof payoutRub === 'number') {
-    dto.payoutRub = payoutRub;
+  if (Object.hasOwn(source, 'payoutRub')) {
+    errors.push(
+      buildError(
+        'payoutRub',
+        'offer-level payout удалён. Используйте payout на уровне goal',
+      ),
+    );
   }
 
   const { value: status, errors: statusErrors } = validateStatus(source.status);
@@ -243,7 +689,94 @@ export function validateCreateOfferDto(payload) {
     dto.status = status;
   }
 
-  return { dto, errors };
+  const { value: category, errors: categoryErrors } = validateOfferCategory(
+    source.category,
+    { allowMissing: false },
+  );
+  errors.push(...categoryErrors);
+  if (typeof category === 'string') {
+    dto.category = category;
+  }
+
+  const {
+    value: allowDuplicateClicksValue,
+    errors: allowDuplicateErrors,
+  } = validateBoolean(source.allowDuplicateClicks, {
+    field: 'allowDuplicateClicks',
+  });
+  errors.push(...allowDuplicateErrors);
+
+  const allowDuplicateClicks =
+    allowDuplicateClicksValue === undefined ? true : allowDuplicateClicksValue;
+  dto.allowDuplicateClicks = allowDuplicateClicks;
+
+  const {
+    value: duplicateWindowValue,
+    errors: duplicateWindowErrors,
+  } = validateDuplicateClickWindowSeconds(
+    source.duplicateClickWindowSeconds,
+    { allowMissing: allowDuplicateClicks },
+  );
+  errors.push(...duplicateWindowErrors);
+
+  if (!allowDuplicateClicks) {
+    if (typeof duplicateWindowValue === 'number') {
+      dto.duplicateClickWindowSeconds = duplicateWindowValue;
+    } else {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Укажите окно повторных кликов от 60 до 2592000 секунд',
+        ),
+      );
+    }
+  } else if (duplicateWindowValue !== undefined) {
+    dto.duplicateClickWindowSeconds =
+      duplicateWindowValue === null ? null : duplicateWindowValue;
+  } else {
+    dto.duplicateClickWindowSeconds = null;
+  }
+
+  if (Object.hasOwn(source, 'description')) {
+    if (source.description === null) {
+      dto.description = null;
+    } else if (typeof source.description !== 'string') {
+      errors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      const trimmedDescription = source.description.trim();
+      dto.description =
+        trimmedDescription.length > 0 ? trimmedDescription : null;
+    }
+  }
+
+  const rawAvailability = Object.hasOwn(source, 'availability')
+    ? source.availability
+    : source.visibilityMode;
+  const { value: availability, errors: availabilityErrors } =
+    validateOfferAvailability(rawAvailability, {
+      allowMissing: true,
+      field: Object.hasOwn(source, 'availability')
+        ? 'availability'
+        : 'visibilityMode',
+    });
+  errors.push(...availabilityErrors);
+  if (availability) {
+    dto.availability = availability;
+    dto.visibilityMode = availability;
+  }
+
+  // TODO: (offer-domain-v2) Подключить доменную часть DTO к createOffer.
+  const { draft: domainDraft, errors: domainDraftErrors } =
+    validateOfferDomainDraft(source);
+
+  return {
+    dto,
+    errors: [...errors, ...domainDraftErrors],
+    domainDraft,
+    domainDraftErrors,
+  };
 }
 
 export function validateUpdateOfferDto(payload) {
@@ -290,14 +823,12 @@ export function validateUpdateOfferDto(payload) {
 
   if (Object.hasOwn(source, 'payoutRub')) {
     hasAtLeastOneField = true;
-    const { value: payoutRub, errors: payoutErrors } = validatePayoutRub(
-      source.payoutRub,
-      { allowMissing: false },
+    errors.push(
+      buildError(
+        'payoutRub',
+        'offer-level payout удалён. Используйте payout на уровне goal',
+      ),
     );
-    errors.push(...payoutErrors);
-    if (typeof payoutRub === 'number') {
-      dto.payoutRub = payoutRub;
-    }
   }
 
   if (Object.hasOwn(source, 'status')) {
@@ -311,17 +842,165 @@ export function validateUpdateOfferDto(payload) {
     }
   }
 
+  if (Object.hasOwn(source, 'category')) {
+    hasAtLeastOneField = true;
+    const { value: category, errors: categoryErrors } = validateOfferCategory(
+      source.category,
+      { allowMissing: false },
+    );
+    errors.push(...categoryErrors);
+    if (typeof category === 'string') {
+      dto.category = category;
+    }
+  }
+
+  if (Object.hasOwn(source, 'description')) {
+    hasAtLeastOneField = true;
+    if (source.description === null) {
+      dto.description = null;
+    } else if (typeof source.description !== 'string') {
+      errors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      const trimmedDescription = source.description.trim();
+      dto.description =
+        trimmedDescription.length > 0 ? trimmedDescription : null;
+    }
+  }
+
+  if (
+    Object.hasOwn(source, 'availability') ||
+    Object.hasOwn(source, 'visibilityMode')
+  ) {
+    hasAtLeastOneField = true;
+    const field = Object.hasOwn(source, 'availability')
+      ? 'availability'
+      : 'visibilityMode';
+    const rawAvailability = Object.hasOwn(source, 'availability')
+      ? source.availability
+      : source.visibilityMode;
+    const { value: availability, errors: availabilityErrors } =
+      validateOfferAvailability(rawAvailability, {
+        allowMissing: false,
+        field,
+      });
+    errors.push(...availabilityErrors);
+    if (availability) {
+      dto.availability = availability;
+      dto.visibilityMode = availability;
+    }
+  }
+
+  let pendingAllowDuplicateClicks;
+  if (Object.hasOwn(source, 'allowDuplicateClicks')) {
+    hasAtLeastOneField = true;
+    const {
+      value: allowDuplicateClicksValue,
+      errors: allowDuplicateErrors,
+    } = validateBoolean(source.allowDuplicateClicks, {
+      allowMissing: false,
+      field: 'allowDuplicateClicks',
+    });
+    errors.push(...allowDuplicateErrors);
+
+    if (typeof allowDuplicateClicksValue === 'boolean') {
+      pendingAllowDuplicateClicks = allowDuplicateClicksValue;
+      dto.allowDuplicateClicks = allowDuplicateClicksValue;
+    }
+  }
+
+  let hasDuplicateWindowField = false;
+  let pendingDuplicateWindowValue;
+  if (Object.hasOwn(source, 'duplicateClickWindowSeconds')) {
+    hasAtLeastOneField = true;
+    hasDuplicateWindowField = true;
+    const {
+      value: duplicateWindowValue,
+      errors: duplicateWindowErrors,
+    } = validateDuplicateClickWindowSeconds(
+      source.duplicateClickWindowSeconds,
+      { allowMissing: false },
+    );
+    errors.push(...duplicateWindowErrors);
+
+    if (duplicateWindowValue !== undefined) {
+      pendingDuplicateWindowValue = duplicateWindowValue;
+      dto.duplicateClickWindowSeconds = duplicateWindowValue;
+    }
+  }
+
+  if (pendingAllowDuplicateClicks === false) {
+    if (!hasDuplicateWindowField) {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Укажите окно повторных кликов при отключении дублей',
+        ),
+      );
+    } else if (typeof pendingDuplicateWindowValue !== 'number') {
+      errors.push(
+        buildError(
+          'duplicateClickWindowSeconds',
+          'Окно должно быть задано в секундах',
+        ),
+      );
+    }
+  }
+
   if (!hasAtLeastOneField) {
     errors.push(buildError(null, 'Нужно указать поля для обновления'));
   }
 
-  return { dto, errors };
+  // TODO: (offer-domain-v2) Подключить доменную часть DTO к updateOffer.
+  const { draft: domainDraft, errors: domainDraftErrors } =
+    validateOfferDomainDraft(source);
+
+  return {
+    dto,
+    errors: [...errors, ...domainDraftErrors],
+    domainDraft,
+    domainDraftErrors,
+  };
 }
 
 export function validateOfferFilters(payload = {}) {
   const errors = [];
   const filter = {};
-  const pagination = {};
+  const { pagination, errors: paginationErrors } = validatePagination(payload, {
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateSearch(
+    getQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateSort(
+    getQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    OFFER_LIST_SORTS,
+    {
+      defaultValue: 'createdAt',
+    },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateOrder(
+    getQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
 
   if (Object.hasOwn(payload, 'status')) {
     const { value: status, errors: statusErrors } = validateStatus(payload.status);
@@ -331,9 +1010,9 @@ export function validateOfferFilters(payload = {}) {
     }
   }
 
-  if (Object.hasOwn(payload, 'advertiserId')) {
+  if (Object.hasOwn(payload, 'advertiserId') || Object.hasOwn(payload, 'advertiser_id')) {
     const { value: advertiserId, errors: advertiserErrors } = validateUuid(
-      payload.advertiserId,
+      getQueryValue(payload, 'advertiserId', 'advertiser_id'),
       { field: 'advertiserId' },
     );
     errors.push(...advertiserErrors);
@@ -342,22 +1021,159 @@ export function validateOfferFilters(payload = {}) {
     }
   }
 
-  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
-  errors.push(...limitErrors);
-  if (typeof limit === 'number') {
-    pagination.limit = limit;
+  if (Object.hasOwn(payload, 'managerId') || Object.hasOwn(payload, 'manager_id')) {
+    const { value: managerUserId, errors: managerErrors } = validateUuid(
+      getQueryValue(payload, 'managerId', 'manager_id'),
+      { field: 'managerId' },
+    );
+    errors.push(...managerErrors);
+    if (managerUserId) {
+      filter.managerUserId = managerUserId;
+    }
   }
 
-  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
-  errors.push(...offsetErrors);
-  if (typeof offset === 'number') {
-    pagination.offset = offset;
+  if (Object.hasOwn(payload, 'category')) {
+    const { value: category, errors: categoryErrors } =
+      validateOfferCategory(payload.category, {
+        allowMissing: false,
+        field: 'category',
+      });
+    errors.push(...categoryErrors);
+    if (typeof category === 'string') {
+      filter.category = category;
+    }
+  }
+
+  if (
+    Object.hasOwn(payload, 'availability') ||
+    Object.hasOwn(payload, 'visibilityMode')
+  ) {
+    const field = Object.hasOwn(payload, 'availability')
+      ? 'availability'
+      : 'visibilityMode';
+    const rawAvailability = Object.hasOwn(payload, 'availability')
+      ? payload.availability
+      : payload.visibilityMode;
+    const { value: availability, errors: availabilityErrors } =
+      validateOfferAvailability(rawAvailability, {
+        allowMissing: false,
+        field,
+      });
+    errors.push(...availabilityErrors);
+    if (availability) {
+      filter.availability = availability;
+    }
+  }
+
+  const { dateFrom, dateTo } = validateDateRange(payload, errors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
+  }
+  if (dateTo) {
+    filter.dateTo = dateTo;
   }
 
   return { filter, pagination, errors };
 }
 
 export { allowedStatuses };
+
+export function validateOfferDomainDraft(payload) {
+  const source = payload ?? {};
+  const domainDraft = {
+    visibilityMode: OFFER_VISIBILITY_MODES.PUBLIC,
+    targetingStrict: false,
+  };
+  const domainErrors = [];
+
+  if (Object.hasOwn(source, 'description')) {
+    if (typeof source.description !== 'string') {
+      domainErrors.push(
+        buildError('description', 'Описание должно быть строкой'),
+      );
+    } else {
+      domainDraft.description = source.description.trim();
+    }
+  }
+
+  if (Object.hasOwn(source, 'previewUrl')) {
+    const { value: previewUrl, errors: previewErrors } = validateUrl(
+      source.previewUrl,
+      { field: 'previewUrl' },
+    );
+    domainErrors.push(...previewErrors);
+    if (previewUrl) {
+      domainDraft.previewUrl = previewUrl;
+    }
+  }
+
+  if (Object.hasOwn(source, 'fallbackUrl')) {
+    const { value: fallbackUrl, errors: fallbackErrors } = validateUrl(
+      source.fallbackUrl,
+      { field: 'fallbackUrl' },
+    );
+    domainErrors.push(...fallbackErrors);
+    if (fallbackUrl) {
+      domainDraft.fallbackUrl = fallbackUrl;
+    }
+  }
+
+  const { value: visibilityMode, errors: visibilityErrors } =
+    validateVisibilityMode(source.visibilityMode);
+  domainErrors.push(...visibilityErrors);
+  if (visibilityMode) {
+    domainDraft.visibilityMode = visibilityMode;
+  }
+
+  const { value: targetingStrict, errors: targetingErrors } = validateBoolean(
+    source.targetingStrict,
+    { field: 'targetingStrict' },
+  );
+  domainErrors.push(...targetingErrors);
+  if (typeof targetingStrict === 'boolean') {
+    domainDraft.targetingStrict = targetingStrict;
+  }
+
+  const { value: allowedGeo, errors: allowedGeoErrors } = validateGeoList(
+    source.allowedGeo,
+    { field: 'allowedGeo' },
+  );
+  domainErrors.push(...allowedGeoErrors);
+  if (allowedGeo !== undefined) {
+    domainDraft.allowedGeo = allowedGeo;
+  }
+
+  const { value: deniedGeo, errors: deniedGeoErrors } = validateGeoList(
+    source.deniedGeo,
+    { field: 'deniedGeo' },
+  );
+  domainErrors.push(...deniedGeoErrors);
+  if (deniedGeo !== undefined) {
+    domainDraft.deniedGeo = deniedGeo;
+  }
+
+  const { value: goals, errors: goalErrors } = validateGoalsPayload(
+    source.goals,
+  );
+  domainErrors.push(...goalErrors);
+  if (goals !== undefined) {
+    domainDraft.goals = goals;
+  }
+
+  if (domainDraft.targetingStrict && !domainDraft.fallbackUrl) {
+    domainErrors.push(
+      buildError(
+        'fallbackUrl',
+        'fallbackUrl обязателен, когда targetingStrict включён',
+      ),
+    );
+  }
+
+  return {
+    draft: domainDraft,
+    errors: domainErrors,
+  };
+}
 
 function validateLimit(value) {
   if (value === undefined || value === null || value === '') {

@@ -1,10 +1,47 @@
+import { CLICK_REDIRECT_OUTCOME_VALUES } from '../constants/clicks.js';
+import { CONVERSION_STATUS_VALUES } from '../constants/conversions.js';
+import { RECORD_SOURCES } from '../constants/adjustments.js';
+import { MAX_STATS_RECALC_DAYS } from '../constants/stats.js';
+import { parsePublicIdNumber, PUBLIC_ID_PREFIXES } from '../lib/public-id.js';
+import {
+  getQueryValue as getAdminListQueryValue,
+  validateOrder as validateAdminListOrder,
+  validateSearch as validateAdminListSearch,
+  validateSort as validateAdminListSort,
+} from '../utils/adminList.js';
+
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
-const conversionStatuses = new Set(['approved', 'rejected']);
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const DASHBOARD_BUCKET_VALUES = new Set(['hour']);
+const ADMIN_SUMMARY_GROUP_VALUES = new Set(['partner', 'offer', 'advertiser']);
+const conversionStatuses = new Set(CONVERSION_STATUS_VALUES);
+const clickRedirectOutcomes = new Set(CLICK_REDIRECT_OUTCOME_VALUES);
+const conversionSources = new Set(Object.values(RECORD_SOURCES));
+const CLICK_LIST_SORTS = {
+  createdAt: 'createdAt',
+  clickId: 'clickId',
+  countryCode: 'countryCode',
+  redirectOutcome: 'redirectOutcome',
+  offerTitle: 'offerTitle',
+  affiliateName: 'affiliateName',
+  advertiserName: 'advertiserName',
+};
+const CONVERSION_LIST_SORTS = {
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  status: 'status',
+  externalTransactionId: 'externalTransactionId',
+  revenue: 'revenue',
+  payout: 'payout',
+  offerTitle: 'offerTitle',
+  affiliateName: 'affiliateName',
+  advertiserName: 'advertiserName',
+  goalName: 'goalName',
+};
 
 function buildError(field, message) {
   return { field, message };
@@ -21,11 +58,7 @@ function parseInteger(value) {
 
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    if (!/^-?\d+$/.test(trimmed)) {
+    if (!trimmed || !/^-?\d+$/.test(trimmed)) {
       return null;
     }
 
@@ -36,28 +69,65 @@ function parseInteger(value) {
   return null;
 }
 
-function validateUuid(value, field) {
+function parseNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function isValidDateString(value) {
+  if (!dateRegex.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.toISOString().slice(0, 10) === value;
+}
+
+function getQueryValue(payload, ...keys) {
+  for (const key of keys) {
+    if (!Object.hasOwn(payload, key)) {
+      continue;
+    }
+
+    const rawValue = payload[key];
+    if (Array.isArray(rawValue)) {
+      return rawValue[0];
+    }
+
+    return rawValue;
+  }
+
+  return undefined;
+}
+
+function normalizeOptionalString(value) {
   if (value === undefined || value === null || value === '') {
-    return { value: undefined, errors: [] };
+    return undefined;
   }
 
   if (typeof value !== 'string') {
-    return {
-      value: undefined,
-      errors: [buildError(field, 'Значение должно быть строкой')],
-    };
+    return null;
   }
 
   const normalized = value.trim();
-
-  if (!uuidRegex.test(normalized)) {
-    return {
-      value: undefined,
-      errors: [buildError(field, 'Некорректный UUID')],
-    };
-  }
-
-  return { value: normalized, errors: [] };
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function validateDate(value, field) {
@@ -73,10 +143,91 @@ function validateDate(value, field) {
   }
 
   const normalized = value.trim();
-  if (!dateRegex.test(normalized)) {
+  if (!dateRegex.test(normalized) || !isValidDateString(normalized)) {
     return {
       value: undefined,
       errors: [buildError(field, 'Дата должна быть в формате YYYY-MM-DD')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateTimezone(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'timezone должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim();
+
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: normalized }).format(new Date());
+  } catch {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'timezone должен быть корректным IANA timezone')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateBucket(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: 'hour', errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'bucket должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!DASHBOARD_BUCKET_VALUES.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Поддерживается только bucket=hour')],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateAdminSummaryGroupBy(value, field = 'groupBy') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'groupBy должен быть строкой')],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!ADMIN_SUMMARY_GROUP_VALUES.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Поддерживаются только groupBy=${Array.from(
+            ADMIN_SUMMARY_GROUP_VALUES,
+          ).join(', ')}`,
+        ),
+      ],
     };
   }
 
@@ -92,23 +243,21 @@ function validateLimit(value) {
   if (parsed === null) {
     return {
       value: undefined,
-      errors: [buildError('limit', 'Limit должен быть целым числом')],
+      errors: [buildError('limit', 'limit должен быть целым числом')],
     };
   }
 
   if (parsed <= 0) {
     return {
       value: undefined,
-      errors: [buildError('limit', 'Limit должен быть больше 0')],
+      errors: [buildError('limit', 'limit должен быть больше 0')],
     };
   }
 
   if (parsed > MAX_LIMIT) {
     return {
       value: undefined,
-      errors: [
-        buildError('limit', `Limit не может быть больше ${MAX_LIMIT}`),
-      ],
+      errors: [buildError('limit', `limit не может быть больше ${MAX_LIMIT}`)],
     };
   }
 
@@ -124,21 +273,44 @@ function validateOffset(value) {
   if (parsed === null) {
     return {
       value: undefined,
-      errors: [buildError('offset', 'Offset должен быть целым числом')],
+      errors: [buildError('offset', 'offset должен быть целым числом')],
     };
   }
 
   if (parsed < 0) {
     return {
       value: undefined,
-      errors: [buildError('offset', 'Offset не может быть отрицательным')],
+      errors: [buildError('offset', 'offset не может быть отрицательным')],
     };
   }
 
   return { value: parsed, errors: [] };
 }
 
-function validateStatus(value) {
+function validatePage(value) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError('page', 'page должен быть целым числом')],
+    };
+  }
+
+  if (parsed < 1) {
+    return {
+      value: undefined,
+      errors: [buildError('page', 'page должен быть не меньше 1')],
+    };
+  }
+
+  return { value: parsed, errors: [] };
+}
+
+function validateTextFilter(value, field) {
   if (value === undefined || value === null || value === '') {
     return { value: undefined, errors: [] };
   }
@@ -146,71 +318,244 @@ function validateStatus(value) {
   if (typeof value !== 'string') {
     return {
       value: undefined,
-      errors: [buildError('status', 'Статус должен быть строкой')],
+      errors: [buildError(field, `${field} должен быть строкой`)],
     };
   }
 
   const normalized = value.trim();
-  if (!conversionStatuses.has(normalized)) {
+  return normalized
+    ? { value: normalized, errors: [] }
+    : { value: undefined, errors: [] };
+}
+
+function validateBooleanFilter(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value === 'boolean') {
+    return { value, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
     return {
       value: undefined,
-      errors: [buildError('status', 'Недопустимое значение статуса')],
+      errors: [buildError(field, `${field} должен быть булевым значением`)],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['true', '1', 'yes'].includes(normalized)) {
+    return { value: true, errors: [] };
+  }
+
+  if (['false', '0', 'no'].includes(normalized)) {
+    return { value: false, errors: [] };
+  }
+
+  return {
+    value: undefined,
+    errors: [buildError(field, `${field} должен быть булевым значением`)],
+  };
+}
+
+function validateNonNegativeNumber(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  const parsed = parseNumber(value);
+  if (parsed === null) {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть числом`)],
+    };
+  }
+
+  if (parsed < 0) {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть неотрицательным`)],
+    };
+  }
+
+  return { value: Number(parsed.toFixed(2)), errors: [] };
+}
+
+function validateEntityIdentifier(value, { field, prefix }) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return { value: undefined, errors: [] };
+  }
+
+  if (uuidRegex.test(normalized)) {
+    return {
+      value: { type: 'uuid', value: normalized },
+      errors: [],
+    };
+  }
+
+  const publicIdNumber = parsePublicIdNumber(normalized, prefix);
+  if (publicIdNumber !== null) {
+    return {
+      value: { type: 'publicId', value: publicIdNumber },
+      errors: [],
+    };
+  }
+
+  return {
+    value: undefined,
+    errors: [buildError(field, `Некорректный идентификатор ${field}`)],
+  };
+}
+
+function validateUuid(value, field) {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Значение должно быть строкой')],
+    };
+  }
+
+  const normalized = value.trim();
+  if (!uuidRegex.test(normalized)) {
+    return {
+      value: undefined,
+      errors: [buildError(field, 'Некорректный UUID')],
     };
   }
 
   return { value: normalized, errors: [] };
 }
 
-function buildListValidation(
-  payload = {},
-  { allowStatus = false, includePagination = true } = {},
-) {
+function validateConversionStatus(value, field = 'status') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!conversionStatuses.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Недопустимое значение статуса: ${CONVERSION_STATUS_VALUES.join(', ')}`,
+        ),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateConversionSource(value, field = 'source') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!conversionSources.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `source должен быть одним из: ${Array.from(conversionSources).join(', ')}`,
+        ),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateClickResult(value, field = 'redirectOutcome') {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, errors: [] };
+  }
+
+  if (typeof value !== 'string') {
+    return {
+      value: undefined,
+      errors: [buildError(field, `${field} должен быть строкой`)],
+    };
+  }
+
+  const normalized = value.trim();
+  if (!clickRedirectOutcomes.has(normalized)) {
+    return {
+      value: undefined,
+      errors: [
+        buildError(
+          field,
+          `Недопустимое значение результата: ${CLICK_REDIRECT_OUTCOME_VALUES.join(', ')}`,
+        ),
+      ],
+    };
+  }
+
+  return { value: normalized, errors: [] };
+}
+
+function validateAdminPagination(payload = {}) {
   const errors = [];
-  const filter = {};
   const pagination = {};
 
-  if (Object.hasOwn(payload, 'offerId')) {
-    const { value, errors: offerErrors } = validateUuid(payload.offerId, 'offerId');
-    errors.push(...offerErrors);
-    if (value) {
-      filter.offerId = value;
-    }
+  const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
+  errors.push(...limitErrors);
+
+  const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
+  errors.push(...offsetErrors);
+
+  const { value: page, errors: pageErrors } = validatePage(payload.page);
+  errors.push(...pageErrors);
+
+  const resolvedLimit = typeof limit === 'number' ? limit : DEFAULT_LIMIT;
+  let resolvedOffset = typeof offset === 'number' ? offset : DEFAULT_OFFSET;
+
+  if (typeof page === 'number' && !Object.hasOwn(payload, 'offset')) {
+    resolvedOffset = (page - 1) * resolvedLimit;
   }
 
-  if (Object.hasOwn(payload, 'affiliateId')) {
-    const { value, errors: affiliateErrors } = validateUuid(
-      payload.affiliateId,
-      'affiliateId',
-    );
-    errors.push(...affiliateErrors);
-    if (value) {
-      filter.affiliateId = value;
-    }
-  }
+  pagination.limit = resolvedLimit;
+  pagination.offset = resolvedOffset;
+  pagination.page =
+    typeof page === 'number'
+      ? page
+      : Math.floor(resolvedOffset / resolvedLimit) + 1;
 
-  if (allowStatus && Object.hasOwn(payload, 'status')) {
-    const { value: status, errors: statusErrors } = validateStatus(payload.status);
-    errors.push(...statusErrors);
-    if (status) {
-      filter.status = status;
-    }
-  }
-
-  if (includePagination) {
-    const { value: limit, errors: limitErrors } = validateLimit(payload.limit);
-    errors.push(...limitErrors);
-    if (typeof limit === 'number') {
-      pagination.limit = limit;
-    }
-
-    const { value: offset, errors: offsetErrors } = validateOffset(payload.offset);
-    errors.push(...offsetErrors);
-    if (typeof offset === 'number') {
-      pagination.offset = offset;
-    }
-  }
-
-  return { filter, pagination: includePagination ? pagination : undefined, errors };
+  return { pagination, errors };
 }
 
 function validatePaginationOnly(payload = {}) {
@@ -232,12 +577,309 @@ function validatePaginationOnly(payload = {}) {
   return { pagination, errors };
 }
 
+function applyOptionalDateFilters(payload, filter, errors) {
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(
+    getQueryValue(payload, 'dateFrom', 'date_from'),
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+  if (dateFrom) {
+    filter.dateFrom = dateFrom;
+  }
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(
+    getQueryValue(payload, 'dateTo', 'date_to'),
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+  if (dateTo) {
+    filter.dateTo = dateTo;
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+}
+
+function applyCommonEntityFilters(payload, filter, errors) {
+  const { value: offerId, errors: offerErrors } = validateEntityIdentifier(
+    getQueryValue(payload, 'offerId', 'offer_id'),
+    { field: 'offerId', prefix: PUBLIC_ID_PREFIXES.offer },
+  );
+  errors.push(...offerErrors);
+  if (offerId) {
+    filter.offerId = offerId;
+  }
+
+  const affiliateRaw = getQueryValue(
+    payload,
+    'affiliateId',
+    'affiliate_id',
+    'partnerId',
+    'partner_id',
+  );
+  const { value: affiliateId, errors: affiliateErrors } = validateEntityIdentifier(
+    affiliateRaw,
+    { field: 'affiliateId', prefix: PUBLIC_ID_PREFIXES.affiliate },
+  );
+  errors.push(...affiliateErrors);
+  if (affiliateId) {
+    filter.affiliateId = affiliateId;
+  }
+
+  const { value: advertiserId, errors: advertiserErrors } = validateEntityIdentifier(
+    getQueryValue(payload, 'advertiserId', 'advertiser_id'),
+    { field: 'advertiserId', prefix: PUBLIC_ID_PREFIXES.advertiser },
+  );
+  errors.push(...advertiserErrors);
+  if (advertiserId) {
+    filter.advertiserId = advertiserId;
+  }
+}
+
 export function validateClicksListFilters(payload = {}) {
-  return buildListValidation(payload);
+  const errors = [];
+  const filter = {};
+  const { pagination, errors: paginationErrors } = validateAdminPagination(payload);
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateAdminListSearch(
+    getAdminListQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateAdminListSort(
+    getAdminListQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    CLICK_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateAdminListOrder(
+    getAdminListQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
+
+  applyOptionalDateFilters(payload, filter, errors);
+  applyCommonEntityFilters(payload, filter, errors);
+
+  const { value: countryCode, errors: countryErrors } = validateTextFilter(
+    getQueryValue(payload, 'countryCode', 'country_code', 'country'),
+    'countryCode',
+  );
+  errors.push(...countryErrors);
+  if (countryCode) {
+    filter.countryCode = countryCode.toUpperCase();
+  }
+
+  const rawResult = getQueryValue(
+    payload,
+    'redirectOutcome',
+    'redirect_outcome',
+    'result',
+    'status',
+  );
+  const { value: redirectOutcome, errors: resultErrors } = validateClickResult(
+    rawResult,
+    'redirectOutcome',
+  );
+  errors.push(...resultErrors);
+  if (redirectOutcome) {
+    filter.redirectOutcome = redirectOutcome;
+  }
+
+  const textFilters = [
+    ['clickId', ['clickId', 'click_id']],
+    ['sub1', ['sub1']],
+    ['sub2', ['sub2']],
+    ['sub3', ['sub3']],
+    ['sub4', ['sub4']],
+    ['sub5', ['sub5']],
+    ['ip', ['ip']],
+  ];
+
+  for (const [field, aliases] of textFilters) {
+    const { value, errors: fieldErrors } = validateTextFilter(
+      getQueryValue(payload, ...aliases),
+      field,
+    );
+    errors.push(...fieldErrors);
+    if (value) {
+      filter[field] = value;
+    }
+  }
+
+  return { filter, pagination, errors };
 }
 
 export function validateConversionsListFilters(payload = {}) {
-  return buildListValidation(payload, { allowStatus: true });
+  const errors = [];
+  const filter = {};
+  const { pagination, errors: paginationErrors } = validateAdminPagination(payload);
+  errors.push(...paginationErrors);
+
+  const { value: search, errors: searchErrors } = validateAdminListSearch(
+    getAdminListQueryValue(payload, 'search'),
+  );
+  errors.push(...searchErrors);
+  if (search) {
+    filter.search = search;
+  }
+
+  const { value: sort, errors: sortErrors } = validateAdminListSort(
+    getAdminListQueryValue(payload, 'sort', 'sortBy', 'sort_by'),
+    CONVERSION_LIST_SORTS,
+    { defaultValue: 'createdAt' },
+  );
+  errors.push(...sortErrors);
+  if (sort) {
+    pagination.sort = sort;
+  }
+
+  const { value: order, errors: orderErrors } = validateAdminListOrder(
+    getAdminListQueryValue(payload, 'order', 'sortOrder', 'sort_order'),
+    { defaultValue: 'desc' },
+  );
+  errors.push(...orderErrors);
+  if (order) {
+    pagination.order = order;
+  }
+
+  applyOptionalDateFilters(payload, filter, errors);
+  applyCommonEntityFilters(payload, filter, errors);
+
+  const { value: goalId, errors: goalErrors } = validateUuid(
+    getQueryValue(payload, 'goalId', 'goal_id'),
+    'goalId',
+  );
+  errors.push(...goalErrors);
+  if (goalId) {
+    filter.goalId = goalId;
+  }
+
+  const { value: status, errors: statusErrors } = validateConversionStatus(
+    getQueryValue(payload, 'status'),
+  );
+  errors.push(...statusErrors);
+  if (status) {
+    filter.status = status;
+  }
+
+  const { value: clickId, errors: clickErrors } = validateTextFilter(
+    getQueryValue(payload, 'clickId', 'click_id'),
+    'clickId',
+  );
+  errors.push(...clickErrors);
+  if (clickId) {
+    filter.clickId = clickId;
+  }
+
+  const { value: conversionId, errors: conversionErrors } = validateUuid(
+    getQueryValue(payload, 'conversionId', 'conversion_id'),
+    'conversionId',
+  );
+  errors.push(...conversionErrors);
+  if (conversionId) {
+    filter.conversionId = conversionId;
+  }
+
+  const { value: externalTransactionId, errors: externalErrors } = validateTextFilter(
+    getQueryValue(
+      payload,
+      'externalTransactionId',
+      'external_transaction_id',
+      'transactionId',
+      'transaction_id',
+      'externalId',
+      'external_id',
+    ),
+    'externalTransactionId',
+  );
+  errors.push(...externalErrors);
+  if (externalTransactionId) {
+    filter.externalTransactionId = externalTransactionId;
+  }
+
+  const { value: source, errors: sourceErrors } = validateConversionSource(
+    getQueryValue(payload, 'source'),
+  );
+  errors.push(...sourceErrors);
+  if (source) {
+    filter.source = source;
+  }
+
+  const { value: isTest, errors: isTestErrors } = validateBooleanFilter(
+    getQueryValue(payload, 'isTest', 'is_test', 'test'),
+    'isTest',
+  );
+  errors.push(...isTestErrors);
+  if (typeof isTest === 'boolean') {
+    filter.isTest = isTest;
+  }
+
+  const { value: revenueMin, errors: revenueMinErrors } = validateNonNegativeNumber(
+    getQueryValue(payload, 'revenueMin', 'revenue_min', 'revenueFrom'),
+    'revenueMin',
+  );
+  errors.push(...revenueMinErrors);
+  if (revenueMin !== undefined) {
+    filter.revenueMin = revenueMin;
+  }
+
+  const { value: revenueMax, errors: revenueMaxErrors } = validateNonNegativeNumber(
+    getQueryValue(payload, 'revenueMax', 'revenue_max', 'revenueTo'),
+    'revenueMax',
+  );
+  errors.push(...revenueMaxErrors);
+  if (revenueMax !== undefined) {
+    filter.revenueMax = revenueMax;
+  }
+
+  const { value: payoutMin, errors: payoutMinErrors } = validateNonNegativeNumber(
+    getQueryValue(payload, 'payoutMin', 'payout_min', 'payoutFrom'),
+    'payoutMin',
+  );
+  errors.push(...payoutMinErrors);
+  if (payoutMin !== undefined) {
+    filter.payoutMin = payoutMin;
+  }
+
+  const { value: payoutMax, errors: payoutMaxErrors } = validateNonNegativeNumber(
+    getQueryValue(payload, 'payoutMax', 'payout_max', 'payoutTo'),
+    'payoutMax',
+  );
+  errors.push(...payoutMaxErrors);
+  if (payoutMax !== undefined) {
+    filter.payoutMax = payoutMax;
+  }
+
+  if (
+    filter.revenueMin !== undefined &&
+    filter.revenueMax !== undefined &&
+    filter.revenueMin > filter.revenueMax
+  ) {
+    errors.push(buildError('revenueMin', 'revenueMin не может быть больше revenueMax'));
+  }
+
+  if (
+    filter.payoutMin !== undefined &&
+    filter.payoutMax !== undefined &&
+    filter.payoutMin > filter.payoutMax
+  ) {
+    errors.push(buildError('payoutMin', 'payoutMin не может быть больше payoutMax'));
+  }
+
+  return { filter, pagination, errors };
 }
 
 export function validatePartnerClicksQuery(payload = {}) {
@@ -252,7 +894,7 @@ export function validatePartnerConversionsQuery(payload = {}) {
   errors.push(...paginationErrors);
 
   if (Object.hasOwn(payload, 'status')) {
-    const { value: status, errors: statusErrors } = validateStatus(payload.status);
+    const { value: status, errors: statusErrors } = validateConversionStatus(payload.status);
     errors.push(...statusErrors);
     if (status) {
       filter.status = status;
@@ -262,12 +904,54 @@ export function validatePartnerConversionsQuery(payload = {}) {
   return { filter, pagination, errors };
 }
 
-export function validateStatsSummaryFilters(payload = {}) {
-  const { filter, errors } = buildListValidation(payload, {
-    includePagination: false,
-  });
+function buildStatsSummaryFilter(payload = {}) {
+  const errors = [];
+  const filter = {};
+
+  applyOptionalDateFilters(payload, filter, errors);
+
+  const { value: offerId, errors: offerErrors } = validateUuid(
+    payload.offerId,
+    'offerId',
+  );
+  errors.push(...offerErrors);
+  if (offerId) {
+    filter.offerId = offerId;
+  }
+
+  const { value: affiliateId, errors: affiliateErrors } = validateUuid(
+    payload.affiliateId,
+    'affiliateId',
+  );
+  errors.push(...affiliateErrors);
+  if (affiliateId) {
+    filter.affiliateId = affiliateId;
+  }
+
+  if (Object.hasOwn(payload, 'goalId')) {
+    const { value: goalId, errors: goalErrors } = validateUuid(
+      payload.goalId,
+      'goalId',
+    );
+    errors.push(...goalErrors);
+    if (goalId) {
+      filter.goalId = goalId;
+    }
+  }
+
+  if (Object.hasOwn(payload, 'status')) {
+    const { value: status, errors: statusErrors } = validateConversionStatus(payload.status);
+    errors.push(...statusErrors);
+    if (status) {
+      filter.status = status;
+    }
+  }
 
   return { filter, errors };
+}
+
+export function validateStatsSummaryFilters(payload = {}) {
+  return buildStatsSummaryFilter(payload);
 }
 
 function resolveDateRange(dateFrom, dateTo) {
@@ -332,4 +1016,230 @@ export function validateDailySummaryFilters(payload = {}) {
   filter.dateTo = dateTo;
 
   return { filter, errors };
+}
+
+export function validateDashboardStatsQuery(payload = {}) {
+  const errors = [];
+  const query = {};
+
+  const { value: date, errors: dateErrors } = validateDate(payload.date, 'date');
+  errors.push(...dateErrors);
+  if (date) {
+    query.date = date;
+  }
+
+  const { value: timezone, errors: timezoneErrors } = validateTimezone(
+    payload.timezone,
+    'timezone',
+  );
+  errors.push(...timezoneErrors);
+  if (timezone) {
+    query.timezone = timezone;
+  }
+
+  const { value: bucket, errors: bucketErrors } = validateBucket(
+    payload.bucket,
+    'bucket',
+  );
+  errors.push(...bucketErrors);
+  if (bucket) {
+    query.bucket = bucket;
+  }
+
+  return { query, errors };
+}
+
+export function validateAdminStatsSummaryQuery(payload = {}) {
+  const errors = [];
+  const query = {};
+  const responseFilters = {
+    dateFrom: null,
+    dateTo: null,
+    offerId: null,
+    affiliateId: null,
+    advertiserId: null,
+    groupBy: null,
+  };
+
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(
+    getQueryValue(payload, 'dateFrom', 'date_from'),
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+  if (dateFrom) {
+    query.dateFrom = dateFrom;
+    responseFilters.dateFrom = dateFrom;
+  }
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(
+    getQueryValue(payload, 'dateTo', 'date_to'),
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+  if (dateTo) {
+    query.dateTo = dateTo;
+    responseFilters.dateTo = dateTo;
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+
+  const { value: timezone, errors: timezoneErrors } = validateTimezone(
+    getQueryValue(payload, 'timezone'),
+    'timezone',
+  );
+  errors.push(...timezoneErrors);
+  if (timezone) {
+    query.timezone = timezone;
+  }
+
+  const rawOfferId = normalizeOptionalString(
+    getQueryValue(payload, 'offerId', 'offer_id'),
+  );
+  const { value: offerId, errors: offerErrors } = validateEntityIdentifier(
+    rawOfferId,
+    { field: 'offerId', prefix: PUBLIC_ID_PREFIXES.offer },
+  );
+  errors.push(...offerErrors);
+  if (offerId) {
+    query.offerId = offerId;
+    responseFilters.offerId = rawOfferId ?? null;
+  }
+
+  const rawAffiliateId = normalizeOptionalString(
+    getQueryValue(payload, 'affiliateId', 'affiliate_id', 'partnerId', 'partner_id'),
+  );
+  const { value: affiliateId, errors: affiliateErrors } = validateEntityIdentifier(
+    rawAffiliateId,
+    { field: 'affiliateId', prefix: PUBLIC_ID_PREFIXES.affiliate },
+  );
+  errors.push(...affiliateErrors);
+  if (affiliateId) {
+    query.affiliateId = affiliateId;
+    responseFilters.affiliateId = rawAffiliateId ?? null;
+  }
+
+  const rawAdvertiserId = normalizeOptionalString(
+    getQueryValue(payload, 'advertiserId', 'advertiser_id'),
+  );
+  const { value: advertiserId, errors: advertiserErrors } = validateEntityIdentifier(
+    rawAdvertiserId,
+    { field: 'advertiserId', prefix: PUBLIC_ID_PREFIXES.advertiser },
+  );
+  errors.push(...advertiserErrors);
+  if (advertiserId) {
+    query.advertiserId = advertiserId;
+    responseFilters.advertiserId = rawAdvertiserId ?? null;
+  }
+
+  const rawGroupBy = normalizeOptionalString(
+    getQueryValue(payload, 'groupBy', 'group_by'),
+  );
+  const { value: groupBy, errors: groupByErrors } = validateAdminSummaryGroupBy(
+    rawGroupBy,
+  );
+  errors.push(...groupByErrors);
+  if (groupBy) {
+    query.groupBy = groupBy;
+    responseFilters.groupBy = groupBy;
+  }
+
+  query.responseFilters = responseFilters;
+
+  return { query, errors };
+}
+
+export function validateStatsRecalculationPayload(payload = {}) {
+  const errors = [];
+  let statusCode = 400;
+
+  const rawDateFrom = getQueryValue(payload, 'dateFrom', 'date_from');
+  const rawDateTo = getQueryValue(payload, 'dateTo', 'date_to');
+  const rawTimezone = normalizeOptionalString(getQueryValue(payload, 'timezone'));
+
+  const { value: dateFrom, errors: dateFromErrors } = validateDate(
+    rawDateFrom,
+    'dateFrom',
+  );
+  errors.push(...dateFromErrors);
+
+  const { value: dateTo, errors: dateToErrors } = validateDate(
+    rawDateTo,
+    'dateTo',
+  );
+  errors.push(...dateToErrors);
+
+  if (!rawDateFrom) {
+    errors.push(buildError('dateFrom', 'dateFrom обязателен'));
+  }
+
+  if (!rawDateTo) {
+    errors.push(buildError('dateTo', 'dateTo обязателен'));
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    errors.push(buildError('dateFrom', 'dateFrom не может быть позже dateTo'));
+  }
+
+  if (dateFrom && dateTo && dateFrom <= dateTo) {
+    const start = new Date(`${dateFrom}T00:00:00.000Z`);
+    const end = new Date(`${dateTo}T00:00:00.000Z`);
+    const days =
+      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+
+    if (days > MAX_STATS_RECALC_DAYS) {
+      statusCode = 422;
+      errors.push(
+        buildError(
+          'dateTo',
+          `Максимальный период пересчёта: ${MAX_STATS_RECALC_DAYS} дней`,
+        ),
+      );
+    }
+  }
+
+  return {
+    payload: {
+      dateFrom,
+      dateTo,
+      timezone: rawTimezone || undefined,
+    },
+    errors,
+    statusCode,
+  };
+}
+
+function sanitizeAdvertiserFilter(filter = {}, errors = []) {
+  const sanitized = {};
+
+  if (filter.dateFrom) {
+    sanitized.dateFrom = filter.dateFrom;
+  }
+
+  if (filter.dateTo) {
+    sanitized.dateTo = filter.dateTo;
+  }
+
+  if (filter.offerId) {
+    errors.push(buildError('offerId', 'offerId не поддерживается для этого запроса'));
+  }
+
+  if (filter.affiliateId) {
+    errors.push(buildError('affiliateId', 'affiliateId не поддерживается для этого запроса'));
+  }
+
+  return sanitized;
+}
+
+export function validateAdvertiserStatsFilters(payload = {}) {
+  const { filter, errors } = validateStatsSummaryFilters(payload);
+  const sanitizedFilter = sanitizeAdvertiserFilter(filter, errors);
+  return { filter: sanitizedFilter, errors };
+}
+
+export function validateAdvertiserOfferStatsFilters(payload = {}) {
+  const { filter, errors } = validateStatsSummaryFilters(payload);
+  const sanitizedFilter = sanitizeAdvertiserFilter(filter, errors);
+  return { filter: sanitizedFilter, errors };
 }

@@ -1,4 +1,5 @@
 import { enqueueAsyncJob } from '../lib/queue.js';
+import { logError } from '../lib/structuredLogger.js';
 
 async function dispatchAsyncJob(jobName, payload = {}, options = {}) {
   if (!jobName) {
@@ -8,9 +9,10 @@ async function dispatchAsyncJob(jobName, payload = {}, options = {}) {
   try {
     return await enqueueAsyncJob(jobName, payload, options);
   } catch (error) {
-    console.error(
-      `❌ Failed to enqueue async job "${jobName}": ${error.message}`,
-    );
+    logError('async_job_enqueue_failed', {
+      jobName,
+      reason: error.message,
+    });
     throw error;
   }
 }

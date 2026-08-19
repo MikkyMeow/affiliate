@@ -1,3 +1,4 @@
+import pool from '../../db.js';
 import { createClick, findByClickId } from '../../models/clicks.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { ERROR_CODES } from '../../utils/response.js';
@@ -10,6 +11,28 @@ import {
 import { dispatchAsyncJob } from '../async-jobs.service.js';
 import { ASYNC_JOB_NAMES, queueConfig } from '../../queue/index.js';
 import { queueJobEnqueueFailedCounter } from '../../lib/metrics.js';
+import { getOfferGeoRuleSets } from '../../models/offerGeoRules.model.js';
+import {
+  resolveOfferGeoAccess,
+  GEO_DENY_REASONS,
+} from '../../lib/resolveOfferGeoAccess.js';
+import { normalizeCountryCode } from '../../lib/detectRequestCountry.js';
+import { logError } from '../../lib/structuredLogger.js';
+import { insertDedupEntry } from '../../models/clickDedupRegistry.model.js';
+import { buildClickDedupFingerprint } from '../../lib/buildClickDedupFingerprint.js';
+import {
+  isDuplicateClickProtectionEnabled,
+  resolveDuplicateClick,
+} from './click-dedup.service.js';
+import { getPartnerOfferVisibilityState } from '../offer-visibility.service.js';
+import { canPartnerAccessOffer } from '../offers/affiliate-visibility.js';
+import {
+  CLICK_DESTINATION_TYPES as DESTINATION_TYPES,
+  CLICK_REDIRECT_OUTCOMES as REDIRECT_OUTCOMES,
+} from '../../constants/clicks.js';
+
+const DEFAULT_INTERNAL_FALLBACK_URL =
+  process.env.TRACKING_INTERNAL_FALLBACK_URL?.trim() || '/track/unavailable';
 
 function assertTrackingInput({ offerId, affiliateId }) {
   if (!offerId || typeof offerId !== 'string') {
@@ -71,16 +94,86 @@ async function findActiveAffiliate(affiliateId) {
   return affiliate;
 }
 
-export async function prepareClick(input) {
+function sanitizeUrlCandidate(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveRedirectDecision({
+  offer,
+  targetRedirectUrl,
+  geoAccess,
+  internalFallbackUrl,
+}) {
+  const strict = Boolean(offer?.targetingStrict);
+
+  if (!strict || geoAccess.isAllowed) {
+      return {
+        redirectUrl: targetRedirectUrl,
+        destinationType: DESTINATION_TYPES.TARGET,
+        outcome: REDIRECT_OUTCOMES.ALLOWED_TARGET_REDIRECT,
+        reason: null,
+      };
+  }
+
+  const denyReason = geoAccess.denyReason ?? GEO_DENY_REASONS.UNKNOWN_COUNTRY;
+  const fallbackUrl = sanitizeUrlCandidate(offer?.fallbackUrl);
+
+  if (fallbackUrl) {
+    return {
+      redirectUrl: fallbackUrl,
+      destinationType: DESTINATION_TYPES.FALLBACK,
+      outcome: REDIRECT_OUTCOMES.FALLBACK_REDIRECT,
+      reason: denyReason,
+    };
+  }
+
+  const resolvedInternalFallback =
+    sanitizeUrlCandidate(internalFallbackUrl) ?? DEFAULT_INTERNAL_FALLBACK_URL;
+
+  return {
+    redirectUrl: resolvedInternalFallback,
+    destinationType: DESTINATION_TYPES.INTERNAL_UNAVAILABLE,
+    outcome: REDIRECT_OUTCOMES.INTERNAL_UNAVAILABLE_REDIRECT,
+    reason: denyReason,
+  };
+}
+
+export async function prepareClick(input, options = {}) {
   assertTrackingInput(input);
 
-  const [offer, affiliate] = await Promise.all([
+  const [offer, affiliate, geoRuleSets] = await Promise.all([
     findActiveOffer(input.offerId),
     findActiveAffiliate(input.affiliateId),
+    getOfferGeoRuleSets(input.offerId),
   ]);
+
+  const visibilityState = await getPartnerOfferVisibilityState(
+    affiliate.id,
+    offer.id,
+    { offer },
+  );
+
+  if (!canPartnerAccessOffer(visibilityState)) {
+    throw new ApiError(
+      ERROR_CODES.FORBIDDEN,
+      403,
+      'Оффер недоступен для этого партнёра',
+      {
+        offerId: offer.id,
+        affiliateId: affiliate.id,
+        denyReason: visibilityState.denyReason ?? null,
+      },
+    );
+  }
 
   const clickId = input.clickId ?? generateClickId();
   let redirectUrl;
+  const normalizedCountry = normalizeCountryCode(input.countryCode ?? null);
 
   try {
     redirectUrl = buildRedirectUrl(offer.targetUrl, clickId);
@@ -91,19 +184,40 @@ export async function prepareClick(input) {
     });
   }
 
+  const geoAccess = resolveOfferGeoAccess({
+    targetingStrict: Boolean(offer.targetingStrict),
+    countryCode: normalizedCountry ?? null,
+    allowCountries: geoRuleSets.allowCountries,
+    denyCountries: geoRuleSets.denyCountries,
+  });
+
+  const redirectMeta = resolveRedirectDecision({
+    offer,
+    targetRedirectUrl: redirectUrl,
+    geoAccess,
+    internalFallbackUrl: options.internalFallbackUrl,
+  });
+
   return {
+    offer,
     clickId,
     offerId: offer.id,
     affiliateId: affiliate.id,
-    redirectUrl,
+    redirectUrl: redirectMeta.redirectUrl,
     ip: input.ip ?? null,
     userAgent: input.userAgent ?? null,
+    device: input.device ?? null,
     referer: input.referer ?? null,
     sub1: input.sub1 ?? null,
     sub2: input.sub2 ?? null,
     sub3: input.sub3 ?? null,
     sub4: input.sub4 ?? null,
     sub5: input.sub5 ?? null,
+    countryCode: normalizedCountry ?? null,
+    targetingStrict: Boolean(offer.targetingStrict),
+    redirectOutcome: redirectMeta.outcome,
+    redirectReason: redirectMeta.reason,
+    destinationType: redirectMeta.destinationType,
   };
 }
 
@@ -129,37 +243,169 @@ async function publishClickCreatedJob(click) {
       queue_name: queueConfig.name,
       job_type: jobType,
     });
-    console.error(
-      JSON.stringify({
-        event: 'queue_enqueue_failed',
-        queue: queueConfig.name,
-        job_type: jobType,
-        click_id: click.clickId,
-        reason: error.message,
-      }),
-    );
+    logError('queue_enqueue_failed', {
+      queue: queueConfig.name,
+      jobType,
+      clickId: click.clickId,
+      reason: error.message,
+    });
   }
 }
 
-export async function registerClick(input) {
-  const prepared = await prepareClick(input);
-  const { redirectUrl, ...clickPayload } = prepared;
+export async function registerClick(input, options = {}) {
+  const prepared = await prepareClick(input, options);
+  const { redirectUrl: preparedRedirectUrl, offer, ...clickPayload } = prepared;
+  const dedupeFingerprint = buildClickDedupFingerprint({
+    offerId: clickPayload.offerId,
+    affiliateId: clickPayload.affiliateId,
+    ip: clickPayload.ip,
+    userAgent: clickPayload.userAgent,
+    device: clickPayload.device,
+    referer: clickPayload.referer,
+    sub1: clickPayload.sub1,
+    sub2: clickPayload.sub2,
+    sub3: clickPayload.sub3,
+    sub4: clickPayload.sub4,
+    sub5: clickPayload.sub5,
+  });
 
-  try {
-    const savedClick = await createClick(clickPayload);
-    await publishClickCreatedJob(savedClick);
-  } catch (error) {
-    if (error?.code === '23505') {
-      throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
-        clickId: clickPayload.clickId,
-      });
+  const dedupProtectionEnabled = isDuplicateClickProtectionEnabled(offer);
+  let savedClick = null;
+  let deduplicated = false;
+  let canonicalClick = null;
+
+  const baseInsertPayload = {
+    ...clickPayload,
+    dedupeFingerprint,
+    canonicalClickId: clickPayload.clickId,
+    isDuplicate: false,
+    duplicateOfClickId: null,
+  };
+
+  if (!dedupProtectionEnabled) {
+    try {
+      savedClick = await createClick(baseInsertPayload);
+      canonicalClick = savedClick;
+    } catch (error) {
+      if (error?.code === '23505') {
+        throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
+          clickId: clickPayload.clickId,
+        });
+      }
+
+      throw error;
     }
+  } else {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const resolution = await resolveDuplicateClick(
+        {
+          offer,
+          offerId: clickPayload.offerId,
+          affiliateId: clickPayload.affiliateId,
+          ip: clickPayload.ip,
+          userAgent: clickPayload.userAgent,
+          device: clickPayload.device,
+          referer: clickPayload.referer,
+          sub1: clickPayload.sub1,
+          sub2: clickPayload.sub2,
+          sub3: clickPayload.sub3,
+          sub4: clickPayload.sub4,
+          sub5: clickPayload.sub5,
+          fingerprint: dedupeFingerprint,
+        },
+        { client },
+      );
 
-    throw error;
+      if (resolution.reused) {
+        deduplicated = true;
+        canonicalClick = await findByClickId(resolution.clickId, { client });
+
+        if (!canonicalClick) {
+          throw new ApiError(
+            ERROR_CODES.INTERNAL_ERROR,
+            500,
+            'Канонический клик для повторного запроса не найден',
+            { clickId: resolution.clickId },
+          );
+        }
+
+        const canonicalId = canonicalClick.canonicalClickId ?? canonicalClick.clickId;
+
+        const duplicatePayload = {
+          ...baseInsertPayload,
+          canonicalClickId: canonicalId,
+          isDuplicate: true,
+          duplicateOfClickId: canonicalId,
+          redirectOutcome: canonicalClick.redirectOutcome,
+          redirectReason: canonicalClick.redirectReason,
+          destinationType: canonicalClick.destinationType,
+          countryCode: canonicalClick.countryCode,
+          targetingStrict: canonicalClick.targetingStrict,
+        };
+
+        savedClick = await createClick(duplicatePayload, { client });
+      } else {
+        savedClick = await createClick(baseInsertPayload, { client });
+        canonicalClick = savedClick;
+        await insertDedupEntry(
+          {
+            fingerprint: resolution.dedupeFingerprint,
+            offerId: savedClick.offerId,
+            affiliateId: savedClick.affiliateId,
+            clickId: savedClick.clickId,
+            expiresAt: resolution.expiresAt,
+          },
+          { client },
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error?.code === '23505') {
+        throw new ApiError(ERROR_CODES.CONFLICT, 409, 'click_id уже используется', {
+          clickId: clickPayload.clickId,
+        });
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  if (!savedClick || (!canonicalClick && deduplicated)) {
+    throw new ApiError(
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      'Не удалось обработать клик',
+    );
+  }
+
+  if (savedClick && !savedClick.isDuplicate) {
+    await publishClickCreatedJob(savedClick);
+  }
+
+  const responseClick = deduplicated ? canonicalClick : savedClick;
+  let redirectUrl = preparedRedirectUrl;
+
+  if (deduplicated) {
+    if (responseClick.destinationType === DESTINATION_TYPES.TARGET) {
+      redirectUrl = buildRedirectUrl(offer.targetUrl, responseClick.clickId);
+    } else if (responseClick.destinationType === DESTINATION_TYPES.FALLBACK) {
+      redirectUrl = sanitizeUrlCandidate(offer.fallbackUrl) ?? preparedRedirectUrl;
+    }
   }
 
   return {
     redirectUrl,
-    clickId: clickPayload.clickId,
+    clickId: responseClick.clickId,
+    redirectOutcome: responseClick.redirectOutcome,
+    redirectReason: responseClick.redirectReason,
+    destinationType: responseClick.destinationType,
+    countryCode: responseClick.countryCode,
+    targetingStrict: responseClick.targetingStrict,
+    deduplicated,
   };
 }

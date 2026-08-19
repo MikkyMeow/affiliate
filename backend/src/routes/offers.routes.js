@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRole } from '../middleware/authorizeRole.js';
+import { authorizeAdminArea } from '../middleware/accessControl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES, sendSuccess } from '../utils/response.js';
@@ -8,13 +8,16 @@ import {
   validateCreateOfferDto,
   validateOfferFilters,
   validateUpdateOfferDto,
+  validateUuid,
 } from '../validators/offers.js';
 import {
   createOffer,
-  getOfferById,
+  getAdminOfferById,
   listOffers,
   updateOffer,
 } from '../services/offers.service.js';
+import { getActorContext } from '../utils/actorContext.js';
+import { buildPaginationMeta } from '../utils/adminList.js';
 
 const router = express.Router();
 
@@ -43,7 +46,7 @@ function parseBooleanQuery(value) {
 }
 
 router.use(authenticate);
-router.use(authorizeRole('admin'));
+router.use(authorizeAdminArea);
 
 router.post(
   '/',
@@ -59,7 +62,10 @@ router.post(
       );
     }
 
-    const offer = await createOffer(dto);
+    const offer = await createOffer(dto, {
+      actor: getActorContext(req.user),
+      requestId: req.id ?? null,
+    });
     return sendSuccess(res, { offer }, { status: 201 });
   }),
 );
@@ -86,11 +92,10 @@ router.get(
       includePostbackToken,
     });
     return sendSuccess(res, items, {
-      meta: {
-        total,
-        limit: pagination.limit,
-        offset: pagination.offset,
-      },
+      meta: buildPaginationMeta(total, pagination, {
+        sort: pagination.sort ?? 'createdAt',
+        order: pagination.order ?? 'desc',
+      }),
     });
   }),
 );
@@ -98,15 +103,10 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const offer = await getOfferById(req.params.id);
-    return sendSuccess(res, { offer });
-  }),
-);
-
-router.patch(
-  '/:id',
-  asyncHandler(async (req, res) => {
-    const { dto, errors } = validateUpdateOfferDto(req.body);
+    const { value: offerId, errors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'id',
+    });
 
     if (errors.length) {
       throw new ApiError(
@@ -117,7 +117,35 @@ router.patch(
       );
     }
 
-    const offer = await updateOffer(req.params.id, dto);
+    const offer = await getAdminOfferById(offerId, { includeGoals: true });
+    return sendSuccess(res, { offer });
+  }),
+);
+
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const { value: offerId, errors: idErrors } = validateUuid(req.params?.id, {
+      allowMissing: false,
+      field: 'id',
+    });
+    const { dto, errors } = validateUpdateOfferDto(req.body);
+    const allErrors = [...idErrors, ...errors];
+
+    if (allErrors.length) {
+      throw new ApiError(
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        'Ошибка валидации',
+        { errors: allErrors },
+      );
+    }
+
+    const offer = await updateOffer(
+      offerId,
+      dto,
+      { actor: getActorContext(req.user), requestId: req.id ?? null },
+    );
     return sendSuccess(res, { offer });
   }),
 );

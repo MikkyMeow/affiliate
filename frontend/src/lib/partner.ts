@@ -16,6 +16,7 @@ export type PartnerClick = {
   clickId: string;
   offerId: string | null;
   sub1: string | null;
+  device: string | null;
   createdAt: string;
 };
 

@@ -1,3 +1,4 @@
+import pool from '../db.js';
 import {
   createAffiliate as createAffiliateModel,
   listAffiliates as listAffiliatesModel,
@@ -5,11 +6,15 @@ import {
   findAffiliateByUserId as findAffiliateByUserIdModel,
   findAffiliateByEmail as findAffiliateByEmailModel,
   updateAffiliate as updateAffiliateModel,
+  updateAffiliateManager as updateAffiliateManagerModel,
   linkAffiliateToUser as linkAffiliateToUserModel,
 } from '../models/affiliateModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { ERROR_CODES } from '../utils/response.js';
 import { invalidateAffiliateCache } from './tracking/cache-invalidation.service.js';
+import { requireAssignableManagerUser } from './managers.service.js';
+import { writeAuditEvent } from './audit.service.js';
+import { getQuestionnaireAnswerItemsForUser } from './questionnaires.service.js';
 
 function handleAffiliateDbConflict(error) {
   if (error?.code === '23505') {
@@ -24,9 +29,20 @@ function handleAffiliateDbConflict(error) {
   throw error;
 }
 
+async function withAffiliateInfo(affiliate) {
+  const questionnaireAnswers = affiliate?.userId
+    ? await getQuestionnaireAnswerItemsForUser(affiliate.userId, 'affiliate')
+    : [];
+
+  return {
+    ...affiliate,
+    questionnaireAnswers,
+  };
+}
+
 export async function createAffiliate(dto) {
   try {
-    return await createAffiliateModel(dto);
+    return await withAffiliateInfo(await createAffiliateModel(dto));
   } catch (error) {
     handleAffiliateDbConflict(error);
   }
@@ -45,7 +61,7 @@ export async function getAffiliateById(id) {
     });
   }
 
-  return affiliate;
+  return withAffiliateInfo(affiliate);
 }
 
 export async function updateAffiliate(id, dto) {
@@ -60,9 +76,161 @@ export async function updateAffiliate(id, dto) {
 
     await invalidateAffiliateCache(id);
 
-    return affiliate;
+    return withAffiliateInfo(affiliate);
   } catch (error) {
     handleAffiliateDbConflict(error);
+  }
+}
+
+export async function updateAffiliateInternalNote(
+  affiliateId,
+  internalNote,
+  { actor = null, requestId = null } = {},
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAffiliate = await findAffiliateByIdModel(affiliateId, { client });
+
+    if (!existingAffiliate) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+        affiliateId,
+      });
+    }
+
+    const updatedAffiliate = await updateAffiliateModel(
+      affiliateId,
+      { internalNote },
+      { client },
+    );
+
+    await writeAuditEvent({
+      entityType: 'affiliate',
+      entityId: affiliateId,
+      action: 'internal_note_updated',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      client,
+      context: {
+        oldValues: {
+          internalNote: existingAffiliate.internalNote ?? null,
+        },
+        newValues: {
+          internalNote: updatedAffiliate?.internalNote ?? null,
+        },
+        metadata: {
+          updatedFields: ['internalNote'],
+        },
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return updatedAffiliate;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function buildManagerAuditMetadata(previousManager, nextManager) {
+  return {
+    previousManager: previousManager
+      ? {
+          id: previousManager.id,
+          displayName: previousManager.displayName ?? null,
+          email: previousManager.email ?? null,
+        }
+      : null,
+    nextManager: nextManager
+      ? {
+          id: nextManager.id,
+          displayName: nextManager.displayName ?? null,
+          email: nextManager.email ?? null,
+        }
+      : null,
+  };
+}
+
+function buildManagerAuditValue(managerUserId, manager) {
+  return {
+    managerUserId: managerUserId ?? null,
+    manager: manager
+      ? {
+          id: manager.id,
+          name: manager.displayName ?? null,
+          email: manager.email ?? null,
+        }
+      : null,
+  };
+}
+
+export async function assignAffiliateManager(
+  affiliateId,
+  managerUserId,
+  { actor = null, requestId = null } = {},
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingAffiliate = await findAffiliateByIdModel(affiliateId, { client });
+
+    if (!existingAffiliate) {
+      throw new ApiError(ERROR_CODES.NOT_FOUND, 404, 'Аффилиат не найден', {
+        affiliateId,
+      });
+    }
+
+    const nextManager =
+      managerUserId === null
+        ? null
+        : await requireAssignableManagerUser(managerUserId, { client });
+
+    const updatedAffiliate = await updateAffiliateManagerModel(
+      affiliateId,
+      managerUserId,
+      { client },
+    );
+
+    await writeAuditEvent({
+      entityType: 'affiliate',
+      entityId: affiliateId,
+      action: 'affiliate.manager_changed',
+      actorUserId: actor?.userId ?? null,
+      actorRole: actor?.role ?? null,
+      requestId,
+      client,
+      oldValue: buildManagerAuditValue(
+        existingAffiliate.managerUserId ?? null,
+        existingAffiliate.manager,
+      ),
+      newValue: buildManagerAuditValue(
+        updatedAffiliate?.managerUserId ?? null,
+        nextManager,
+      ),
+      metadata: buildManagerAuditMetadata(
+        existingAffiliate.manager,
+        nextManager,
+      ),
+    });
+
+    await client.query('COMMIT');
+
+    await invalidateAffiliateCache(affiliateId);
+
+    return updatedAffiliate;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }
 

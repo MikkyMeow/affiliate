@@ -39,6 +39,17 @@ const trackingClickErrorsCounter = new client.Counter({
   labelNames: ['type'],
 });
 
+const trackingClickDuplicatesCounter = new client.Counter({
+  name: 'tracking_click_duplicates_total',
+  help: 'Number of click tracking requests resolved via dedup reuse',
+});
+
+const geoRedirectFallbackCounter = new client.Counter({
+  name: 'geo_redirect_fallback_total',
+  help: 'Number of click tracking requests that ended in a fallback redirect',
+  labelNames: ['destination'],
+});
+
 const trackingPostbackRequestsCounter = new client.Counter({
   name: 'tracking_postback_requests_total',
   help: 'Number of postback requests processed',
@@ -115,11 +126,19 @@ const rollupSkippedDuplicatesCounter = new client.Counter({
   labelNames: ['job_type', 'event_type'],
 });
 
+const offerRequestDecisionCounter = new client.Counter({
+  name: 'offer_request_decisions_total',
+  help: 'Number of offer requests reviewed by decision',
+  labelNames: ['decision'],
+});
+
 register.registerMetric(httpRequestCounter);
 register.registerMetric(httpRequestDurationHistogram);
 register.registerMetric(httpRequestErrorsCounter);
 register.registerMetric(trackingClickRequestsCounter);
 register.registerMetric(trackingClickErrorsCounter);
+register.registerMetric(trackingClickDuplicatesCounter);
+register.registerMetric(geoRedirectFallbackCounter);
 register.registerMetric(trackingPostbackRequestsCounter);
 register.registerMetric(trackingPostbackErrorsCounter);
 register.registerMetric(trackingPostbackDuplicatesCounter);
@@ -133,6 +152,7 @@ register.registerMetric(queueJobEnqueueFailedCounter);
 register.registerMetric(rollupUpdatesCounter);
 register.registerMetric(rollupUpdateFailuresCounter);
 register.registerMetric(rollupSkippedDuplicatesCounter);
+register.registerMetric(offerRequestDecisionCounter);
 
 export {
   register,
@@ -141,6 +161,8 @@ export {
   httpRequestErrorsCounter,
   trackingClickRequestsCounter,
   trackingClickErrorsCounter,
+  trackingClickDuplicatesCounter,
+  geoRedirectFallbackCounter,
   trackingPostbackRequestsCounter,
   trackingPostbackErrorsCounter,
   trackingPostbackDuplicatesCounter,
@@ -154,4 +176,5 @@ export {
   rollupUpdatesCounter,
   rollupUpdateFailuresCounter,
   rollupSkippedDuplicatesCounter,
+  offerRequestDecisionCounter,
 };
