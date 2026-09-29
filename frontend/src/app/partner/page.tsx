@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ContextHelpCard } from "@/features/docs/ContextHelpCard";
 import { HelpLink } from "@/features/docs/HelpLink";
 import { RoleQuickStartCard } from "@/features/docs/RoleQuickStartCard";
@@ -57,7 +57,6 @@ type PartnerProfile = {
 export default function PartnerDashboardPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
@@ -231,7 +230,7 @@ export default function PartnerDashboardPage() {
       if (!offerId) {
         return "—";
       }
-      return offerNameById.get(offerId) ?? `Offer ${offerId}`;
+      return offerNameById.get(offerId) ?? `Оффер ${offerId}`;
     },
     [offerNameById],
   );
@@ -247,22 +246,22 @@ export default function PartnerDashboardPage() {
   if (!user || !accessToken) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите или зарегистрируйтесь, чтобы попасть в кабинет партнера.
+          Войдите или зарегистрируйтесь, чтобы попасть в кабинет партнёра.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -274,32 +273,32 @@ export default function PartnerDashboardPage() {
   if (user.role !== "affiliate") {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Кабинет только для партнёров
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Вы авторизованы как администратор. Перейдите в админ-панель.
+          Этот раздел доступен только партнёрам.
         </p>
         <Link
           href="/dashboard"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В админку
+          В панель управления
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Partner
+            Партнёр
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Кабинет аффилиата
+            <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+              Кабинет партнёра
             </h1>
             <HelpLink
               href={docsHelpLinks.partnerDashboard}
@@ -315,7 +314,7 @@ export default function PartnerDashboardPage() {
             type="button"
             onClick={() => void loadStats()}
             disabled={loadingStats}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             {loadingStats ? "Обновляем…" : "Обновить статистику"}
           </button>
@@ -326,14 +325,14 @@ export default function PartnerDashboardPage() {
               void loadOffers();
             }}
             disabled={loadingProfile || loadingOffers}
-            className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
+            className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
           >
-            {loadingProfile || loadingOffers ? "Загружаем…" : "Обновить данные"}
+            {loadingProfile || loadingOffers ? "Загружаем…" : "Обновить офферы"}
           </button>
         </div>
       </div>
 
-      <div className="mb-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="min-w-0 mb-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         {PARTNER_NAV_LINKS.map((item) => (
           <Link
             key={item.href}
@@ -347,24 +346,24 @@ export default function PartnerDashboardPage() {
 
       <RoleQuickStartCard
         href={docsHelpLinks.quickStartPartner}
-        description="Быстрый старт для партнёра помогает не вспоминать по памяти, где взять ссылку, как читать статусы и куда смотреть по первым конверсиям."
+        description="Как выбрать оффер, получить ссылку и проверить первые конверсии."
       />
 
       {profileError && (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
-          Не удалось загрузить профиль: {profileError}
+          {profileError}
         </div>
       )}
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="min-w-0 mb-8 grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Профиль аффилиата
+            Профиль партнёра
           </p>
           {loadingProfile ? (
             <p className="mt-4 text-sm text-zinc-500">Загружаем профиль…</p>
           ) : profile ? (
-            <div className="mt-4 space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
+            <div className="mt-4 space-y-3 break-words text-sm text-zinc-700 dark:text-zinc-300">
               <p>
                 <span className="text-zinc-500">Название:</span>{" "}
                 <span className="font-medium text-zinc-900 dark:text-zinc-50">
@@ -376,7 +375,7 @@ export default function PartnerDashboardPage() {
                 {profile.affiliate.email}
               </p>
               <p>
-                <span className="text-zinc-500">Affiliate ID:</span>{" "}
+                <span className="text-zinc-500">ID партнёра:</span>{" "}
                 {profile.affiliate.id}
               </p>
               <p>
@@ -395,7 +394,7 @@ export default function PartnerDashboardPage() {
               </p>
               <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
-                  Your manager
+                  Ваш менеджер
                 </p>
                 {profile.affiliate.manager ? (
                   <div className="mt-2 space-y-1">
@@ -406,7 +405,7 @@ export default function PartnerDashboardPage() {
                   </div>
                 ) : (
                   <p className="mt-2 text-zinc-500">
-                    No manager assigned yet
+                    Менеджер пока не назначен
                   </p>
                 )}
               </div>
@@ -415,20 +414,20 @@ export default function PartnerDashboardPage() {
             <p className="mt-4 text-sm text-zinc-500">Нет данных по профилю.</p>
           )}
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm uppercase tracking-wide text-zinc-500">
               Трекер
             </p>
             <HelpLink
               href={docsHelpLinks.partnerTrackingLinks}
-              label="Tracking docs"
+              label="Помощь со ссылками"
             />
           </div>
           <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
             <p>
               Используйте базовый URL:{" "}
-              <code className="rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
+              <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
                 {buildTrackingUrl("/click")}
               </code>
             </p>
@@ -441,23 +440,22 @@ export default function PartnerDashboardPage() {
               </p>
             ) : (
               <p>
-                Идентификатор аффилиата ещё не готов. Попробуйте обновить
-                профиль.
+                Ссылка пока недоступна. Обновите профиль и попробуйте снова.
               </p>
             )}
           </div>
           <div className="mt-4">
             <ContextHelpCard
-              title="Не меняйте служебные параметры tracking-ссылки"
-              description="Если изменить click id, offer id или affiliate id, конверсии могут не связаться с кликом."
+              title="Не меняйте служебные параметры партнёрской ссылки"
+              description="Если изменить идентификаторы клика, оффера или партнёра, конверсии могут не связаться с кликом."
               href={docsHelpLinks.partnerTrackingLinks}
-              ctaLabel="Подробнее о tracking-ссылках"
+              ctaLabel="Подробнее о партнёрских ссылках"
             />
           </div>
         </div>
       </div>
 
-      <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-wide text-zinc-500">
@@ -465,7 +463,7 @@ export default function PartnerDashboardPage() {
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                Лента показателей
+                Основные показатели
               </h2>
               <HelpLink href={docsHelpLinks.partnerStats} />
             </div>
@@ -476,7 +474,7 @@ export default function PartnerDashboardPage() {
             </span>
           )}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="min-w-0 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {PARTNER_STATS_CARDS.map((card) => {
             const value = stats ? stats[card.key] : 0;
             const displayValue = card.currency
@@ -490,8 +488,8 @@ export default function PartnerDashboardPage() {
                 <p className="text-sm uppercase tracking-wide text-zinc-500">
                   {card.label}
                 </p>
-                <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  {loadingStats && !stats ? "…" : displayValue}
+                <p className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+                  {!stats ? (loadingStats ? "…" : "—") : displayValue}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   {card.hint}
@@ -504,13 +502,13 @@ export default function PartnerDashboardPage() {
         <div className="mt-8">
           <div className="mb-4">
             <p className="text-sm uppercase tracking-wide text-zinc-500">
-              Breakdown
+              Детализация
             </p>
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
               По офферам
             </h3>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Approved/Pending/Rej отдельно для каждой кампании.
+              Клики, конверсии и выплаты по каждому офферу.
             </p>
           </div>
           <PartnerOfferBreakdownTable
@@ -522,7 +520,7 @@ export default function PartnerDashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-wide text-zinc-500">
@@ -551,7 +549,7 @@ export default function PartnerDashboardPage() {
                 )
               }
               disabled={loadingOffers}
-              className="w-full min-w-[180px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-400"
+              className="ui-input w-full min-w-[180px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-400"
             >
               <option value="all">Все категории</option>
               {OFFER_CATEGORY_OPTIONS.map((option) => (
@@ -571,10 +569,10 @@ export default function PartnerDashboardPage() {
           <p className="text-sm text-zinc-500">Загружаем офферы…</p>
         ) : offers.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            Пока нет активных офферов. Попробуйте обновить позже.
+            {offerCategoryFilter === "all" ? "Активных офферов пока нет. Проверьте позже." : "В этой категории офферов пока нет. Выберите другую категорию."}
           </p>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="min-w-0 grid gap-4 md:grid-cols-2">
             {offers.map((offer) => {
               const hasFullAccess = offer.view.type === "full";
               const fullView = offer.view.type === "full" ? offer.view : null;
@@ -584,20 +582,13 @@ export default function PartnerDashboardPage() {
               return (
                 <div
                   key={offer.id}
-                  className="rounded-xl border border-zinc-200 p-4 text-sm shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/partner/offers/${offer.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      router.push(`/partner/offers/${offer.id}`);
-                    }
-                  }}
+                  className="min-w-0 rounded-2xl border border-zinc-200 p-4 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950/20"
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                      {offer.title}
+                  <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                    <h3 className="min-w-0 break-words text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                      <Link href={`/partner/offers/${offer.id}`} className="underline-offset-4 hover:underline">
+                        {offer.title}
+                      </Link>
                     </h3>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -606,7 +597,7 @@ export default function PartnerDashboardPage() {
                           : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                       }`}
                     >
-                      {offer.status === "active" ? "Активен" : "Пауза"}
+                      {offer.status === "active" ? "Активен" : "На паузе"}
                     </span>
                   </div>
                   <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -620,17 +611,17 @@ export default function PartnerDashboardPage() {
                         : "Публичный"}
                   </p>
                   {offer.description && (
-                    <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-2 line-clamp-3 break-words text-zinc-600 dark:text-zinc-400">
                       {offer.description}
                     </p>
                   )}
                   {hasFullAccess && (
                     <>
                       <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                        Целевая:{" "}
+                        Целевая ссылка:{" "}
                         <a
                           href={fullView?.targetUrl ?? "#"}
-                          className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+                          className="break-all text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
@@ -639,10 +630,10 @@ export default function PartnerDashboardPage() {
                         </a>
                       </p>
                       <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                        Превью:{" "}
+                        Предпросмотр:{" "}
                         <a
                           href={fullView?.previewUrl ?? "#"}
-                          className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+                          className="break-all text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
@@ -668,10 +659,10 @@ export default function PartnerDashboardPage() {
                             void handleRequestAccess(offer.id);
                           }}
                           disabled={requestingOfferId === offer.id}
-                          className="mt-3 rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
+                          className="ui-button mt-3 rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
                         >
                           {requestingOfferId === offer.id
-                            ? "Отправляем..."
+                            ? "Отправляем…"
                             : "Запросить доступ"}
                         </button>
                       )}
@@ -690,7 +681,7 @@ export default function PartnerDashboardPage() {
                             event.stopPropagation();
                             void handleCopyLink(trackingLink, offer.id);
                           }}
-                          className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
                           {copiedOfferId === offer.id
                             ? "Скопировано"
@@ -701,7 +692,7 @@ export default function PartnerDashboardPage() {
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
-                          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+                          className="ui-button rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
                         >
                           Проверить
                         </a>
@@ -709,9 +700,12 @@ export default function PartnerDashboardPage() {
                     </div>
                   ) : hasFullAccess ? (
                     <p className="mt-3 text-xs text-red-600 dark:text-red-300">
-                      Нет affiliateId — обновите профиль.
+                      Обновите профиль, чтобы получить партнёрскую ссылку.
                     </p>
                   ) : null}
+                  <Link href={`/partner/offers/${offer.id}`} className="mt-4 inline-flex text-sm font-medium text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-100">
+                    Условия оффера →
+                  </Link>
                 </div>
               );
             })}

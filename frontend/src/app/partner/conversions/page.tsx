@@ -15,6 +15,11 @@ import {
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS = ['approved', 'rejected'];
+const STATUS_LABELS: Record<string, string> = {
+  approved: 'Подтверждено',
+  pending: 'На проверке',
+  rejected: 'Отклонено',
+};
 const STATUS_STYLES: Record<string, string> = {
   approved:
     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
@@ -177,22 +182,22 @@ export default function PartnerConversionsPage() {
   if (!user || !accessToken) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите или зарегистрируйтесь, чтобы увидеть конверсии.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -204,29 +209,29 @@ export default function PartnerConversionsPage() {
   if (user.role !== 'affiliate') {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Кабинет только для партнёров
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Вы авторизованы как администратор. Перейдите в админ-панель.
+          Этот раздел доступен только партнёрам.
         </p>
         <Link
           href="/dashboard"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В админку
+          В панель управления
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Partner Conversions</p>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Кабинет партнёра</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               История конверсий
             </h1>
             <HelpLink href={docsHelpLinks.partnerConversions} />
@@ -235,16 +240,17 @@ export default function PartnerConversionsPage() {
             Следите за статусами и выплатами по своим кликам.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <select
+            aria-label="Статус конверсии"
             value={statusFilter}
             onChange={(event) => handleStatusChange(event.target.value)}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm text-zinc-700 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            className="ui-input min-h-10 w-full rounded-xl border border-zinc-300 px-4 py-2 text-sm text-zinc-700 focus:outline-none sm:w-auto dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
           >
             <option value="">Все статусы</option>
             {STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
-                {status === 'approved' ? 'Approved' : 'Rejected'}
+                {STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -252,7 +258,7 @@ export default function PartnerConversionsPage() {
             type="button"
             onClick={() => void loadConversions()}
             disabled={loading}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             {loading ? 'Обновляем…' : 'Обновить данные'}
           </button>
@@ -262,34 +268,34 @@ export default function PartnerConversionsPage() {
       {error && <InlineAlert variant="error">{error}</InlineAlert>}
 
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="overflow-x-auto">
+        <div className="ui-table-wrap overflow-x-auto">
           <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
             <thead>
               <tr className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-400">
-                <th className="px-4 py-3">Click ID</th>
-                <th className="px-4 py-3">Статус</th>
-                <th className="px-4 py-3">Выплата</th>
-                <th className="px-4 py-3">Создана</th>
+                <th className="whitespace-nowrap px-4 py-3">ID клика</th>
+                <th className="whitespace-nowrap px-4 py-3">Статус</th>
+                <th className="whitespace-nowrap px-4 py-3">Выплата</th>
+                <th className="whitespace-nowrap px-4 py-3">Создана</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {conversions.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    {loading ? 'Загружаем конверсии…' : 'Пока нет данных.'}
+                    {loading ? 'Загружаем конверсии…' : statusFilter ? 'Конверсий с выбранным статусом пока нет.' : 'Конверсии появятся после первых целевых действий по вашим ссылкам.'}
                   </td>
                 </tr>
               ) : (
                 conversions.map((conversion) => (
                   <tr key={`${conversion.clickId}-${conversion.createdAt}`} className="text-zinc-900 dark:text-zinc-100">
-                    <td className="px-4 py-3 font-mоно text-xs">{conversion.clickId}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{conversion.clickId}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                           STATUS_STYLES[conversion.status] ?? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
                         }`}
                       >
-                        {conversion.status}
+                        {STATUS_LABELS[conversion.status] ?? conversion.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
@@ -308,12 +314,12 @@ export default function PartnerConversionsPage() {
           <span>
             Показано {listStart}-{listEnd} из {meta.total}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => handlePageChange(page - 1)}
               disabled={!canGoPrev}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
             >
               Назад
             </button>
@@ -324,7 +330,7 @@ export default function PartnerConversionsPage() {
               type="button"
               onClick={() => handlePageChange(page + 1)}
               disabled={!canGoNext}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
             >
               Вперёд
             </button>

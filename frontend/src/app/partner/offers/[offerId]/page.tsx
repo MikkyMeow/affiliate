@@ -60,7 +60,7 @@ function formatGoalMoney(
 }
 
 const sectionCardStyles =
-  "rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
+  "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900";
 
 export default function PartnerOfferDetailsPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -172,7 +172,7 @@ export default function PartnerOfferDetailsPage() {
   if (!offerId) {
     return (
       <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Оффер не найден
         </h1>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -180,7 +180,7 @@ export default function PartnerOfferDetailsPage() {
         </p>
         <Link
           href="/partner"
-          className="mt-4 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button mt-4 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           К списку офферов
         </Link>
@@ -199,22 +199,22 @@ export default function PartnerOfferDetailsPage() {
   if (!user || !accessToken) {
     return (
       <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите или зарегистрируйтесь, чтобы увидеть детали оффера.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -226,42 +226,42 @@ export default function PartnerOfferDetailsPage() {
   if (user.role !== "affiliate") {
     return (
       <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Кабинет только для партнёров
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Вы авторизованы как администратор. Перейдите в админ-панель.
+          Этот раздел доступен только партнёрам.
         </p>
         <Link
           href="/dashboard"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В админку
+          В панель управления
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-4xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-zinc-500">
-            Partner Offer
+            Оффер
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               {offer?.title ?? "Детали оффера"}
             </h1>
             <HelpLink href={docsHelpLinks.partnerOfferDetail} />
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {offer ? "Вся актуальная информация по кампании" : "Загружаем данные оффера…"}
+            {offer ? "Условия, цели и партнёрская ссылка" : "Загружаем данные оффера…"}
           </p>
         </div>
         <Link
           href="/partner"
-          className="inline-flex items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="ui-button inline-flex items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           ← Назад к офферам
         </Link>
@@ -273,7 +273,7 @@ export default function PartnerOfferDetailsPage() {
           <button
             type="button"
             onClick={() => void loadOffer()}
-            className="mt-3 inline-flex rounded-full border border-red-200 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
+            className="ui-button mt-3 inline-flex rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
           >
             Повторить попытку
           </button>
@@ -281,7 +281,7 @@ export default function PartnerOfferDetailsPage() {
       )}
 
       {loadingOffer && !offer ? (
-        <div className="rounded-3xl border border-dashed border-zinc-300 px-6 py-16 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+        <div className="rounded-2xl border border-dashed border-zinc-300 px-6 py-16 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           Загружаем оффер…
         </div>
       ) : offer ? (
@@ -311,7 +311,7 @@ export default function PartnerOfferDetailsPage() {
                       : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   }`}
                 >
-                  {offer.status === "active" ? "Активен" : "Пауза"}
+                  {offer.status === "active" ? "Активен" : "На паузе"}
                 </span>
                 <span className="rounded-full bg-zinc-100 px-4 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
                   {resolveAccessLabel(offer.accessLevel)}
@@ -321,7 +321,7 @@ export default function PartnerOfferDetailsPage() {
             <dl className="mt-6 grid gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-xs uppercase tracking-wide text-zinc-500">
-                  visibility
+                  Видимость
                 </dt>
                 <dd className="text-sm text-zinc-800 dark:text-zinc-200">
                   {resolveVisibilityLabel(offer.visibilityMode)}
@@ -330,11 +330,11 @@ export default function PartnerOfferDetailsPage() {
               {hasFullAccess && (
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-zinc-500">
-                    targeting
+                    География трафика
                   </dt>
                   <dd className="text-sm text-zinc-800 dark:text-zinc-200">
                     {offer.targetingStrict
-                      ? "Только согласованные GEO"
+                      ? "Только согласованные страны"
                       : "Свободный трафик"}
                   </dd>
                 </div>
@@ -363,9 +363,9 @@ export default function PartnerOfferDetailsPage() {
                     type="button"
                     onClick={() => void handleRequestAccess()}
                     disabled={requestingAccess}
-                    className="mt-4 rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
+                    className="ui-button mt-4 rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 dark:bg-zinc-100 dark:text-black"
                   >
-                    {requestingAccess ? "Отправляем..." : "Запросить доступ"}
+                    {requestingAccess ? "Отправляем…" : "Запросить доступ"}
                   </button>
                 )}
                 {requestNotice && (
@@ -399,24 +399,24 @@ export default function PartnerOfferDetailsPage() {
                       Ссылки
                     </p>
                     <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                      Доступные URL
+                      Посадочные страницы
                     </h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Target, fallback и превью ссылки для проверки посадочной.
+                      Посадочная страница, резервная ссылка и предпросмотр.
                     </p>
                   </div>
                 </div>
                 <div className="mt-6 space-y-3 text-sm">
                   <InfoRow
-                    label="Target URL"
+                    label="Целевая ссылка"
                     value={fullView?.targetUrl ?? null}
                   />
                   <InfoRow
-                    label="Fallback URL"
+                    label="Резервная ссылка"
                     value={fullView?.fallbackUrl ?? null}
                   />
                   <InfoRow
-                    label="Preview URL"
+                    label="Ссылка предпросмотра"
                     value={fullView?.previewUrl ?? null}
                   />
                 </div>
@@ -429,10 +429,10 @@ export default function PartnerOfferDetailsPage() {
                       Трекер
                     </p>
                     <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                      Личная ссылка
+                      Партнёрская ссылка
                     </h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Используйте готовый шаблон для редиректа трафика.
+                      Используйте эту ссылку для привлечения трафика.
                     </p>
                   </div>
                   {trackingLink && (
@@ -440,7 +440,7 @@ export default function PartnerOfferDetailsPage() {
                       <button
                         type="button"
                         onClick={() => void handleCopyLink()}
-                        className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         {copied ? "Скопировано" : "Скопировать"}
                       </button>
@@ -448,7 +448,7 @@ export default function PartnerOfferDetailsPage() {
                         href={trackingLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+                        className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
                       >
                         Открыть
                       </a>
@@ -462,16 +462,16 @@ export default function PartnerOfferDetailsPage() {
                     </code>
                     <div className="mt-4">
                       <ContextHelpCard
-                        title="Не меняйте служебные параметры tracking-ссылки"
-                        description="Если изменить click id, offer id или affiliate id, конверсии могут не связаться с кликом."
+                        title="Не меняйте служебные параметры партнёрской ссылки"
+                        description="Если изменить идентификаторы клика, оффера или партнёра, конверсии могут не связаться с кликом."
                         href={docsHelpLinks.partnerTrackingLinks}
-                        ctaLabel="Подробнее о tracking-ссылках"
+                        ctaLabel="Подробнее о партнёрских ссылках"
                       />
                     </div>
                   </>
                 ) : (
                   <p className="mt-4 text-xs text-red-600 dark:text-red-300">
-                    Нет affiliateId — обновите профиль, чтобы получить трекинг ссылку.
+                    Обновите профиль, чтобы получить партнёрскую ссылку.
                   </p>
                 )}
               </div>
@@ -481,13 +481,13 @@ export default function PartnerOfferDetailsPage() {
               <div className={sectionCardStyles}>
                 <div className="flex flex-col gap-2">
                   <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Goals
+                Условия
               </p>
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                 Цели и выплаты
               </h3>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Ваша эффективная выплата по каждой цели.
+                Вознаграждение за выполнение каждой цели.
               </p>
             </div>
             {offer.accessLevel !== "full" && (
@@ -515,7 +515,7 @@ export default function PartnerOfferDetailsPage() {
                         <div className="flex flex-wrap gap-2">
                           {goal.isDefault && (
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                              Default
+                              По умолчанию
                             </span>
                           )}
                           {goal.limitReached && (
@@ -528,7 +528,7 @@ export default function PartnerOfferDetailsPage() {
                       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
                           <dt className="text-xs uppercase tracking-wide text-zinc-500">
-                            Payout
+                            Выплата
                           </dt>
                           <dd className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                             {formatGoalMoney(goal.payout, goal.currency)}
@@ -560,7 +560,7 @@ export default function PartnerOfferDetailsPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-3xl border border-dashed border-zinc-300 px-6 py-16 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+        <div className="rounded-2xl border border-dashed border-zinc-300 px-6 py-16 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           Нет данных по офферу.
         </div>
       )}
@@ -584,7 +584,7 @@ function InfoRow({ label, value }: InfoRowProps) {
           href={value}
           target="_blank"
           rel="noreferrer"
-          className="truncate text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
+          className="break-all text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-300"
         >
           {value}
         </a>

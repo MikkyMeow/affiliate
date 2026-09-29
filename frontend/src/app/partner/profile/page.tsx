@@ -103,14 +103,14 @@ export default function PartnerProfilePage() {
   const telegramHref = buildTelegramHref(profile?.affiliate.telegram);
 
   return (
-    <section className="mx-auto min-h-screen max-w-4xl px-6 py-10">
-      <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <header>
           <p className="text-xs uppercase tracking-widest text-zinc-500">
             Профиль
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               Данные партнёра
             </h1>
             <HelpLink href={docsHelpLinks.partnerProfile} />
@@ -126,7 +126,7 @@ export default function PartnerProfilePage() {
             {error}
           </div>
         ) : profile ? (
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="min-w-0 grid gap-6 sm:grid-cols-2">
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Название
@@ -137,9 +137,9 @@ export default function PartnerProfilePage() {
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Public ID
+                Публичный ID
               </p>
-              <p className="mt-2 font-mono text-sm text-zinc-900 dark:text-zinc-100">
+              <p className="mt-2 break-all font-mono text-sm text-zinc-900 dark:text-zinc-100">
                 {profile.affiliate.publicId ?? "—"}
               </p>
             </div>
@@ -147,7 +147,7 @@ export default function PartnerProfilePage() {
               <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Email
               </p>
-              <p className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+              <p className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
                 {profile.affiliate.email}
               </p>
             </div>
@@ -155,28 +155,30 @@ export default function PartnerProfilePage() {
               <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Статус
               </p>
-              <p className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+              <p className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
                 {profile.affiliate.status === "active" ? "Активен" : "Неактивен"}
               </p>
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
               <form className="space-y-3" onSubmit={handleSubmit}>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  <label htmlFor="partner-telegram" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Telegram
-                  </p>
+                  </label>
                   <div className="mt-2 flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:focus-within:border-white">
                     <span className="flex items-center border-r border-zinc-200 px-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                       t.me/
                     </span>
                     <input
+                      id="partner-telegram"
                       type="text"
+                      autoComplete="off"
                       value={telegram}
                       onChange={(event) =>
                         setTelegram(normalizeTelegramHandle(event.target.value))
                       }
-                      placeholder="username"
-                      className="w-full bg-transparent px-4 py-3 text-sm text-zinc-900 outline-none dark:text-zinc-100"
+                      placeholder="Имя пользователя"
+                      className="min-w-0 w-full bg-transparent px-4 py-3 text-sm text-zinc-900 outline-none dark:text-zinc-100"
                     />
                   </div>
                   {telegramHref ? (
@@ -194,7 +196,7 @@ export default function PartnerProfilePage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+                    className="ui-button rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
                   >
                     {saving ? "Сохраняем…" : "Сохранить Telegram"}
                   </button>

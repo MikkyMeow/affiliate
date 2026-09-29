@@ -40,7 +40,7 @@ export default function PartnerStatsPage() {
       if (!offerId) {
         return '—';
       }
-      return offerNames[offerId] ?? `Offer ${offerId}`;
+      return offerNames[offerId] ?? `Оффер ${offerId}`;
     },
     [offerNames],
   );
@@ -109,22 +109,22 @@ export default function PartnerStatsPage() {
   if (!user || !accessToken) {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите или зарегистрируйтесь, чтобы увидеть свою статистику.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -136,45 +136,45 @@ export default function PartnerStatsPage() {
   if (user.role !== 'affiliate') {
     return (
       <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="min-w-0 break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Кабинет только для партнёров
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Вы авторизованы как администратор. Перейдите в админ-панель.
+          Этот раздел доступен только партнёрам.
         </p>
         <Link
           href="/dashboard"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
-          В админку
+          В панель управления
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-5xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Partner Stats
+            Кабинет партнёра
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               Ключевые показатели
             </h1>
             <HelpLink href={docsHelpLinks.partnerStats} />
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Видите свои approved/pending/rejected суммы без похода в Postman.
+            Клики, статусы конверсий и выплаты по вашим офферам.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => void loadStats()}
             disabled={loadingStats}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             {loadingStats ? 'Обновляем…' : 'Обновить статистику'}
           </button>
@@ -182,7 +182,7 @@ export default function PartnerStatsPage() {
             type="button"
             onClick={() => void loadOffers()}
             disabled={loadingOffers}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             {loadingOffers ? 'Обновляем офферы…' : 'Обновить офферы'}
           </button>
@@ -191,25 +191,25 @@ export default function PartnerStatsPage() {
 
       {statsError && (
         <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
-          Не удалось загрузить статистику: {statsError}
+          {statsError}
         </div>
       )}
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm uppercase tracking-wide text-zinc-500">
               Сводка
             </p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Approved/Pending/Rejected и выплаты — как есть.
+              Конверсии и выплаты за всё время.
             </p>
           </div>
           {(loadingStats || loadingOffers) && (
-            <span className="text-xs text-zinc-500">Обновляем данные…</span>
+            <span className="break-words text-xs text-zinc-500">Обновляем данные…</span>
           )}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="min-w-0 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {PARTNER_STATS_CARDS.map((card) => {
             const value = stats ? stats[card.key] : 0;
             const displayValue = card.currency
@@ -223,8 +223,8 @@ export default function PartnerStatsPage() {
                 <p className="text-sm uppercase tracking-wide text-zinc-500">
                   {card.label}
                 </p>
-                <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  {loadingStats && !stats ? '…' : displayValue}
+                <p className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+                  {!stats ? (loadingStats ? '…' : '—') : displayValue}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   {card.hint}
@@ -237,7 +237,7 @@ export default function PartnerStatsPage() {
         <div className="mt-8">
           <div className="mb-3">
             <p className="text-sm uppercase tracking-wide text-zinc-500">
-              Breakdown
+              Детализация
             </p>
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
               По офферам

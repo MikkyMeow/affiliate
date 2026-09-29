@@ -34,22 +34,22 @@ export function PartnerOfferBreakdownTable({
   return (
     <div className="space-y-3">
       {loading && (
-        <span className="text-xs text-zinc-500">
+        <span className="break-words text-xs text-zinc-500">
           Обновляем данные…
         </span>
       )}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+      <div className="ui-table-wrap overflow-x-auto">
+        <table className="min-w-[860px] w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
           <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">Offer</th>
-              <th className="px-4 py-3 text-left font-medium">Clicks</th>
-              <th className="px-4 py-3 text-left font-medium">Всего</th>
-              <th className="px-4 py-3 text-left font-medium">Approved</th>
-              <th className="px-4 py-3 text-left font-medium">Pending</th>
-              <th className="px-4 py-3 text-left font-medium">Rejected</th>
-              <th className="px-4 py-3 text-left font-medium">Approved payout</th>
-              <th className="px-4 py-3 text-left font-medium">Pending payout</th>
+              <th className="whitespace-nowrap px-4 py-3 text-left font-medium">Оффер</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Клики</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Всего</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Подтверждено</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">На проверке</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Отклонено</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Подтверждённые выплаты</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Выплаты на проверке</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -59,23 +59,23 @@ export function PartnerOfferBreakdownTable({
                   <div className="font-medium text-zinc-900 dark:text-zinc-50">
                     {getOfferName(row.offerId)}
                   </div>
-                  <div className="text-xs text-zinc-500">
-                    {row.offerId ?? 'offerId отсутствует'}
+                  <div className="break-words text-xs text-zinc-500">
+                    {row.offerId ? `ID: ${row.offerId}` : 'Оффер не указан'}
                   </div>
                 </td>
-                <td className="px-4 py-3">{formatCount(row.clicks)}</td>
-                <td className="px-4 py-3">{formatCount(row.conversionsTotal)}</td>
-                <td className="px-4 py-3 text-emerald-600 dark:text-emerald-300">
+                <td className="whitespace-nowrap px-4 py-3 text-right">{formatCount(row.clicks)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">{formatCount(row.conversionsTotal)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right text-emerald-600 dark:text-emerald-300">
                   {formatCount(row.conversionsApproved)}
                 </td>
-                <td className="px-4 py-3 text-amber-600 dark:text-amber-300">
+                <td className="whitespace-nowrap px-4 py-3 text-right text-amber-600 dark:text-amber-300">
                   {formatCount(row.conversionsPending)}
                 </td>
-                <td className="px-4 py-3 text-rose-600 dark:text-rose-300">
+                <td className="whitespace-nowrap px-4 py-3 text-right text-rose-600 dark:text-rose-300">
                   {formatCount(row.conversionsRejected)}
                 </td>
-                <td className="px-4 py-3">{formatMoney(row.approvedPayout)}</td>
-                <td className="px-4 py-3">{formatMoney(row.pendingPayout)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">{formatMoney(row.approvedPayout)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">{formatMoney(row.pendingPayout)}</td>
               </tr>
             ))}
           </tbody>
