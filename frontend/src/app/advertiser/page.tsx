@@ -22,8 +22,8 @@ type SummaryCard = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  approved: "Зачтено",
-  pending: "В ожидании",
+  approved: "Подтверждено",
+  pending: "На проверке",
   rejected: "Отклонено",
 };
 
@@ -72,35 +72,35 @@ export default function AdvertiserOverviewPage() {
       {
         label: "Клики",
         value: formatCount(summary?.clicks ?? 0),
-        hint: "Всё, что пришло от партнёров",
+        hint: "Переходы по партнёрским ссылкам",
       },
       {
-        label: "Лиды",
+        label: "Конверсии",
         value: formatCount(summary?.conversionsTotal ?? 0),
         hint: "Общее число конверсий",
       },
       {
-        label: "Зачтено",
+        label: "Подтверждено",
         value: formatCount(summary?.conversionsApproved ?? 0),
-        hint: "Approved конверсии",
+        hint: "Подтверждённые конверсии",
       },
       {
-        label: "В рассмотрении",
+        label: "На проверке",
         value: formatCount(summary?.conversionsPending ?? 0),
-        hint: "Pending конверсии",
+        hint: "Конверсии на проверке",
       },
       {
         label: "Отклонено",
         value: formatCount(summary?.conversionsRejected ?? 0),
-        hint: "Rejected конверсии",
+        hint: "Отклонённые конверсии",
       },
       {
-        label: "Revenue (approved)",
+        label: "Начисления · подтверждено",
         value: formatMoney(summary?.approvedRevenue ?? 0),
-        hint: "Сумма подтверждённых лидов",
+        hint: "Сумма подтверждённых конверсий",
       },
       {
-        label: "Payout (approved)",
+        label: "Выплаты · подтверждено",
         value: formatMoney(summary?.approvedPayout ?? 0),
         hint: "К выплате партнёрам",
       },
@@ -111,39 +111,38 @@ export default function AdvertiserOverviewPage() {
   const statuses = breakdowns?.statuses ?? [];
 
   return (
-    <div className="space-y-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
-          Read-only раздел
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+          Кабинет рекламодателя
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Обзор рекламодателя
           </h1>
           <HelpLink href={docsHelpLinks.advertiserDashboard} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Карточки ниже показывают чисто аналитические данные. Управляющих
-          действий здесь нет.
+          Результаты ваших офферов: клики, конверсии и выплаты.
         </p>
       </header>
 
       <RoleQuickStartCard
         href={docsHelpLinks.quickStartAdvertiser}
-        description="Быстрый старт для рекламодателя полезен, если нужно быстро проверить офферы, статистику и postback-интеграцию."
+        description="Как проверить офферы, статистику и передачу конверсий."
       />
 
       <section>
         {loading ? (
           <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            Собираем статистику за последние дни…
+            Загружаем статистику…
           </div>
         ) : error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
             {error}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="min-w-0 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {summaryCards.map((card) => (
               <div
                 key={card.label}
@@ -170,43 +169,44 @@ export default function AdvertiserOverviewPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Разрезы по данным
+              Результаты по офферам
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              ТОП офферы и статусы конверсий за базовый период.
+              Сводные результаты и статусы конверсий.
             </p>
           </div>
           <Link
             href="/advertiser/stats"
             className="text-sm font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
           >
-            Перейти в полноценный отчёт →
+            Открыть статистику →
           </Link>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between">
+        <div className="min-w-0 grid gap-6 lg:grid-cols-2">
+          <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
                 Офферы
               </p>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {offers.length
-                  ? `Всего ${offers.length} в срезе`
+                  ? `Показано ${offers.length}`
                   : "Нет данных"}
               </span>
             </div>
             {offers.length === 0 ? (
               <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-                В отчетном периоде не было кликов и лидов по офферам.
+                За этот период кликов и конверсий пока нет.
               </p>
             ) : (
-              <table className="mt-4 w-full text-sm">
+              <div className="ui-table-wrap mt-4 overflow-x-auto">
+              <table className="min-w-[420px] w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                    <th className="py-2">Оффер</th>
-                    <th className="py-2 text-right">Клики</th>
-                    <th className="py-2 text-right">Лиды</th>
-                    <th className="py-2 text-right">Revenue</th>
+                    <th className="whitespace-nowrap py-2">Оффер</th>
+                    <th className="whitespace-nowrap py-2 text-right">Клики</th>
+                    <th className="whitespace-nowrap py-2 text-right">Конверсии</th>
+                    <th className="whitespace-nowrap py-2 text-right">Начисления</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,29 +223,30 @@ export default function AdvertiserOverviewPage() {
                           ID: {offer.offerId ?? "—"}
                         </div>
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatCount(offer.clicks)}
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatCount(offer.conversionsTotal)}
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatMoney(offer.approvedRevenue ?? 0)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between">
+          <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                Статусы лидов
+                Статусы конверсий
               </p>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                Обновляется автоматически
+                За отчётный период
               </span>
             </div>
             {statuses.length === 0 ? (
@@ -253,13 +254,14 @@ export default function AdvertiserOverviewPage() {
                 Пока нет конверсий для отображения.
               </p>
             ) : (
-              <table className="mt-4 w-full text-sm">
+              <div className="ui-table-wrap mt-4 overflow-x-auto">
+              <table className="min-w-[420px] w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                    <th className="py-2">Статус</th>
-                    <th className="py-2 text-right">Конверсии</th>
-                    <th className="py-2 text-right">Revenue</th>
-                    <th className="py-2 text-right">Payout</th>
+                    <th className="whitespace-nowrap py-2">Статус</th>
+                    <th className="whitespace-nowrap py-2 text-right">Конверсии</th>
+                    <th className="whitespace-nowrap py-2 text-right">Начисления</th>
+                    <th className="whitespace-nowrap py-2 text-right">Выплаты</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,19 +274,20 @@ export default function AdvertiserOverviewPage() {
                         {STATUS_LABELS[status.status ?? ""] ??
                           (status.status ?? "—")}
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatCount(status.conversionsTotal)}
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatMoney(status.approvedRevenue ?? 0)}
                       </td>
-                      <td className="py-3 text-right text-zinc-800 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-3 text-right text-zinc-800 dark:text-zinc-100">
                         {formatMoney(status.approvedPayout ?? 0)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

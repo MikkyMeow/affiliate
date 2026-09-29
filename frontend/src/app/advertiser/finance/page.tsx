@@ -1,5 +1,7 @@
 "use client";
 
+import { conversionStatusLabel } from "../ui-labels";
+
 import {
   usePathname,
   useRouter,
@@ -105,58 +107,58 @@ export default function AdvertiserFinancePage() {
   const cards = useMemo(() => {
     return [
       {
-        label: "Revenue (pending)",
+        label: "Начисления · на проверке",
         value: formatMoney(summary?.pendingRevenue ?? 0),
       },
       {
-        label: "Revenue (approved)",
+        label: "Начисления · подтверждено",
         value: formatMoney(summary?.approvedRevenue ?? 0),
       },
       {
-        label: "Revenue (rejected)",
+        label: "Начисления · отклонено",
         value: formatMoney(summary?.rejectedRevenue ?? 0),
       },
       {
-        label: "Payout (pending)",
+        label: "Выплаты · на проверке",
         value: formatMoney(summary?.pendingPayout ?? 0),
       },
       {
-        label: "Payout (approved)",
+        label: "Выплаты · подтверждено",
         value: formatMoney(summary?.approvedPayout ?? 0),
       },
       {
-        label: "Payout (rejected)",
+        label: "Выплаты · отклонено",
         value: formatMoney(summary?.rejectedPayout ?? 0),
       },
       {
-        label: "Pending конверсии",
+        label: "Конверсии на проверке",
         value: formatCount(summary?.conversionsPending ?? 0),
       },
       {
-        label: "Approved конверсии",
+        label: "Подтверждённые конверсии",
         value: formatCount(summary?.conversionsApproved ?? 0),
       },
       {
-        label: "Rejected конверсии",
+        label: "Отклонённые конверсии",
         value: formatCount(summary?.conversionsRejected ?? 0),
       },
     ];
   }, [summary]);
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           Финансы
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Финансовая сводка
           </h1>
           <HelpLink href={docsHelpLinks.advertiserFinance} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Показатели выплат и revenue. Только чтение, никаких кнопок.
+          Начисления и выплаты по статусам конверсий.
         </p>
       </header>
 
@@ -164,44 +166,44 @@ export default function AdvertiserFinancePage() {
         onSubmit={handleSubmit}
         className="grid gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/50 md:grid-cols-4"
       >
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Дата от
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Дата начала
           <DateInput
             value={form.dateFrom}
             onChange={(value) =>
               setForm((prev) => ({ ...prev, dateFrom: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Дата до
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Дата окончания
           <DateInput
             value={form.dateTo}
             onChange={(value) =>
               setForm((prev) => ({ ...prev, dateTo: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Offer ID
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          ID оффера
           <input
             type="text"
             value={form.offerId}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, offerId: event.target.value }))
             }
-            placeholder="UUID оффера"
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            placeholder="Введите ID оффера"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
         <div className="flex items-end">
           <button
             type="submit"
-            className="w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
+            className="ui-button w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
           >
-            Обновить
+            Применить фильтры
           </button>
         </div>
       </form>
@@ -216,11 +218,11 @@ export default function AdvertiserFinancePage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="min-w-0 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {cards.map((card) => (
               <div
                 key={card.label}
-                className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   {card.label}
@@ -234,17 +236,17 @@ export default function AdvertiserFinancePage() {
 
           <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Разрез по офферам
+              По офферам
             </p>
             {breakdowns && breakdowns.offers.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
+              <div className="ui-table-wrap overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
                 <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                   <thead className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     <tr>
-                      <th className="px-4 py-3">Оффер</th>
-                      <th className="px-4 py-3 text-right">Revenue</th>
-                      <th className="px-4 py-3 text-right">Payout</th>
-                      <th className="px-4 py-3 text-right">Approved</th>
+                      <th className="whitespace-nowrap px-4 py-3">Оффер</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Начисления</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Выплаты</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Подтверждено</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -258,13 +260,13 @@ export default function AdvertiserFinancePage() {
                             ID: {offer.offerId ?? "—"}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatMoney(offer.approvedRevenue ?? 0)}
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatMoney(offer.approvedPayout ?? 0)}
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatCount(offer.conversionsApproved ?? 0)}
                         </td>
                       </tr>
@@ -281,32 +283,32 @@ export default function AdvertiserFinancePage() {
 
           <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Разрез по статусам
+              По статусам
             </p>
             {breakdowns && breakdowns.statuses.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
+              <div className="ui-table-wrap overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
                 <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                   <thead className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     <tr>
-                      <th className="px-4 py-3">Статус</th>
-                      <th className="px-4 py-3 text-right">Revenue</th>
-                      <th className="px-4 py-3 text-right">Payout</th>
-                      <th className="px-4 py-3 text-right">Конверсии</th>
+                      <th className="whitespace-nowrap px-4 py-3">Статус</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Начисления</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Выплаты</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Конверсии</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {breakdowns.statuses.map((status) => (
                       <tr key={status.status ?? "status"}>
                         <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">
-                          {status.status ?? "—"}
+                          {conversionStatusLabel(status.status)}
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatMoney(status.revenue)}
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatMoney(status.payout)}
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                           {formatCount(status.count)}
                         </td>
                       </tr>

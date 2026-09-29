@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { conversionStatusLabel, offerStatusLabel } from "../../ui-labels";
+
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DateInput } from "@/components/DateInput";
@@ -134,19 +137,22 @@ export default function AdvertiserOfferDetailsPage() {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
+        <Link href="/advertiser/offers" className="mb-3 inline-flex text-sm text-zinc-600 underline-offset-4 hover:underline dark:text-zinc-400">
+          ← К офферам
+        </Link>
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           Оффер
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             {offer?.name ?? "Карточка оффера"}
           </h1>
           <HelpLink href={docsHelpLinks.advertiserOfferDetail} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Здесь можно просмотреть условия и статистику. Редактирование отключено.
+          Условия оффера и результаты привлечённого трафика.
         </p>
       </header>
 
@@ -156,19 +162,19 @@ export default function AdvertiserOfferDetailsPage() {
         </div>
       ) : notFound ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-900/30 dark:text-amber-100">
-          Оффер не найден или вам туда нет доступа.
+          Оффер не найден или недоступен.
         </div>
       ) : offerError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
           {offerError}
         </div>
       ) : offer ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="min-w-0 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               ID
             </p>
-            <p className="mt-2 font-mono text-sm text-zinc-900 dark:text-zinc-100">
+            <p className="mt-2 break-all font-mono text-sm text-zinc-900 dark:text-zinc-100">
               {offer.id}
             </p>
           </div>
@@ -177,7 +183,7 @@ export default function AdvertiserOfferDetailsPage() {
               Статус
             </p>
             <p className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {offer.status ?? "—"}
+              {offerStatusLabel(offer.status)}
             </p>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -190,7 +196,7 @@ export default function AdvertiserOfferDetailsPage() {
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Revenue
+              Начисления
             </p>
             <p className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {offer.revenueRub != null ? formatMoney(offer.revenueRub) : "—"}
@@ -200,7 +206,7 @@ export default function AdvertiserOfferDetailsPage() {
             <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Создан
             </p>
-            <p className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+            <p className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
               {formatDateTime(offer.createdAt)}
             </p>
           </div>
@@ -208,7 +214,7 @@ export default function AdvertiserOfferDetailsPage() {
             <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Обновлён
             </p>
-            <p className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+            <p className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
               {formatDateTime(offer.updatedAt)}
             </p>
           </div>
@@ -247,8 +253,8 @@ export default function AdvertiserOfferDetailsPage() {
           onSubmit={handleStatsSubmit}
           className="grid gap-4 md:grid-cols-3"
         >
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Дата от
+          <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Дата начала
             <DateInput
               value={formFilters.dateFrom}
               onChange={(value) =>
@@ -257,11 +263,11 @@ export default function AdvertiserOfferDetailsPage() {
                   dateFrom: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Дата до
+          <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Дата окончания
             <DateInput
               value={formFilters.dateTo}
               onChange={(value) =>
@@ -270,13 +276,13 @@ export default function AdvertiserOfferDetailsPage() {
                   dateTo: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
           <div className="flex items-end">
             <button
               type="submit"
-              className="w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
+              className="ui-button w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
             >
               Применить
             </button>
@@ -292,30 +298,30 @@ export default function AdvertiserOfferDetailsPage() {
           </div>
         ) : stats ? (
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="min-w-0 grid gap-4 md:grid-cols-3">
               <Metric label="Клики" value={formatCount(stats.summary.clicks)} />
               <Metric
                 label="Конверсии"
                 value={formatCount(stats.summary.conversionsTotal)}
               />
               <Metric
-                label="Approved"
+                label="Подтверждено"
                 value={formatCount(stats.summary.conversionsApproved)}
               />
               <Metric
-                label="Revenue"
+                label="Начисления"
                 value={formatMoney(stats.summary.approvedRevenue)}
               />
               <Metric
-                label="Payout"
+                label="Выплаты"
                 value={formatMoney(stats.summary.approvedPayout)}
               />
               <Metric
-                label="Pending"
+                label="На проверке"
                 value={formatCount(stats.summary.conversionsPending)}
               />
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="min-w-0 grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                   Статусы
@@ -325,18 +331,19 @@ export default function AdvertiserOfferDetailsPage() {
                     Не найдено событий по выбранному периоду.
                   </p>
                 ) : (
-                  <table className="mt-3 w-full text-sm">
+                  <div className="ui-table-wrap mt-3 overflow-x-auto">
+                  <table className="min-w-[280px] w-full text-sm">
                     <thead className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                       <tr>
-                        <th className="py-2">Статус</th>
-                        <th className="py-2 text-right">Конверсии</th>
+                        <th className="whitespace-nowrap py-2">Статус</th>
+                        <th className="whitespace-nowrap py-2 text-right">Конверсии</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stats.statuses.map((status) => (
                         <tr key={status.status ?? "unknown"}>
                           <td className="py-2 text-zinc-800 dark:text-zinc-100">
-                            {status.status ?? "—"}
+                            {conversionStatusLabel(status.status)}
                           </td>
                           <td className="py-2 text-right text-zinc-800 dark:text-zinc-100">
                             {formatCount(status.conversionsTotal)}
@@ -345,22 +352,24 @@ export default function AdvertiserOfferDetailsPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 )}
               </div>
               <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  Цели (goal)
+                  По целям
                 </p>
                 {stats.goals.length === 0 ? (
                   <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                    Goal-разрезы отсутствуют.
+                    За выбранный период конверсий по целям нет.
                   </p>
                 ) : (
-                  <table className="mt-3 w-full text-sm">
+                  <div className="ui-table-wrap mt-3 overflow-x-auto">
+                  <table className="min-w-[280px] w-full text-sm">
                     <thead className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                       <tr>
-                        <th className="py-2">Цель</th>
-                        <th className="py-2 text-right">Конверсии</th>
+                        <th className="whitespace-nowrap py-2">Цель</th>
+                        <th className="whitespace-nowrap py-2 text-right">Конверсии</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -376,6 +385,7 @@ export default function AdvertiserOfferDetailsPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -392,7 +402,7 @@ export default function AdvertiserOfferDetailsPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
       <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         {label}
       </p>

@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { postbackStatusLabel } from "../../ui-labels";
+
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { HelpLink } from "@/features/docs/HelpLink";
@@ -43,7 +46,7 @@ export default function AdvertiserPostbackDetailsPage() {
         return;
       }
       if (!handleApiError(apiError)) {
-        setError(apiError.message ?? "Не удалось загрузить log");
+        setError(apiError.message ?? "Не удалось загрузить запись");
       }
     } finally {
       setLoading(false);
@@ -67,19 +70,22 @@ export default function AdvertiserPostbackDetailsPage() {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
-          Postback
+        <Link href="/advertiser/postbacks" className="mb-3 inline-flex text-sm text-zinc-600 underline-offset-4 hover:underline dark:text-zinc-400">
+          ← К журналу постбэков
+        </Link>
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+          Постбэк
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Лог #{postbackId.slice(0, 8)}…
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+            Постбэк #{postbackId.slice(0, 8)}…
           </h1>
           <HelpLink href={docsHelpLinks.advertiserPostbacks} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Доступен только просмотр строки журнала.
+          Данные запроса и результат обработки.
         </p>
       </header>
 
@@ -89,7 +95,7 @@ export default function AdvertiserPostbackDetailsPage() {
         </div>
       ) : notFound ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/30 dark:text-amber-100">
-          Постбек не найден.
+          Постбэк не найден.
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
@@ -97,12 +103,12 @@ export default function AdvertiserPostbackDetailsPage() {
         </div>
       ) : postback ? (
         <dl className="grid gap-4 md:grid-cols-2">
-          <InfoCard label="Offer ID" value={postback.offerId ?? "—"} />
-          <InfoCard label="Conversion ID" value={postback.conversionId ?? "—"} />
-          <InfoCard label="Click ID" value={postback.clickId ?? "—"} />
-          <InfoCard label="Статус" value={postback.status ?? "—"} />
+          <InfoCard label="ID оффера" value={postback.offerId ?? "—"} />
+          <InfoCard label="ID конверсии" value={postback.conversionId ?? "—"} />
+          <InfoCard label="ID клика" value={postback.clickId ?? "—"} />
+          <InfoCard label="Статус" value={postbackStatusLabel(postback.status)} />
           <InfoCard
-            label="HTTP статус"
+            label="Код ответа HTTP"
             value={
               postback.responseStatusCode != null
                 ? String(postback.responseStatusCode)
@@ -131,7 +137,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
       <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         {label}
       </dt>
-      <dd className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">{value}</dd>
+      <dd className="mt-2 break-all text-sm text-zinc-900 dark:text-zinc-100">{value}</dd>
     </div>
   );
 }

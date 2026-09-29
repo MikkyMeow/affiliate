@@ -140,35 +140,34 @@ export default function AdvertiserOffersPage() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           Офферы
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Просмотр офферов
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+            Мои офферы
           </h1>
           <HelpLink href={docsHelpLinks.advertiserOffers} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Можно только изучать состояние и метрики. Чтобы изменить условия,
-          обратитесь к менеджеру.
+          Условия и результаты ваших офферов. Для изменения условий обратитесь к менеджеру.
         </p>
       </header>
 
       <form
         onSubmit={handleSearchSubmit}
-        className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/60 md:flex-row"
+        className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/60 md:flex-row md:items-end"
       >
-        <label className="flex flex-1 flex-col text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        <label className="flex min-w-0 flex-1 flex-col text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Поиск по названию
           <input
             type="search"
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Например, Dating RU"
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            placeholder="Название оффера"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />
         </label>
         <label className="flex w-full flex-col text-sm font-medium text-zinc-700 dark:text-zinc-300 md:w-60">
@@ -176,7 +175,7 @@ export default function AdvertiserOffersPage() {
           <select
             value={status}
             onChange={handleStatusChange}
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -187,7 +186,7 @@ export default function AdvertiserOffersPage() {
         </label>
         <button
           type="submit"
-          className="h-fit rounded-full bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-70 dark:bg-zinc-100 dark:text-zinc-900"
+          className="ui-button shrink-0 rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-70 dark:bg-zinc-100 dark:text-zinc-900"
         >
           Найти
         </button>
@@ -203,16 +202,16 @@ export default function AdvertiserOffersPage() {
         </div>
       ) : response && response.items.length > 0 ? (
         <>
-          <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <div className="ui-table-wrap overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
             <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  <th className="px-4 py-3">Название</th>
-                  <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3 text-right">Revenue</th>
-                  <th className="px-4 py-3 text-right">Создан</th>
-                  <th className="px-4 py-3 text-right">Обновлён</th>
-                  <th className="px-4 py-3 text-right">Действие</th>
+                  <th className="whitespace-nowrap px-4 py-3">Название</th>
+                  <th className="whitespace-nowrap px-4 py-3">Статус</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Начисления</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Создан</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Обновлён</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Действие</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -230,18 +229,18 @@ export default function AdvertiserOffersPage() {
                       {STATUS_LABELS[offer.status ?? ""] ??
                         (offer.status ?? "—")}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
                       {offer.revenueRub != null
                         ? formatMoney(offer.revenueRub)
                         : "—"}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
                       {formatDateTime(offer.createdAt)}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
                       {formatDateTime(offer.updatedAt)}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
                       <Link
                         href={`/advertiser/offers/${offer.id}`}
                         className="text-sm font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
@@ -258,12 +257,12 @@ export default function AdvertiserOffersPage() {
             <span>
               Показано {response.items.length} из {pagination.total} офферов
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => goToPage(pagination.page - 1)}
                 disabled={pagination.page <= 1}
-                className="rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="ui-button rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
                 Назад
               </button>
@@ -277,7 +276,7 @@ export default function AdvertiserOffersPage() {
                   pagination.totalPages > 0 &&
                   pagination.page >= pagination.totalPages
                 }
-                className="rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="ui-button rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
                 Вперёд
               </button>
@@ -286,7 +285,7 @@ export default function AdvertiserOffersPage() {
         </>
       ) : (
         <div className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          Офферов пока нет или они скрыты выбранными фильтрами.
+          Офферы не найдены. Попробуйте изменить название или статус в фильтрах.
         </div>
       )}
     </div>

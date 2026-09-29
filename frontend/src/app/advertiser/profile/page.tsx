@@ -1,5 +1,7 @@
 "use client";
 
+import { offerStatusLabel } from "../ui-labels";
+
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { HelpLink } from "@/features/docs/HelpLink";
@@ -140,20 +142,19 @@ export default function AdvertiserProfilePage() {
   }, [accessToken, authLoading, loadProfile, user?.role]);
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header>
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           Профиль
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Данные рекламодателя
           </h1>
           <HelpLink href={docsHelpLinks.advertiserProfile} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Email и контакт в Telegram можно держать в актуальном состоянии без
-          обращения в поддержку.
+          Контактные данные, анкета и настройки пароля.
         </p>
       </header>
       {loading ? (
@@ -180,14 +181,14 @@ export default function AdvertiserProfilePage() {
               Статус
             </dt>
             <dd className="mt-2 text-lg font-semibold capitalize text-zinc-900 dark:text-zinc-50">
-              {profile.status ?? "—"}
+              {offerStatusLabel(profile.status)}
             </dd>
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Public ID
+              Публичный ID
             </dt>
-            <dd className="mt-2 font-mono text-sm text-zinc-900 dark:text-zinc-100">
+            <dd className="mt-2 break-all font-mono text-sm text-zinc-900 dark:text-zinc-100">
               {profile.publicId ?? "—"}
             </dd>
             </div>
@@ -195,7 +196,7 @@ export default function AdvertiserProfilePage() {
             <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               ID рекламодателя
             </dt>
-            <dd className="mt-2 font-mono text-sm text-zinc-900 dark:text-zinc-100">
+            <dd className="mt-2 break-all font-mono text-sm text-zinc-900 dark:text-zinc-100">
               {profile.id}
             </dd>
             </div>
@@ -203,28 +204,30 @@ export default function AdvertiserProfilePage() {
             <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Email аккаунта
             </dt>
-            <dd className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+            <dd className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
               {profile.email ?? user?.email ?? "—"}
             </dd>
             </div>
             <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2">
             <form className="space-y-3" onSubmit={handleTelegramSubmit}>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <label htmlFor="advertiser-telegram" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Telegram
-                </dt>
+                </label>
                 <div className="mt-2 flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:focus-within:border-white">
                   <span className="flex items-center border-r border-zinc-200 px-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                     t.me/
                   </span>
                   <input
+                    id="advertiser-telegram"
                     type="text"
+                    autoComplete="off"
                     value={telegram}
                     onChange={(event) =>
                       setTelegram(normalizeTelegramHandle(event.target.value))
                     }
-                    placeholder="username"
-                    className="w-full bg-transparent px-4 py-3 text-sm text-zinc-900 outline-none dark:text-zinc-100"
+                    placeholder="Имя пользователя"
+                    className="min-w-0 w-full bg-transparent px-4 py-3 text-sm text-zinc-900 outline-none dark:text-zinc-100"
                   />
                 </div>
                 {telegramHref ? (
@@ -242,7 +245,7 @@ export default function AdvertiserProfilePage() {
                 <button
                   type="submit"
                   disabled={savingTelegram}
-                  className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+                  className="ui-button rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
                 >
                   {savingTelegram ? "Сохраняем…" : "Сохранить Telegram"}
                 </button>
@@ -258,7 +261,7 @@ export default function AdvertiserProfilePage() {
             <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Создан
             </dt>
-            <dd className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+            <dd className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
               {formatDateTime(profile.createdAt)}
             </dd>
             </div>
@@ -266,7 +269,7 @@ export default function AdvertiserProfilePage() {
             <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Обновлён
             </dt>
-            <dd className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+            <dd className="mt-2 break-words text-sm text-zinc-900 dark:text-zinc-100">
               {formatDateTime(profile.updatedAt)}
             </dd>
             </div>
@@ -323,14 +326,15 @@ export default function AdvertiserProfilePage() {
               Смена пароля
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              После входа с временным паролем задайте постоянный пароль для аккаунта.
+              Укажите текущий пароль и задайте новый.
             </p>
-            <form onSubmit={handlePasswordSubmit} className="mt-5 space-y-4">
+            <form onSubmit={handlePasswordSubmit} className="mt-5 max-w-xl space-y-4">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Текущий пароль
                 <input
                   type="password"
                   required
+                  autoComplete="current-password"
                   value={passwordForm.currentPassword}
                   onChange={(event) =>
                     setPasswordForm((current) => ({
@@ -338,7 +342,7 @@ export default function AdvertiserProfilePage() {
                       currentPassword: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -346,6 +350,7 @@ export default function AdvertiserProfilePage() {
                 <input
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={passwordForm.newPassword}
                   onChange={(event) =>
                     setPasswordForm((current) => ({
@@ -353,14 +358,15 @@ export default function AdvertiserProfilePage() {
                       newPassword: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Подтверждение нового пароля
+                Повторите новый пароль
                 <input
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={passwordForm.confirmPassword}
                   onChange={(event) =>
                     setPasswordForm((current) => ({
@@ -368,7 +374,7 @@ export default function AdvertiserProfilePage() {
                       confirmPassword: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
 
@@ -386,7 +392,7 @@ export default function AdvertiserProfilePage() {
               <button
                 type="submit"
                 disabled={savingPassword}
-                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
+                className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
               >
                 {savingPassword ? "Обновляем…" : "Изменить пароль"}
               </button>

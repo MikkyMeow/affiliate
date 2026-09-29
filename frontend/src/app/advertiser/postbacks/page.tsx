@@ -1,5 +1,7 @@
 "use client";
 
+import { postbackStatusLabel } from "../ui-labels";
+
 import Link from "next/link";
 import {
   usePathname,
@@ -25,7 +27,7 @@ const PAGE_SIZE = 20;
 const STATUS_OPTIONS = [
   { value: "", label: "Все статусы" },
   { value: "received", label: "Получен" },
-  { value: "processed", label: "Отправлен" },
+  { value: "processed", label: "Обработан" },
   { value: "rejected", label: "Отклонён" },
   { value: "duplicate", label: "Дубликат" },
   { value: "failed", label: "Ошибка" },
@@ -106,7 +108,7 @@ export default function AdvertiserPostbacksPage() {
     } catch (err) {
       if (!handleApiError(err as ApiError)) {
         setError(
-          (err as Error).message ?? "Не удалось загрузить postback-логи",
+          (err as Error).message ?? "Не удалось загрузить журнал постбэков",
         );
       }
     } finally {
@@ -145,70 +147,71 @@ export default function AdvertiserPostbacksPage() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-w-0 space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-widest text-emerald-500">
-          Postbacks
+        <p className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+          Интеграции
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Логи postback
+          <h1 className="min-w-0 break-words text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+            Журнал постбэков
           </h1>
           <HelpLink href={docsHelpLinks.advertiserPostbacks} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Только просмотр истории отправки. Фильтры помогают сужать выборку.
+          История передачи конверсий и результаты обработки.
         </p>
       </header>
 
       <ContextHelpCard
-        title="Postback должен передавать обязательные поля"
-        description="Postback должен передавать click id, goal и status. Без click id платформа не сможет связать конверсию с партнёром."
+        title="Передача конверсий"
+        description="Передавайте click_id, goal и status, чтобы связать конверсию с кликом и целью."
         href={docsHelpLinks.advertiserPostbacks}
-        ctaLabel="Подробнее о postback"
+        ctaLabel="Настройка постбэков"
       />
 
       <form
         onSubmit={handleFilterSubmit}
         className="grid gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/40 md:grid-cols-4"
       >
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Дата от
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Дата начала
           <DateInput
             value={form.dateFrom}
             onChange={(value) =>
               setForm((prev) => ({ ...prev, dateFrom: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Дата до
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Дата окончания
           <DateInput
             value={form.dateTo}
             onChange={(value) =>
               setForm((prev) => ({ ...prev, dateTo: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Offer ID
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          ID оффера
           <input
             type="text"
             value={form.offerId}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, offerId: event.target.value }))
             }
-            placeholder="UUID оффера"
-            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            placeholder="Введите ID оффера"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
         </label>
-        <div className="flex items-end gap-3">
+        <label className="min-w-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Статус
           <select
             value={status}
             onChange={handleStatusChange}
-            className="h-fit w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="ui-input mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -216,18 +219,20 @@ export default function AdvertiserPostbacksPage() {
               </option>
             ))}
           </select>
+        </label>
+        <div className="flex justify-end sm:col-span-2 xl:col-span-4">
           <button
             type="submit"
-            className="w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
+            className="ui-button w-full rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 sm:w-auto"
           >
-            Применить
+            Применить фильтры
           </button>
         </div>
       </form>
 
       {loading ? (
         <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          Загружаем логи…
+          Загружаем журнал…
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
@@ -235,17 +240,17 @@ export default function AdvertiserPostbacksPage() {
         </div>
       ) : response && response.items.length > 0 ? (
         <>
-          <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <div className="ui-table-wrap overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
             <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
               <thead className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 <tr>
-                  <th className="px-4 py-3">Создан</th>
-                  <th className="px-4 py-3">Offer</th>
-                  <th className="px-4 py-3">Conversion</th>
-                  <th className="px-4 py-3">Click</th>
-                  <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3 text-right">HTTP</th>
-                  <th className="px-4 py-3 text-right">Подробнее</th>
+                  <th className="whitespace-nowrap px-4 py-3">Создан</th>
+                  <th className="whitespace-nowrap px-4 py-3">Оффер</th>
+                  <th className="whitespace-nowrap px-4 py-3">Конверсия</th>
+                  <th className="whitespace-nowrap px-4 py-3">Клик</th>
+                  <th className="whitespace-nowrap px-4 py-3">Статус</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">HTTP</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Подробнее</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -264,12 +269,12 @@ export default function AdvertiserPostbacksPage() {
                       {item.clickId ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">
-                      {item.status ?? "—"}
+                      {postbackStatusLabel(item.status)}
                     </td>
-                    <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-zinc-900 dark:text-zinc-50">
                       {item.responseStatusCode ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <Link
                         href={`/advertiser/postbacks/${item.id}`}
                         className="text-sm font-semibold text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
@@ -286,12 +291,12 @@ export default function AdvertiserPostbacksPage() {
             <span>
               Показано {response.items.length} из {pagination.total} записей
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => goToPage(pagination.page - 1)}
                 disabled={pagination.page <= 1}
-                className="rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="ui-button rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
                 Назад
               </button>
@@ -305,7 +310,7 @@ export default function AdvertiserPostbacksPage() {
                   pagination.totalPages > 0 &&
                   pagination.page >= pagination.totalPages
                 }
-                className="rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="ui-button rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
                 Вперёд
               </button>
@@ -314,7 +319,7 @@ export default function AdvertiserPostbacksPage() {
         </>
       ) : (
         <div className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          Логов postback за выбранный период нет.
+          За выбранный период постбэков нет. Попробуйте изменить фильтры.
         </div>
       )}
     </div>
