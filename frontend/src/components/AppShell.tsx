@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 function isCabinetPath(pathname: string): boolean {
   return (
@@ -12,12 +13,13 @@ function isCabinetPath(pathname: string): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
-  const cabinetMode = isCabinetPath(pathname);
+  const { user } = useAuth();
+  const cabinetMode = Boolean(user && isCabinetPath(pathname));
 
   return (
     <div
       className={
-        cabinetMode ? "pb-20 lg:ml-64 lg:pb-0" : undefined
+        cabinetMode ? "app-cabinet min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:ml-64 lg:pb-0" : "min-w-0"
       }
     >
       {children}

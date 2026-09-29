@@ -168,7 +168,7 @@ function ToastViewport({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[min(100%-2rem,24rem)] flex-col gap-3 sm:right-6 sm:bottom-6">
+    <div className="pointer-events-none fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3 sm:right-6 lg:bottom-6">
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
@@ -188,32 +188,29 @@ function ToastCard({
   return (
     <div
       className={`pointer-events-auto overflow-hidden rounded-2xl border shadow-xl shadow-zinc-950/10 backdrop-blur-md transition dark:shadow-black/30 ${styles.border} ${styles.background}`}
-      role="status"
-      aria-live="polite"
+      role={toast.variant === 'error' ? 'alert' : 'status'}
     >
       <div className="flex">
         <div className={`w-1.5 shrink-0 ${styles.accent}`} />
         <div className="flex flex-1 items-start gap-3 px-4 py-3.5">
           <div className="min-w-0 flex-1">
-            <p className={`text-sm font-semibold ${styles.title}`}>{toast.title}</p>
+            <p className={`break-words text-sm font-semibold ${styles.title}`}>{toast.title}</p>
             {toast.description ? (
-              <p className={`mt-1 text-sm leading-relaxed ${styles.description}`}>
+              <p className={`mt-1 break-words text-sm leading-relaxed ${styles.description}`}>
                 {toast.description}
               </p>
             ) : null}
           </div>
-          {toast.persistent ? (
-            <button
+          <button
               type="button"
               onClick={() => onDismiss(toast.id)}
-              className="rounded-full p-1 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-zinc-200"
               aria-label="Закрыть уведомление"
             >
               <span aria-hidden="true" className="block text-base leading-none">
                 ×
               </span>
             </button>
-          ) : null}
         </div>
       </div>
     </div>

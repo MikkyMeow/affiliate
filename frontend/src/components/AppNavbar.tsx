@@ -8,20 +8,22 @@ import { getHomePathByRole } from "@/lib/auth/routes";
 import {
   canAccessAdminArea,
   getProfilePathForRole,
+  getRoleLabel,
   isAdminRole,
 } from "@/lib/auth/roles";
 import { docsHelpLinks } from "@/features/docs/docs-help-links";
+import { useDialog } from "@/hooks/useDialog";
 import { getQuestionnaireRouteByRole } from "@/lib/questionnaires";
 
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Главная" },
-  { href: "/dashboard/clicks", label: "Транзакции" },
+  { href: "/dashboard/clicks", label: "Клики" },
   { href: "/dashboard/conversions", label: "Конверсии" },
   { href: "/dashboard/adjustments", label: "Корректировки" },
   { href: "/dashboard/advertisers", label: "Рекламодатели" },
   { href: "/dashboard/affiliates", label: "Партнёры" },
   { href: "/dashboard/offers", label: "Офферы" },
-  { href: "/dashboard/audit-logs", label: "Логи" },
+  { href: "/dashboard/audit-logs", label: "Журнал действий" },
   { href: "/dashboard/questionnaires", label: "Анкеты", adminOnly: true },
   { href: "/dashboard/managers", label: "Менеджеры", adminOnly: true },
 ];
@@ -38,7 +40,7 @@ const ADVERTISER_LINKS = [
   { href: "/advertiser", label: "Обзор" },
   { href: "/advertiser/offers", label: "Офферы" },
   { href: "/advertiser/stats", label: "Статистика" },
-  { href: "/advertiser/postbacks", label: "Postbacks" },
+  { href: "/advertiser/postbacks", label: "Постбэки" },
   { href: "/advertiser/finance", label: "Финансы" },
   { href: "/advertiser/profile", label: "Профиль" },
 ];
@@ -49,7 +51,7 @@ const DOCS_MENU_LINKS = [
 ];
 
 const TOP_BUTTON_STYLES =
-  "rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white";
+  "ui-button rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white";
 const THEME_STORAGE_KEY = "affiliate_theme";
 
 function isCabinetPath(pathname: string): boolean {
@@ -58,21 +60,6 @@ function isCabinetPath(pathname: string): boolean {
     pathname.startsWith("/partner") ||
     pathname.startsWith("/advertiser")
   );
-}
-
-function getRoleBadge(role: string): string {
-  switch (role) {
-    case "admin":
-      return "Admin";
-    case "manager":
-      return "Manager";
-    case "affiliate":
-      return "Partner";
-    case "advertiser":
-      return "Advertiser";
-    default:
-      return role;
-  }
 }
 
 export function AppNavbar() {
@@ -146,18 +133,14 @@ export function AppNavbar() {
 
   const profileHref = useMemo(() => getProfilePathForRole(user), [user]);
   const cabinetMode = Boolean(user && isCabinetPath(pathname));
-  const activeNavLabel = useMemo(() => {
-    const activeLink =
-      navLinks.find(
-        (link) =>
-          pathname === link.href ||
-          (link.href !== "/" &&
-            link.href !== "/dashboard" &&
-            pathname.startsWith(link.href)),
-      ) ?? null;
-
-    return activeLink?.label ?? "Навигация";
-  }, [navLinks, pathname]);
+  const activeNavLink = useMemo(
+    () => navLinks
+      .filter((link) => pathname === link.href || pathname.startsWith(`${link.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0],
+    [navLinks, pathname],
+  );
+  const activeNavLabel = activeNavLink?.label ?? "Кабинет";
+  const mobileMenuRef = useDialog(isMobileMenuOpen, () => setIsMobileMenuOpen(false));
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -231,6 +214,15 @@ export function AppNavbar() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const wideScreen = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => {
+      if (wideScreen.matches) setIsMobileMenuOpen(false);
+    };
+    wideScreen.addEventListener("change", closeOnDesktop);
+    return () => wideScreen.removeEventListener("change", closeOnDesktop);
+  }, []);
+
   const cabinetUser = user && cabinetMode ? user : null;
 
   if (cabinetUser) {
@@ -242,25 +234,22 @@ export function AppNavbar() {
               href={getHomePathByRole(cabinetUser)}
               className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
             >
-              affiliate
+              MikiLead
             </Link>
-            <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
-              {getRoleBadge(cabinetUser.role)}
+            <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              {getRoleLabel(cabinetUser.role)}
             </p>
           </div>
 
-          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+          <nav aria-label="Основная навигация" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
             {navLinks.map((link) => {
-              const isActive =
-                pathname === link.href ||
-                (link.href !== "/" &&
-                  link.href !== "/dashboard" &&
-                  pathname.startsWith(link.href));
+              const isActive = activeNavLink?.href === link.href;
 
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
                     isActive
                       ? "bg-black text-white dark:bg-white dark:text-black"
@@ -355,7 +344,7 @@ export function AppNavbar() {
           </div>
         </aside>
 
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="min-w-0 pr-4">
               <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -366,6 +355,7 @@ export function AppNavbar() {
               type="button"
               onClick={() => setIsMobileMenuOpen((current) => !current)}
               aria-expanded={isMobileMenuOpen}
+              aria-controls="cabinet-mobile-menu"
               aria-label={isMobileMenuOpen ? "Закрыть меню" : "Открыть меню"}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:outline-white"
             >
@@ -377,6 +367,8 @@ export function AppNavbar() {
         </div>
 
         <div
+          aria-hidden={!isMobileMenuOpen}
+          inert={!isMobileMenuOpen}
           className={`fixed inset-0 z-50 lg:hidden ${
             isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"
           }`}
@@ -390,7 +382,13 @@ export function AppNavbar() {
             }`}
           />
           <div
-            className={`absolute inset-x-0 bottom-0 flex max-h-[50vh] flex-col overflow-hidden rounded-t-3xl border-t border-zinc-200 bg-white shadow-2xl transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950 ${
+            id="cabinet-mobile-menu"
+            ref={mobileMenuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Меню кабинета"
+            tabIndex={-1}
+            className={`absolute inset-x-0 bottom-0 flex max-h-[85dvh] pb-[env(safe-area-inset-bottom)] flex-col overflow-hidden rounded-t-3xl border-t border-zinc-200 bg-white shadow-2xl transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950 ${
               isMobileMenuOpen ? "translate-y-0" : "translate-y-full"
             }`}
           >
@@ -399,8 +397,8 @@ export function AppNavbar() {
                 <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                   {activeNavLabel}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-                  {getRoleBadge(cabinetUser.role)}
+                <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {getRoleLabel(cabinetUser.role)}
                 </p>
               </div>
               <button
@@ -415,19 +413,16 @@ export function AppNavbar() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <nav className="flex flex-col gap-1">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+              <nav aria-label="Основная навигация" className="flex flex-col gap-1">
                 {navLinks.map((link) => {
-                  const isActive =
-                    pathname === link.href ||
-                    (link.href !== "/" &&
-                      link.href !== "/dashboard" &&
-                      pathname.startsWith(link.href));
+                  const isActive = activeNavLink?.href === link.href;
 
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
+                      aria-current={isActive ? "page" : undefined}
                       className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
                         isActive
                           ? "bg-black text-white dark:bg-white dark:text-black"
@@ -527,12 +522,12 @@ export function AppNavbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/70">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
         <Link
           href="/"
           className="text-lg font-semibold text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
         >
-          affiliate
+          MikiLead
         </Link>
 
         {loading ? (
@@ -540,11 +535,14 @@ export function AppNavbar() {
             Проверяем авторизацию…
           </span>
         ) : user ? (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <Link href={getHomePathByRole(user)} className={`${TOP_BUTTON_STYLES} bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black`}>
+              В кабинет
+            </Link>
             {profileHref ? (
               <Link
                 href={profileHref}
-                className="text-sm text-zinc-600 underline-offset-4 transition hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="hidden max-w-48 truncate text-sm text-zinc-600 sm:block underline-offset-4 transition hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
               >
                 {user.displayName ?? user.email}
               </Link>

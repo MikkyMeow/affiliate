@@ -38,7 +38,7 @@ export function InlineAlert({
 }) {
   const styles = VARIANT_STYLES[variant] ?? VARIANT_STYLES.info;
   return (
-    <div className={`rounded-2xl border px-4 py-3 text-sm ${styles.border} ${styles.bg} ${styles.text}`}>
+    <div role={variant === 'error' ? 'alert' : 'status'} className={`break-words rounded-2xl border px-4 py-3 text-sm leading-relaxed ${styles.border} ${styles.bg} ${styles.text}`}>
       {title ? <p className="font-semibold">{title}</p> : null}
       <div className={title ? 'mt-1 text-sm leading-relaxed' : ''}>{children}</div>
     </div>

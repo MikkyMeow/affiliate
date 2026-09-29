@@ -19,7 +19,7 @@ export function getRoleLabel(role: UserRole): string {
     case "manager":
       return "Менеджер";
     case "affiliate":
-      return "Аффилиат";
+      return "Партнёр";
     case "advertiser":
       return "Рекламодатель";
     default:

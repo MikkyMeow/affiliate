@@ -29,3 +29,100 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans);
 }
+
+/* Shared interaction defaults; component colours and shapes stay in Tailwind. */
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+
+  button:not(:disabled), summary, select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :where(input, select, textarea):disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  :where(input, select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  :where(input, textarea)::placeholder {
+    color: #71717a;
+    opacity: 1;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    vertical-align: middle;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+@layer components {
+  .ui-button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    line-height: 1.25rem;
+  }
+
+  .ui-input {
+    min-height: 2.75rem;
+    min-width: 0;
+  }
+
+  .ui-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .ui-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .ui-table-wrap {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}

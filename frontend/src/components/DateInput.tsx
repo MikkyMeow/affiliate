@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { formatDateInputValue, parseDateInputValue } from '@/lib/format';
 
 type DateInputProps = {
@@ -78,18 +78,8 @@ export function DateInput({
     setDisplayValue(formatDateInputValue(parsedValue));
   };
 
-  const handleWrapperPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-
-    if (target.closest('button')) {
-      return;
-    }
-
-    openPicker();
-  };
-
   return (
-    <div className="relative mt-2" onPointerDown={handleWrapperPointerDown}>
+    <div className="relative mt-2 min-w-0">
       <input
         id={inputId}
         name={name}
@@ -101,13 +91,14 @@ export function DateInput({
         onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
-        className={`${className ?? ''} pr-11`}
+        className={`ui-input ${className?.replace(/\bmt-2\b/g, '') ?? ''} pr-12`}
       />
       <input
         ref={pickerRef}
         type="date"
         tabIndex={-1}
         aria-hidden="true"
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="pointer-events-none absolute right-0 bottom-0 h-0 w-0 opacity-0"
@@ -116,7 +107,7 @@ export function DateInput({
         type="button"
         onClick={openPicker}
         disabled={disabled}
-        className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-500 transition hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-100"
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-xl text-zinc-500 transition hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-100"
         aria-label="Открыть календарь"
       >
         <svg
