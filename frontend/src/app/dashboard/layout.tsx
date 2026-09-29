@@ -16,7 +16,7 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -26,23 +26,23 @@ export default function DashboardLayout({
     const next = encodeURIComponent(pathname ?? '/dashboard');
 
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы открыть административный раздел.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={`/auth/login?next=${next}`}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={`/auth/register?next=${next}`}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -53,7 +53,7 @@ export default function DashboardLayout({
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -62,7 +62,7 @@ export default function DashboardLayout({
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>

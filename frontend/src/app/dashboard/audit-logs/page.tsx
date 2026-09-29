@@ -82,7 +82,7 @@ function AuditLogsResults({
         setTotal(0);
         setTotalPages(0);
         setError(
-          (requestError as ApiError).message ?? 'Не удалось загрузить audit log',
+          (requestError as ApiError).message ?? 'Не удалось загрузить журнал действий',
         );
         setLoading(false);
       });
@@ -111,7 +111,7 @@ function AuditLogsResults({
         items={items}
         loading={loading}
         error={null}
-        emptyMessage="По выбранным фильтрам логи не найдены."
+        emptyMessage="По выбранным фильтрам записей нет."
       />
     </>
   );
@@ -126,7 +126,7 @@ export default function AuditLogsPage() {
   const [limit] = useState(DEFAULT_LIMIT);
 
   useEffect(() => {
-    document.title = 'Audit logs';
+    document.title = 'Журнал действий';
   }, []);
 
   const authLinks = useMemo(() => {
@@ -157,7 +157,7 @@ export default function AuditLogsPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -165,23 +165,23 @@ export default function AuditLogsPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы открыть audit log.
+          Войдите, чтобы открыть журнал действий.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -192,106 +192,106 @@ export default function AuditLogsPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Audit log доступен только администраторам и менеджерам.
+          Журнал действий доступен только администраторам и менеджерам.
         </p>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Audit logs
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+            Журнал действий
           </h1>
           <HelpLink href={docsHelpLinks.adminAuditLogs} />
         </div>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Только просмотр. Из интерфейса записи audit log не редактируются и не удаляются.
+          История изменений и действий пользователей.
         </p>
       </div>
 
-      <section className="mb-6 grid gap-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 lg:grid-cols-4">
+      <section className="mb-6 grid gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950 lg:grid-cols-4">
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Search
+          Поиск
           <input
             type="text"
             value={filters.search}
             onChange={(event) =>
               setFilters((current) => ({ ...current, search: event.target.value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Action
+          Действие
           <input
             type="text"
             value={filters.action}
             onChange={(event) =>
               setFilters((current) => ({ ...current, action: event.target.value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Entity type
+          Тип объекта
           <input
             type="text"
             value={filters.entityType}
             onChange={(event) =>
               setFilters((current) => ({ ...current, entityType: event.target.value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Entity ID
+          ID объекта
           <input
             type="text"
             value={filters.entityId}
             onChange={(event) =>
               setFilters((current) => ({ ...current, entityId: event.target.value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Actor ID
+          ID пользователя
           <input
             type="text"
             value={filters.actorId}
             onChange={(event) =>
               setFilters((current) => ({ ...current, actorId: event.target.value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Date from
+          Дата от
           <DateInput
             value={filters.dateFrom}
             onChange={(value) =>
               setFilters((current) => ({ ...current, dateFrom: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Date to
+          Дата до
           <DateInput
             value={filters.dateTo}
             onChange={(value) =>
               setFilters((current) => ({ ...current, dateTo: value }))
             }
-            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
           />
         </label>
         <div className="flex items-end">
@@ -316,7 +316,7 @@ export default function AuditLogsPage() {
               setAppliedFilters(filters);
               setPage(1);
             }}
-            className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Применить
           </button>
@@ -327,7 +327,7 @@ export default function AuditLogsPage() {
               setAppliedFilters(INITIAL_FILTERS);
               setPage(1);
             }}
-            className="rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Сбросить
           </button>
@@ -345,14 +345,14 @@ export default function AuditLogsPage() {
           type="button"
           onClick={() => setPage((current) => Math.max(current - 1, 1))}
           disabled={page <= 1}
-          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           Назад
         </button>
         <button
           type="button"
           onClick={() => setPage((current) => current + 1)}
-          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           Вперёд
         </button>

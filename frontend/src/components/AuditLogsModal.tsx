@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { fetchEntityAuditLogs, type AuditLogItem } from '@/lib/audit-logs';
 import { type ApiError } from '@/lib/api';
 import { AuditLogTable } from './AuditLogTable';
+import { useDialog } from '@/hooks/useDialog';
 
 const DEFAULT_LIMIT = 10;
 
@@ -27,6 +28,8 @@ function AuditLogsModalContent({
   const [errorOnly, setErrorOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+  const dialogRef = useDialog(true, onClose);
 
   useEffect(() => {
     let active = true;
@@ -56,7 +59,7 @@ function AuditLogsModalContent({
         setTotalPages(0);
         setTotal(0);
         setError(
-          (requestError as ApiError).message ?? 'Не удалось загрузить audit log',
+          (requestError as ApiError).message ?? 'Не удалось загрузить журнал действий',
         );
         setLoading(false);
       });
@@ -66,28 +69,16 @@ function AuditLogsModalContent({
     };
   }, [entityId, entityType, errorOnly, page, token]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 py-8">
-      <div className="max-h-[92vh] w-full max-w-7xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 px-6 py-5 dark:border-zinc-800">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-zinc-500">Logs</p>
-            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              {title ?? 'Audit log'}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-4 border-b border-zinc-200 p-4 sm:px-6 sm:py-5 dark:border-zinc-800">
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+              {title ?? 'Журнал действий'}
             </h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {entityType} · {entityId}
+            <p className="mt-1 break-all text-xs text-zinc-500 dark:text-zinc-400">
+              ID: {entityId}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -106,14 +97,14 @@ function AuditLogsModalContent({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Закрыть
             </button>
           </div>
         </div>
 
-        <div className="space-y-4 overflow-auto px-6 py-5">
+        <div className="min-h-0 space-y-4 overflow-auto overscroll-contain p-4 sm:px-6 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-500 dark:text-zinc-400">
             <span>{loading ? 'Загружаем…' : `Всего записей: ${total}`}</span>
             <span>
@@ -125,7 +116,7 @@ function AuditLogsModalContent({
             items={items}
             loading={loading}
             error={error}
-            emptyMessage="Для этого объекта логов пока нет."
+            emptyMessage="Действий с этим объектом пока нет."
           />
 
           <div className="flex flex-wrap justify-end gap-2">
@@ -148,7 +139,7 @@ function AuditLogsModalContent({
                 );
                 setLoading(true);
               }}
-              disabled={loading || (totalPages > 0 && page >= totalPages)}
+              disabled={loading || page >= Math.max(totalPages, 1)}
               className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Вперёд

@@ -49,9 +49,9 @@ type SupplementalMetricDefinition = {
 const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
     key: "transactions",
-    label: "Транзакции",
-    description: "Все click-события за выбранный календарный день.",
-    chartDescription: "Почасовое распределение транзакций.",
+    label: "Клики",
+    description: "Все переходы по офферам.",
+    chartDescription: "Почасовое распределение кликов.",
     accentClassName: "text-sky-700 dark:text-sky-300",
     stroke: "#0284c7",
     fill: "#38bdf8",
@@ -60,7 +60,7 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
     key: "conversions",
     label: "Конверсии",
-    description: "Все нетестовые конверсии за выбранный день.",
+    description: "Конверсии без тестовых событий.",
     chartDescription: "Почасовая динамика конверсий.",
     accentClassName: "text-violet-700 dark:text-violet-300",
     stroke: "#7c3aed",
@@ -70,8 +70,8 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
     key: "cr",
     label: "CR",
-    description: "Conversions / clicks * 100, рассчитывается на backend.",
-    chartDescription: "Почасовой conversion rate.",
+    description: "Доля кликов, завершившихся конверсией.",
+    chartDescription: "Доля конверсий по часам.",
     accentClassName: "text-cyan-700 dark:text-cyan-300",
     stroke: "#0891b2",
     fill: "#22d3ee",
@@ -79,9 +79,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: "revenue",
-    label: "Confirmed Revenue",
-    description: "Подтверждённый revenue только по approved конверсиям.",
-    chartDescription: "Почасовой confirmed revenue в RUB.",
+    label: "Начисления",
+    description: "По подтверждённым конверсиям.",
+    chartDescription: "Подтверждённые начисления по часам, ₽.",
     accentClassName: "text-emerald-700 dark:text-emerald-300",
     stroke: "#059669",
     fill: "#34d399",
@@ -89,9 +89,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: "payout",
-    label: "Confirmed Payout",
-    description: "Подтверждённый payout только по approved конверсиям.",
-    chartDescription: "Почасовой confirmed payout в RUB.",
+    label: "Выплаты",
+    description: "Партнёрам по подтверждённым конверсиям.",
+    chartDescription: "Подтверждённые выплаты по часам, ₽.",
     accentClassName: "text-amber-700 dark:text-amber-300",
     stroke: "#d97706",
     fill: "#fbbf24",
@@ -99,10 +99,10 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: "profit",
-    label: "Confirmed Profit",
+    label: "Прибыль",
     description:
-      "Confirmed revenue - confirmed payout, рассчитывается на backend.",
-    chartDescription: "Почасовой confirmed profit в RUB.",
+      "Начисления за вычетом выплат партнёрам.",
+    chartDescription: "Подтверждённая прибыль по часам, ₽.",
     accentClassName: "text-teal-700 dark:text-teal-300",
     stroke: "#0f766e",
     fill: "#2dd4bf",
@@ -111,8 +111,8 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   {
     key: "epc",
     label: "EPC",
-    description: "Revenue / clicks, рассчитывается на backend.",
-    chartDescription: "Почасовой earnings per click.",
+    description: "Среднее начисление за один клик.",
+    chartDescription: "Среднее начисление за клик по часам.",
     accentClassName: "text-fuchsia-700 dark:text-fuchsia-300",
     stroke: "#c026d3",
     fill: "#e879f9",
@@ -120,9 +120,9 @@ const METRIC_DEFINITIONS: MetricDefinition[] = [
   },
   {
     key: "approveRate",
-    label: "Approve Rate",
-    description: "Approved conversions / total conversions * 100.",
-    chartDescription: "Почасовой approve rate.",
+    label: "Подтверждение, %",
+    description: "Доля подтверждённых конверсий.",
+    chartDescription: "Доля подтверждённых конверсий по часам.",
     accentClassName: "text-rose-700 dark:text-rose-300",
     stroke: "#e11d48",
     fill: "#fb7185",
@@ -152,20 +152,20 @@ const EMPTY_TOTALS: DashboardTotals = {
 const SUPPLEMENTAL_METRICS: SupplementalMetricDefinition[] = [
   {
     key: "pendingRevenue",
-    label: "Pending revenue",
-    description: "Pending conversions only.",
+    label: "Начисления на проверке",
+    description: "По конверсиям, ожидающим проверки.",
     accentClassName: "text-sky-700 dark:text-sky-300",
   },
   {
     key: "pendingPayout",
-    label: "Pending payout",
-    description: "Pending conversions only.",
+    label: "Выплаты на проверке",
+    description: "По конверсиям, ожидающим проверки.",
     accentClassName: "text-indigo-700 dark:text-indigo-300",
   },
   {
     key: "pendingProfit",
-    label: "Pending profit",
-    description: "Pending revenue - pending payout.",
+    label: "Прибыль на проверке",
+    description: "Начисления на проверке за вычетом выплат на проверке.",
     accentClassName: "text-fuchsia-700 dark:text-fuchsia-300",
   },
 ];
@@ -563,12 +563,12 @@ export function DashboardMainPageContent() {
     summaryFilters.dateTo || summaryFilters.dateFrom || selectedDate;
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Главная
+            <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+              Обзор
             </h1>
             <HelpLink href={docsHelpLinks.adminDashboard} />
           </div>
@@ -580,12 +580,12 @@ export function DashboardMainPageContent() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end lg:justify-end">
-          <label className="min-w-[220px] text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <label className="min-w-0 w-full sm:w-auto sm:min-w-[220px] text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Дата
             <DateInput
               value={selectedDate}
               onChange={setSelectedDate}
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
           <button
@@ -596,7 +596,7 @@ export function DashboardMainPageContent() {
               !recalculationDateFrom ||
               !recalculationDateTo
             }
-            className="rounded-2xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:border-emerald-200 disabled:bg-emerald-300 dark:border-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:border-emerald-900 dark:disabled:bg-emerald-900/60"
+            className="ui-button rounded-full border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:border-emerald-200 disabled:bg-emerald-300 dark:border-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:border-emerald-900 dark:disabled:bg-emerald-900/60"
           >
             {recalculationLoading ? "Пересчитываем…" : "Пересчитать статистику"}
           </button>
@@ -606,7 +606,7 @@ export function DashboardMainPageContent() {
       <div className="mt-6">
         <RoleQuickStartCard
           href={docsHelpLinks.quickStartAdmin}
-          description="Откройте быстрый старт для администратора, если нужно быстро вспомнить структуру кабинета и базовые сценарии."
+          description="Как управлять офферами, партнёрами и конверсиями."
         />
       </div>
 
@@ -634,22 +634,21 @@ export function DashboardMainPageContent() {
         ))}
       </div>
 
-      <section className="mt-10 overflow-hidden rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="mt-10 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600 dark:text-sky-400">
-              Filtered Summary
+              Аналитика
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Сводка по партнёру, офферу и рекламодателю
+              Сводка за период
             </h2>
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-              Этот блок запрашивает уже агрегированные метрики с backend и не
-              пересчитывает clicks или conversions на клиенте.
+              Выберите период, оффер или участников, чтобы сравнить результаты.
             </p>
             {summaryUpdatedAt ? (
               <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Updated at {summaryUpdatedAt}
+                Обновлено: {summaryUpdatedAt}
               </p>
             ) : null}
           </div>
@@ -663,7 +662,7 @@ export function DashboardMainPageContent() {
                 dateTo: selectedDate,
               })
             }
-            className="rounded-2xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-200 dark:hover:text-zinc-50"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-200 dark:hover:text-zinc-50"
           >
             Сбросить
           </button>
@@ -680,7 +679,7 @@ export function DashboardMainPageContent() {
                   dateFrom: value,
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
 
@@ -694,7 +693,7 @@ export function DashboardMainPageContent() {
                   dateTo: value,
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </label>
 
@@ -708,7 +707,7 @@ export function DashboardMainPageContent() {
                   affiliateId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             >
               <option value="">Все партнёры</option>
               {affiliates.map((affiliate) => (
@@ -729,7 +728,7 @@ export function DashboardMainPageContent() {
                   offerId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             >
               <option value="">Все офферы</option>
               {offers.map((offer) => (
@@ -750,7 +749,7 @@ export function DashboardMainPageContent() {
                   advertiserId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             >
               <option value="">Все рекламодатели</option>
               {advertisers.map((advertiser) => (
@@ -771,7 +770,7 @@ export function DashboardMainPageContent() {
                   groupBy: event.target.value as SummaryFilterState["groupBy"],
                 }))
               }
-              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             >
               {GROUP_BY_OPTIONS.map((option) => (
                 <option key={option.label} value={option.value}>
@@ -796,7 +795,7 @@ export function DashboardMainPageContent() {
 
         {summaryLoading && !hasSummaryData ? (
           <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-            Загружаем агрегированную сводку...
+            Загружаем сводку…
           </div>
         ) : null}
 
@@ -841,19 +840,19 @@ export function DashboardMainPageContent() {
 
         {summaryFilters.groupBy && summaryGroups.length > 0 ? (
           <div className="mt-8 overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800">
-            <div className="overflow-x-auto">
+            <div className="ui-table-wrap overflow-x-auto">
               <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
                 <thead className="bg-zinc-50 dark:bg-zinc-900">
                   <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     <th className="px-4 py-3 font-medium">Группа</th>
-                    <th className="px-4 py-3 font-medium">Транзакции</th>
+                    <th className="px-4 py-3 font-medium">Клики</th>
                     <th className="px-4 py-3 font-medium">Конверсии</th>
                     <th className="px-4 py-3 font-medium">CR</th>
-                    <th className="px-4 py-3 font-medium">Confirmed revenue</th>
-                    <th className="px-4 py-3 font-medium">Confirmed payout</th>
-                    <th className="px-4 py-3 font-medium">Confirmed profit</th>
+                    <th className="px-4 py-3 font-medium">Начисления</th>
+                    <th className="px-4 py-3 font-medium">Выплаты</th>
+                    <th className="px-4 py-3 font-medium">Прибыль</th>
                     <th className="px-4 py-3 font-medium">EPC</th>
-                    <th className="px-4 py-3 font-medium">Approve Rate</th>
+                    <th className="px-4 py-3 font-medium">Подтверждение, %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
@@ -912,7 +911,7 @@ export function DashboardMainPageContent() {
 
       {!loading && !error && hasLoadedStats && series.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-200 px-5 py-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          Backend вернул пустую серию. Ожидалось 24 почасовых бакета.
+          За выбранный день пока нет данных для графиков.
         </div>
       ) : null}
     </section>

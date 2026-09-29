@@ -56,10 +56,10 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const SORT_OPTIONS = [
-  { value: 'createdAt:desc', label: 'Newest first' },
-  { value: 'createdAt:asc', label: 'Oldest first' },
-  { value: 'name:asc', label: 'Name A-Z' },
-  { value: 'email:asc', label: 'Email A-Z' },
+  { value: 'createdAt:desc', label: 'Сначала новые' },
+  { value: 'createdAt:asc', label: 'Сначала старые' },
+  { value: 'name:asc', label: 'Имя: А–Я' },
+  { value: 'email:asc', label: 'Эл. почта: А–Я' },
 ];
 
 function parsePositiveInteger(
@@ -317,7 +317,7 @@ export default function AdvertisersPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -325,23 +325,23 @@ export default function AdvertisersPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы увидеть список рекламодателей.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -352,7 +352,7 @@ export default function AdvertisersPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -361,7 +361,7 @@ export default function AdvertisersPage() {
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>
@@ -370,14 +370,14 @@ export default function AdvertisersPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Dashboard
+            Управление
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               Рекламодатели
             </h1>
             <HelpLink href={docsHelpLinks.adminAdvertisers} />
@@ -386,14 +386,14 @@ export default function AdvertisersPage() {
         {isAdminRole(user.role) ? (
           <Link
             href="/dashboard/advertisers/create"
-            className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+            className="ui-button rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
           >
             Создать рекламодателя
           </Link>
         ) : null}
       </div>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -403,18 +403,18 @@ export default function AdvertisersPage() {
               Поиск, сортировка и пагинация выполняются на бэкенде.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleApplyFilters}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+              className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
             >
               Применить
             </button>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Сбросить
             </button>
@@ -429,7 +429,7 @@ export default function AdvertisersPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 md:col-span-2">
-            Search
+            Поиск
             <input
               type="text"
               value={filters.search}
@@ -440,12 +440,12 @@ export default function AdvertisersPage() {
                 }))
               }
               placeholder="Name, company, email, public ID, Telegram"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Status
+            Статус
             <select
               value={filters.status}
               onChange={(event) =>
@@ -454,7 +454,7 @@ export default function AdvertisersPage() {
                   status: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               <option value="active">Активен</option>
@@ -463,7 +463,7 @@ export default function AdvertisersPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Manager
+            Менеджер
             <select
               value={filters.managerUserId}
               onChange={(event) =>
@@ -473,7 +473,7 @@ export default function AdvertisersPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {managers.map((manager) => (
@@ -485,7 +485,7 @@ export default function AdvertisersPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Sorting
+            Сортировка
             <select
               value={`${filters.sort}:${filters.order}`}
               onChange={(event) => {
@@ -496,7 +496,7 @@ export default function AdvertisersPage() {
                   order,
                 }));
               }}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -507,11 +507,11 @@ export default function AdvertisersPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Rows per page
+            Строк на странице
             <select
               value={filters.limit}
               onChange={(event) => handleLimitChange(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               {PAGE_SIZE_OPTIONS.map((pageSize) => (
                 <option key={pageSize} value={pageSize}>
@@ -545,18 +545,18 @@ export default function AdvertisersPage() {
             </InlineAlert>
           </div>
         ) : advertisers.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             {filters.search || filters.status || filters.managerUserId
               ? 'По текущим фильтрам ничего не найдено.'
               : 'Пока нет рекламодателей.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="ui-table-wrap overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
                   <th className="px-6 py-3 font-medium">Название</th>
-                  <th className="px-6 py-3 font-medium">Email</th>
+                  <th className="px-6 py-3 font-medium">Эл. почта</th>
                   <th className="px-6 py-3 font-medium">Telegram</th>
                   <th className="px-6 py-3 font-medium">Менеджер</th>
                   <th className="px-6 py-3 font-medium">Статус</th>
@@ -600,7 +600,7 @@ export default function AdvertisersPage() {
                     <td className="px-6 py-4 text-right">
                       <Link
                         href={`/dashboard/advertisers/${advertiser.id}/edit`}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                        className="ui-button inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                         title="Редактировать"
                         aria-label="Редактировать"
                       >
@@ -618,12 +618,12 @@ export default function AdvertisersPage() {
           <span>
             Страница {meta.page} из {Math.max(meta.totalPages, 1)}
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => handlePageChange(meta.page - 1)}
               disabled={meta.page <= 1}
-              className="rounded-full border border-zinc-200 px-4 py-2 font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-200 px-4 py-2 font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
             >
               Назад
             </button>
@@ -631,7 +631,7 @@ export default function AdvertisersPage() {
               type="button"
               onClick={() => handlePageChange(meta.page + 1)}
               disabled={meta.totalPages === 0 || meta.page >= meta.totalPages}
-              className="rounded-full border border-zinc-200 px-4 py-2 font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-200 px-4 py-2 font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
             >
               Вперёд
             </button>

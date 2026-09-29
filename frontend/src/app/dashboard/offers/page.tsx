@@ -299,7 +299,7 @@ export default function OffersPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -307,23 +307,23 @@ export default function OffersPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы увидеть список офферов.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -334,7 +334,7 @@ export default function OffersPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -343,7 +343,7 @@ export default function OffersPage() {
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>
@@ -352,14 +352,14 @@ export default function OffersPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Dashboard
+            Управление
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               Офферы
             </h1>
             <HelpLink href={docsHelpLinks.adminOffers} />
@@ -367,7 +367,7 @@ export default function OffersPage() {
         </div>
         <Link
           href="/dashboard/offers/create"
-          className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
         >
           Создать оффер
         </Link>
@@ -375,14 +375,15 @@ export default function OffersPage() {
 
       <div className="mb-6 flex justify-end">
         <select
+          aria-label="Доступность оффера"
           value={availabilityFilter}
           onChange={(event) => handleAvailabilityFilterChange(event.target.value)}
-          className="min-w-[220px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
+          className="ui-input min-w-0 min-w-0 w-full sm:w-auto sm:min-w-[220px] rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white"
         >
-          <option value="">Все доступности</option>
-          <option value="public">Open / public</option>
-          <option value="on_request">On request / on_request</option>
-          <option value="private">Private / private</option>
+          <option value="">Любая доступность</option>
+          <option value="public">Открытый</option>
+          <option value="on_request">По запросу</option>
+          <option value="private">Закрытый</option>
         </select>
       </div>
 
@@ -390,7 +391,7 @@ export default function OffersPage() {
         <div className="flex flex-col gap-3 border-b border-zinc-200 px-6 py-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Список
+              Все офферы
             </h2>
             <p className="text-xs uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
               Всего: {loading ? '...' : total}
@@ -410,16 +411,16 @@ export default function OffersPage() {
             </InlineAlert>
           </div>
         ) : loading && offers.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             Загружаем офферы...
           </div>
         ) : offers.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
-            Пока нет офферов.
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
+            Офферы не найдены. Измените фильтр или создайте первый оффер.
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="ui-table-wrap overflow-x-auto">
               <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
                 <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                   <tr>
@@ -457,7 +458,7 @@ export default function OffersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
-                        {offer.availability}
+                        {{ public: 'Открытый', on_request: 'По запросу', private: 'Закрытый' }[offer.availability] ?? offer.availability}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -478,13 +479,13 @@ export default function OffersPage() {
                           <button
                             type="button"
                             onClick={() => openLinkModal(offer)}
-                            className="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                           >
-                            Generate link
+                            Получить ссылку
                           </button>
                           <Link
                             href={`/dashboard/offers/${offer.id}/edit`}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                            className="ui-button inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                             title="Редактировать"
                             aria-label="Редактировать"
                           >
@@ -501,12 +502,12 @@ export default function OffersPage() {
               <p>
                 Страница {page} из {totalPages}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handlePageChange(page - 1)}
                   disabled={!canGoPrev}
-                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
+                  className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
                 >
                   ← Назад
                 </button>
@@ -514,7 +515,7 @@ export default function OffersPage() {
                   type="button"
                   onClick={() => handlePageChange(page + 1)}
                   disabled={!canGoNext}
-                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
+                  className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition enabled:hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:enabled:hover:bg-zinc-800"
                 >
                   Вперёд →
                 </button>
@@ -532,26 +533,25 @@ export default function OffersPage() {
             tabIndex={-1}
             aria-label="Закрыть окно"
           />
-          <div className="relative w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+          <div role="dialog" aria-modal="true" aria-labelledby="tracking-link-title" className="relative max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">
                   Генерация ссылки
                 </p>
-                <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                <h2 id="tracking-link-title" className="break-words text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {linkOffer.publicId
                     ? `${linkOffer.publicId} · ${linkOffer.title}`
                     : linkOffer.title}
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Укажите партнёра и (опционально) sub1. Ссылка собирается на фронте из{' '}
-                  {buildTrackingUrl('/click')}.
+                  Выберите партнёра и при необходимости добавьте метку перехода.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeLinkModal}
-                className="rounded-full border border-zinc-200 p-2 text-sm text-zinc-500 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="ui-button rounded-full border border-zinc-200 p-2 text-sm text-zinc-500 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 aria-label="Закрыть"
               >
                 ✕
@@ -568,7 +568,7 @@ export default function OffersPage() {
                 <button
                   type="button"
                   onClick={() => void loadAffiliates()}
-                  className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-400/60 dark:text-red-200 dark:hover:bg-red-400/10"
+                  className="ui-button rounded-full border border-red-200 px-3 py-1 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-400/60 dark:text-red-200 dark:hover:bg-red-400/10"
                 >
                   Повторить
                 </button>
@@ -578,7 +578,7 @@ export default function OffersPage() {
                 <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
                   Партнёр
                   <select
-                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                     value={selectedAffiliateId}
                     onChange={(event) => setSelectedAffiliateId(event.target.value)}
                   >
@@ -593,13 +593,13 @@ export default function OffersPage() {
                   </select>
                 </label>
                 <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                  sub1 (необязательно)
+                  Метка sub1 (необязательно)
                   <input
                     type="text"
                     value={sub1}
                     onChange={(event) => setSub1(event.target.value)}
-                    placeholder="utm_source или любой маркер"
-                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    placeholder="Например, название источника трафика"
+                    className="ui-input min-w-0 mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm focus:border-black focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                   />
                 </label>
               </div>
@@ -615,12 +615,13 @@ export default function OffersPage() {
                     type="text"
                     readOnly
                     value={generatedLink}
-                    className="flex-1 rounded-2xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                    aria-label="Партнёрская ссылка"
+                    className="ui-input min-w-0 min-w-0 flex-1 rounded-2xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
                   />
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="rounded-2xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   >
                     {copyState === 'copied'
                       ? 'Скопировано!'
@@ -631,8 +632,7 @@ export default function OffersPage() {
                 </div>
               ) : (
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  Выберите партнёра, чтобы получить ссылку вида{' '}
-                  {buildTrackingUrl('/click')}?offerId=...&affiliateId=...
+                  Ссылка появится после выбора партнёра.
                 </p>
               )}
             </div>

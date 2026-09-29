@@ -558,7 +558,7 @@ export default function EditOfferPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -566,23 +566,23 @@ export default function EditOfferPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы редактировать оффер.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -593,7 +593,7 @@ export default function EditOfferPage() {
 
   if (initialLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Загружаем данные оффера...</p>
       </section>
     );
@@ -601,14 +601,14 @@ export default function EditOfferPage() {
 
   if (loadError) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Ошибка
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{loadError}</p>
         <Link
           href="/dashboard/offers"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           К списку
         </Link>
@@ -617,11 +617,11 @@ export default function EditOfferPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-5xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Редактировать оффер</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">Редактировать оффер</h1>
           <HelpLink href={docsHelpLinks.adminOffers} />
         </div>
         {offerPublicId && (
@@ -641,7 +641,7 @@ export default function EditOfferPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
         >
           <div className="space-y-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
             <p className="text-sm uppercase tracking-wide text-zinc-500">
@@ -653,7 +653,7 @@ export default function EditOfferPage() {
                   {offerAdvertiser.name}
                 </p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {offerAdvertiser.publicId ?? 'Без public ID'}
+                  {offerAdvertiser.publicId ?? 'Без ID'}
                 </p>
                 <Link
                   href={`/dashboard/advertisers/${offerAdvertiser.id}/edit`}
@@ -681,7 +681,7 @@ export default function EditOfferPage() {
                 setForm((prev) => ({ ...prev, title: event.target.value.slice(0, 200) }))
               }
               placeholder="Например, Подписка на сервис"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
             />
             {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
           </div>
@@ -699,7 +699,7 @@ export default function EditOfferPage() {
                   category: event.target.value as OfferCategoryValue | '',
                 }))
               }
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Выберите категорию</option>
               {OFFER_CATEGORY_OPTIONS.map((option) => (
@@ -723,7 +723,7 @@ export default function EditOfferPage() {
                 setForm((prev) => ({ ...prev, targetUrl: event.target.value.slice(0, 500) }))
               }
               placeholder="https://example.com/landing"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
             />
             {errors.targetUrl && <p className="text-sm text-red-600">{errors.targetUrl}</p>}
           </div>
@@ -743,7 +743,7 @@ export default function EditOfferPage() {
               }
               placeholder="Требования к трафику, таргетинги, ограничения"
               rows={6}
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
             />
             {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
           </div>
@@ -762,7 +762,7 @@ export default function EditOfferPage() {
                     status: event.target.value === 'active' ? 'active' : 'inactive',
                   }))
                 }
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 <option value="active">Активен</option>
                 <option value="inactive">Неактивен</option>
@@ -783,14 +783,14 @@ export default function EditOfferPage() {
                   availability: event.target.value as OfferAvailability,
                 }))
               }
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
-              <option value="public">Open / public</option>
-              <option value="on_request">On request / on_request</option>
-              <option value="private">Private / private</option>
+              <option value="public">Открытый</option>
+              <option value="on_request">По запросу</option>
+              <option value="private">Закрытый</option>
             </select>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Hidden-партнёр не увидит оффер даже при public или выданном доступе.
+              Оффер не виден скрытым партнёрам, даже если он открытый или доступ уже выдан.
             </p>
           </div>
 
@@ -837,20 +837,20 @@ export default function EditOfferPage() {
           <button
             type="submit"
             disabled={!isFormValid || submitting}
-            className="w-full rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
+            className="ui-button w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
           >
             {submitting ? 'Сохраняем...' : 'Сохранить изменения'}
           </button>
         </form>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="mb-4">
               <p className="text-sm uppercase tracking-wide text-zinc-500">
                 Запросы доступа
               </p>
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                Pending requests
+                Заявки на доступ
               </h2>
             </div>
             {requestNotice && (
@@ -875,8 +875,8 @@ export default function EditOfferPage() {
                           {item.affiliate?.name ?? item.affiliateId}
                         </p>
                         <p className="text-zinc-500 dark:text-zinc-400">
-                          {item.affiliate?.publicId ?? 'Без public ID'} ·{' '}
-                          {item.affiliate?.email ?? 'Без email'}
+                          {item.affiliate?.publicId ?? 'Без ID'} ·{' '}
+                          {item.affiliate?.email ?? 'Без эл. почты'}
                         </p>
                         {item.message && (
                           <p className="mt-2 text-zinc-700 dark:text-zinc-300">
@@ -884,22 +884,22 @@ export default function EditOfferPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => void handleReviewRequest(item.id, 'approved')}
                           disabled={requestActionLoadingId === item.id}
-                          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
+                          className="ui-button rounded-full bg-black px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
                         >
-                          Approve
+                          Подтвердить
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleReviewRequest(item.id, 'rejected')}
                           disabled={requestActionLoadingId === item.id}
-                          className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
-                          Reject
+                          Отклонить
                         </button>
                       </div>
                     </div>
@@ -909,7 +909,7 @@ export default function EditOfferPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="mb-4">
               <p className="text-sm uppercase tracking-wide text-zinc-500">
                 Доступ партнёров
@@ -933,7 +933,7 @@ export default function EditOfferPage() {
               <select
                 value={selectedAccessAffiliateId}
                 onChange={(event) => setSelectedAccessAffiliateId(event.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 <option value="">Выберите партнёра</option>
                 {availableAccessAffiliates.map((affiliate) => (
@@ -947,7 +947,7 @@ export default function EditOfferPage() {
                 type="button"
                 onClick={() => void handleGrantAccess()}
                 disabled={!selectedAccessAffiliateId || accessActionLoading}
-                className="rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
+                className="ui-button rounded-full bg-black px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50 dark:bg-white dark:text-black"
               >
                 {accessActionLoading ? 'Сохраняем...' : 'Выдать доступ'}
               </button>
@@ -974,13 +974,13 @@ export default function EditOfferPage() {
                           {item.affiliate?.name ?? item.affiliateId}
                         </p>
                         <p className="text-zinc-500 dark:text-zinc-400">
-                          {item.affiliate?.publicId ?? 'Без public ID'} ·{' '}
-                          {item.affiliate?.email ?? 'Без email'}
+                          {item.affiliate?.publicId ?? 'Без ID'} ·{' '}
+                          {item.affiliate?.email ?? 'Без эл. почты'}
                         </p>
                         <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">
                           {item.status}
                           {hiddenAffiliateIds.has(item.affiliateId)
-                            ? ' · hidden override active'
+                            ? ' · скрыт от партнёра'
                             : ''}
                         </p>
                       </div>
@@ -988,7 +988,7 @@ export default function EditOfferPage() {
                         type="button"
                         onClick={() => void handleRevokeAccess(item.affiliateId)}
                         disabled={accessActionLoading}
-                        className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Отозвать
                       </button>
@@ -999,23 +999,23 @@ export default function EditOfferPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="mb-4">
               <p className="text-sm uppercase tracking-wide text-zinc-500">
-                Hidden partners
+                Скрыто от партнёров
               </p>
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                 Скрытые партнёры
               </h2>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Hidden имеет максимальный приоритет и перекрывает public/on_request и выданный доступ.
+                Эти партнёры не видят оффер независимо от его доступности.
               </p>
             </div>
             <div className="flex flex-col gap-3">
               <select
                 value={selectedHiddenAffiliateId}
                 onChange={(event) => setSelectedHiddenAffiliateId(event.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 <option value="">Выберите партнёра</option>
                 {availableHiddenAffiliates.map((affiliate) => (
@@ -1029,7 +1029,7 @@ export default function EditOfferPage() {
                 type="button"
                 onClick={() => void handleHideAffiliate()}
                 disabled={!selectedHiddenAffiliateId || hideActionLoading}
-                className="rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-800 transition disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100"
+                className="ui-button rounded-full border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-800 transition disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100"
               >
                 {hideActionLoading ? 'Сохраняем...' : 'Скрыть оффер от партнёра'}
               </button>
@@ -1056,15 +1056,15 @@ export default function EditOfferPage() {
                           {item.affiliate?.name ?? item.affiliateId}
                         </p>
                         <p className="text-zinc-500 dark:text-zinc-400">
-                          {item.affiliate?.publicId ?? 'Без public ID'} ·{' '}
-                          {item.affiliate?.email ?? 'Без email'}
+                          {item.affiliate?.publicId ?? 'Без ID'} ·{' '}
+                          {item.affiliate?.email ?? 'Без эл. почты'}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => void handleUnhideAffiliate(item.affiliateId)}
                         disabled={hideActionLoading}
-                        className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Вернуть видимость
                       </button>

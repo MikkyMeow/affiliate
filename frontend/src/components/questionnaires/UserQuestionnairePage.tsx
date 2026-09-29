@@ -278,7 +278,7 @@ export function UserQuestionnairePage({
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -296,7 +296,7 @@ export function UserQuestionnairePage({
         <div className="flex gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
@@ -317,7 +317,7 @@ export function UserQuestionnairePage({
 
   if (loading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Загружаем анкету...</p>
       </section>
     );
@@ -325,7 +325,7 @@ export function UserQuestionnairePage({
 
   if (error && !data) {
     return (
-      <section className="mx-auto min-h-screen max-w-3xl px-6 py-10">
+      <section className="mx-auto min-h-screen max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
           {error}
         </div>
@@ -335,8 +335,8 @@ export function UserQuestionnairePage({
 
   if (!data?.questionnaire) {
     return (
-      <section className="mx-auto min-h-screen max-w-3xl px-6 py-10">
-        <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="mx-auto min-h-screen max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+        <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8 dark:border-zinc-800 dark:bg-zinc-950">
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
             Анкета не требуется
           </h1>
@@ -355,11 +355,11 @@ export function UserQuestionnairePage({
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-4xl px-6 py-10">
-      <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <section className="mx-auto min-h-screen max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8 dark:border-zinc-800 dark:bg-zinc-950">
         <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
-            Questionnaire
+          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Анкета
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
@@ -385,7 +385,7 @@ export function UserQuestionnairePage({
             const value = answers[field.id];
             const message = fieldErrors[field.id];
             const commonLabel = (
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
                 <label
                   htmlFor={field.id}
                   className="text-sm font-medium text-zinc-800 dark:text-zinc-100"
@@ -394,7 +394,7 @@ export function UserQuestionnairePage({
                 </label>
                 {field.required ? (
                   <span className="text-xs font-semibold uppercase tracking-wide text-rose-500">
-                    required
+                    Обязательно
                   </span>
                 ) : null}
               </div>
@@ -420,7 +420,7 @@ export function UserQuestionnairePage({
                       {field.question}
                       {field.required ? (
                         <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-rose-500">
-                          required
+                          Обязательно
                         </span>
                       ) : null}
                     </span>
@@ -436,7 +436,10 @@ export function UserQuestionnairePage({
                         onChange={(event) =>
                           handleTextChange(field.id, event.target.value)
                         }
-                        className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                        aria-required={field.required}
+                        aria-invalid={Boolean(message)}
+                        aria-describedby={message ? `${field.id}-error` : undefined}
+                        className="ui-input w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                       />
                     ) : null}
                     {field.type === "textarea" ? (
@@ -447,7 +450,10 @@ export function UserQuestionnairePage({
                           handleTextChange(field.id, event.target.value)
                         }
                         rows={5}
-                        className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                        aria-required={field.required}
+                        aria-invalid={Boolean(message)}
+                        aria-describedby={message ? `${field.id}-error` : undefined}
+                        className="ui-input w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                       />
                     ) : null}
                     {field.type === "select" ? (
@@ -457,7 +463,10 @@ export function UserQuestionnairePage({
                         onChange={(event) =>
                           handleTextChange(field.id, event.target.value)
                         }
-                        className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                        aria-required={field.required}
+                        aria-invalid={Boolean(message)}
+                        aria-describedby={message ? `${field.id}-error` : undefined}
+                        className="ui-input w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                       >
                         <option value="">Выберите вариант</option>
                         {field.options.map((option) => (
@@ -520,7 +529,7 @@ export function UserQuestionnairePage({
                   </>
                 )}
                 {message ? (
-                  <p className="text-sm text-red-600 dark:text-red-300">
+                  <p id={`${field.id}-error`} role="alert" className="text-sm text-red-600 dark:text-red-300">
                     {message}
                   </p>
                 ) : null}
@@ -543,7 +552,7 @@ export function UserQuestionnairePage({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
+              className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
             >
               {saving ? "Сохраняем..." : "Сохранить ответы"}
             </button>

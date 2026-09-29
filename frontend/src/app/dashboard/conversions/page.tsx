@@ -36,12 +36,12 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const SORT_OPTIONS = [
-  { value: 'createdAt:desc', label: 'Newest first' },
-  { value: 'createdAt:asc', label: 'Oldest first' },
-  { value: 'updatedAt:desc', label: 'Updated recently' },
-  { value: 'status:asc', label: 'Status A-Z' },
-  { value: 'revenue:desc', label: 'Revenue high-low' },
-  { value: 'payout:desc', label: 'Payout high-low' },
+  { value: 'createdAt:desc', label: 'Сначала новые' },
+  { value: 'createdAt:asc', label: 'Сначала старые' },
+  { value: 'updatedAt:desc', label: 'Недавно обновлённые' },
+  { value: 'status:asc', label: 'По статусу' },
+  { value: 'revenue:desc', label: 'Начисления: по убыванию' },
+  { value: 'payout:desc', label: 'Выплаты: по убыванию' },
 ];
 
 type OfferLookupResponse = {
@@ -242,7 +242,7 @@ function renderTestBadge(isTest: boolean) {
 
   return (
     <span className="mt-2 inline-flex rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-200">
-      Test
+      Тестовая
     </span>
   );
 }
@@ -978,14 +978,14 @@ export default function ConversionsPage() {
       'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
     return (
       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${style}`}>
-        {status}
+        {CONVERSION_STATUS_OPTIONS.find((option) => option.value === normalized)?.label ?? status}
       </span>
     );
   };
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -993,23 +993,23 @@ export default function ConversionsPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы увидеть список конверсий.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -1020,7 +1020,7 @@ export default function ConversionsPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -1029,7 +1029,7 @@ export default function ConversionsPage() {
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>
@@ -1038,40 +1038,40 @@ export default function ConversionsPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Конверсии
           </h1>
           <HelpLink href={docsHelpLinks.adminConversions} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Список использует серверные фильтры и пагинацию; URL сохраняет текущее состояние.
+          Конверсии по офферам, их статусы, начисления и выплаты.
         </p>
       </div>
 
       <div className="mb-8">
         <ContextHelpCard
           title="Статусы конверсий влияют на статистику и выплаты"
-          description="Статусы pending, approved и rejected влияют на статистику и выплаты."
+          description="Подтверждайте или отклоняйте конверсии после проверки."
           href={docsHelpLinks.adminConversions}
           ctaLabel="Подробнее о конверсиях"
         />
       </div>
 
-      <section className="mb-10 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-10 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-zinc-500">
-              Manual postback test
+              Проверка интеграции
             </p>
             <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               Отправка тестового постбека
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Минимум для дебага: clickId, статус, token и цель. Подпись считает фронт аналогично бекенду.
+              Укажите ID клика, токен оффера и цель, чтобы проверить получение конверсии.
             </p>
           </div>
           <button
@@ -1086,7 +1086,7 @@ export default function ConversionsPage() {
               setPostbackError(null);
               setPostbackSignature(null);
             }}
-            className="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Сбросить форму
           </button>
@@ -1101,23 +1101,23 @@ export default function ConversionsPage() {
         <form className="space-y-4" onSubmit={handleManualPostback}>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-              clickId
+              ID клика
               <input
                 type="text"
                 value={postbackClickId}
                 onChange={(event) => setPostbackClickId(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
                 placeholder="clk_123"
               />
             </label>
 
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-              Postback token
+              Токен постбека
               <input
                 type="text"
                 value={postbackToken}
                 onChange={(event) => setPostbackToken(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               />
             </label>
 
@@ -1128,39 +1128,39 @@ export default function ConversionsPage() {
                 onChange={(event) =>
                   setPostbackStatus(event.target.value as 'approved' | 'rejected')
                 }
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
-                <option value="approved">approved</option>
-                <option value="rejected">rejected</option>
+                <option value="approved">Подтверждено</option>
+                <option value="rejected">Отклонено</option>
               </select>
             </label>
 
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-              payout
+              Выплата
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={postbackPayout}
                 onChange={(event) => setPostbackPayout(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               />
             </label>
 
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100 md:col-span-2">
-              Goal
+              Цель
               <select
                 value={postbackGoalId}
                 onChange={(event) => setPostbackGoalId(event.target.value)}
                 disabled={!matchedOffer || matchedOfferGoalsLoading}
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 <option value="">
                   {matchedOffer
                     ? matchedOfferGoalsLoading
                       ? 'Загружаем цели…'
                       : 'Выберите цель'
-                    : 'Введите корректный token оффера'}
+                    : 'Введите токен оффера'}
                 </option>
                 {matchedOfferGoals.map((goal) => (
                   <option key={goal.id} value={goal.id}>
@@ -1184,7 +1184,7 @@ export default function ConversionsPage() {
           ) : null}
           {postbackSignature ? (
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Signature: <span className="font-mono">{postbackSignature}</span>
+              Подпись: <span className="font-mono">{postbackSignature}</span>
             </p>
           ) : null}
           {postbackError ? <InlineAlert variant="error">{postbackError}</InlineAlert> : null}
@@ -1193,35 +1193,35 @@ export default function ConversionsPage() {
           <button
             type="submit"
             disabled={postbackSending}
-            className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black"
           >
             {postbackSending ? 'Отправляем…' : 'Отправить постбек'}
           </button>
         </form>
       </section>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Фильтры
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              При изменении фильтров список начинается с первой страницы.
+              Выберите параметры и нажмите «Применить».
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleApplyFilters}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+              className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
             >
               Применить
             </button>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Сбросить
             </button>
@@ -1236,7 +1236,7 @@ export default function ConversionsPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 md:col-span-2">
-            Search
+            Поиск
             <input
               type="text"
               value={filters.search}
@@ -1247,12 +1247,12 @@ export default function ConversionsPage() {
                 }))
               }
               placeholder="Conversion ID, click ID, external ID, offer, goal, partner, advertiser"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Sorting
+            Сортировка
             <select
               value={`${filters.sort}:${filters.order}`}
               onChange={(event) => {
@@ -1263,7 +1263,7 @@ export default function ConversionsPage() {
                   order,
                 }));
               }}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1283,7 +1283,7 @@ export default function ConversionsPage() {
                   dateFrom: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
@@ -1297,7 +1297,7 @@ export default function ConversionsPage() {
                   dateTo: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
@@ -1313,7 +1313,7 @@ export default function ConversionsPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {offers.map((offer) => (
@@ -1325,7 +1325,7 @@ export default function ConversionsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Goal
+            Цель
             <select
               value={filters.goalId}
               onChange={(event) =>
@@ -1335,7 +1335,7 @@ export default function ConversionsPage() {
                 }))
               }
               disabled={!filters.offerId || goalsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">
                 {!filters.offerId
@@ -1363,7 +1363,7 @@ export default function ConversionsPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {affiliates.map((affiliate) => (
@@ -1385,7 +1385,7 @@ export default function ConversionsPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {advertisers.map((advertiser) => (
@@ -1406,7 +1406,7 @@ export default function ConversionsPage() {
                   status: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {CONVERSION_STATUS_OPTIONS.map((option) => (
@@ -1418,7 +1418,7 @@ export default function ConversionsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Source
+            Источник
             <select
               value={filters.source}
               onChange={(event) =>
@@ -1427,7 +1427,7 @@ export default function ConversionsPage() {
                   source: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {CONVERSION_SOURCE_OPTIONS.map((option) => (
@@ -1439,7 +1439,7 @@ export default function ConversionsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Test
+            Тестовая
             <select
               value={filters.isTest}
               onChange={(event) =>
@@ -1448,16 +1448,16 @@ export default function ConversionsPage() {
                   isTest: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
-              <option value="false">Production only</option>
-              <option value="true">Test only</option>
+              <option value="false">Только рабочие</option>
+              <option value="true">Только тестовые</option>
             </select>
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Click ID
+            ID клика
             <input
               type="text"
               value={filters.clickId}
@@ -1467,12 +1467,12 @@ export default function ConversionsPage() {
                   clickId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Conversion ID
+            ID конверсии
             <input
               type="text"
               value={filters.conversionId}
@@ -1482,12 +1482,12 @@ export default function ConversionsPage() {
                   conversionId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Transaction / External ID
+            Внешний ID
             <input
               type="text"
               value={filters.externalTransactionId}
@@ -1497,12 +1497,12 @@ export default function ConversionsPage() {
                   externalTransactionId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Revenue min
+            Начисления от
             <input
               type="number"
               min="0"
@@ -1514,12 +1514,12 @@ export default function ConversionsPage() {
                   revenueMin: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Revenue max
+            Начисления до
             <input
               type="number"
               min="0"
@@ -1531,12 +1531,12 @@ export default function ConversionsPage() {
                   revenueMax: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Payout min
+            Выплаты от
             <input
               type="number"
               min="0"
@@ -1548,12 +1548,12 @@ export default function ConversionsPage() {
                   payoutMin: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Payout max
+            Выплаты до
             <input
               type="number"
               min="0"
@@ -1565,7 +1565,7 @@ export default function ConversionsPage() {
                   payoutMax: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
         </div>
@@ -1583,7 +1583,7 @@ export default function ConversionsPage() {
               <select
                 value={filters.limit}
                 onChange={(event) => handleLimitChange(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 {PAGE_SIZE_OPTIONS.map((option) => (
                   <option key={option} value={String(option)}>
@@ -1614,31 +1614,31 @@ export default function ConversionsPage() {
             </InlineAlert>
           </div>
         ) : loading && conversions.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             Загружаем конверсии…
           </div>
         ) : conversions.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             По текущим фильтрам конверсии не найдены.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="ui-table-wrap overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
                   <th className="px-6 py-3 font-medium">Дата</th>
-                  <th className="px-6 py-3 font-medium">Conversion</th>
-                  <th className="px-6 py-3 font-medium">Transaction</th>
-                  <th className="px-6 py-3 font-medium">Click ID</th>
+                  <th className="px-6 py-3 font-medium">Конверсия</th>
+                  <th className="px-6 py-3 font-medium">Транзакция</th>
+                  <th className="px-6 py-3 font-medium">ID клика</th>
                   <th className="px-6 py-3 font-medium">Оффер</th>
-                  <th className="px-6 py-3 font-medium">Goal</th>
+                  <th className="px-6 py-3 font-medium">Цель</th>
                   <th className="px-6 py-3 font-medium">Партнёр</th>
                   <th className="px-6 py-3 font-medium">Рекламодатель</th>
                   <th className="px-6 py-3 font-medium">Статус</th>
-                  <th className="px-6 py-3 font-medium">Revenue</th>
-                  <th className="px-6 py-3 font-medium">Payout</th>
-                  <th className="px-6 py-3 font-medium">Profit</th>
-                  <th className="px-6 py-3 font-medium">Actions</th>
+                  <th className="px-6 py-3 font-medium">Начисления</th>
+                  <th className="px-6 py-3 font-medium">Выплаты</th>
+                  <th className="px-6 py-3 font-medium">Прибыль</th>
+                  <th className="px-6 py-3 font-medium">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -1746,7 +1746,7 @@ export default function ConversionsPage() {
                               onClick={() =>
                                 void handleStatusAction(conversion, option.value)
                               }
-                              className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                              className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                             >
                               {option.label}
                             </button>
@@ -1755,14 +1755,14 @@ export default function ConversionsPage() {
                             type="button"
                             disabled={statusActionId === conversion.id}
                             onClick={() => handleToggleHistory(conversion.id)}
-                            className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                           >
                             {expandedConversionId === conversion.id ? 'Hide history' : 'History'}
                           </button>
                         </div>
                         {statusActionId === conversion.id ? (
                           <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                            Updating…
+                            Обновляем…
                           </div>
                         ) : null}
                       </td>
@@ -1776,24 +1776,24 @@ export default function ConversionsPage() {
                             <div className="flex items-center justify-between gap-3">
                               <div>
                                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                  Status history
+                                  История статусов
                                 </h3>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                  Status changes are audited on the backend.
+                                  Здесь сохраняются все изменения статуса конверсии.
                                 </p>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => void loadStatusHistory(conversion.id, { force: true })}
-                                className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                               >
-                                Refresh
+                                Обновить
                               </button>
                             </div>
 
                             {historyByConversionId[conversion.id]?.loading ? (
                               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                Loading history…
+                                Загружаем историю…
                               </p>
                             ) : historyByConversionId[conversion.id]?.error ? (
                               <InlineAlert variant="error">
@@ -1801,7 +1801,7 @@ export default function ConversionsPage() {
                               </InlineAlert>
                             ) : (historyByConversionId[conversion.id]?.items.length ?? 0) === 0 ? (
                               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                No status changes recorded yet.
+                                Статус пока не менялся.
                               </p>
                             ) : (
                               <div className="space-y-2">
@@ -1850,12 +1850,12 @@ export default function ConversionsPage() {
         <span>
           Страница {meta.page} из {Math.max(meta.totalPages, 1)}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => handlePageChange(meta.page - 1)}
             disabled={!canGoPrev || loading}
-            className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Назад
           </button>
@@ -1863,7 +1863,7 @@ export default function ConversionsPage() {
             type="button"
             onClick={() => handlePageChange(meta.page + 1)}
             disabled={!canGoNext || loading}
-            className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Вперёд
           </button>

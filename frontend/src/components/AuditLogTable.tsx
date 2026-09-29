@@ -1,6 +1,8 @@
 'use client';
 
 import type { AuditLogItem } from '@/lib/audit-logs';
+import { getRoleLabel } from '@/lib/auth/roles';
+import type { UserRole } from '@/context/AuthContext';
 
 function stringifyValue(value: unknown) {
   if (value === null || value === undefined) {
@@ -38,7 +40,7 @@ function JsonCell({ value }: { value: unknown }) {
 
   if (summary === full) {
     return (
-      <pre className="whitespace-pre-wrap break-words text-xs text-zinc-700 dark:text-zinc-200">
+      <pre className="max-w-xs whitespace-pre-wrap break-all text-xs text-zinc-700 dark:text-zinc-200">
         {full}
       </pre>
     );
@@ -47,7 +49,7 @@ function JsonCell({ value }: { value: unknown }) {
   return (
     <details className="max-w-xs">
       <summary className="cursor-pointer list-none text-xs text-zinc-700 dark:text-zinc-200">
-        <span className="inline-block rounded-lg bg-zinc-100 px-2 py-1 dark:bg-zinc-800">
+        <span className="inline-block break-all rounded-lg bg-zinc-100 px-2 py-1 dark:bg-zinc-800">
           {summary}
         </span>
       </summary>
@@ -60,13 +62,13 @@ function JsonCell({ value }: { value: unknown }) {
 
 function formatActor(item: AuditLogItem) {
   if (!item.actor) {
-    return item.actorRole ?? 'System';
+    return item.actorRole ? getRoleLabel(item.actorRole as UserRole) : 'Система';
   }
 
   const primary = item.actor.name ?? item.actor.email ?? item.actor.id;
   const secondary = item.actor.email && item.actor.email !== primary
     ? item.actor.email
-    : item.actor.role;
+    : item.actor.role ? getRoleLabel(item.actor.role as UserRole) : null;
 
   return (
     <div className="space-y-1">
@@ -91,7 +93,7 @@ export function AuditLogTable({
 }) {
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100">
+      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100">
         {error}
       </div>
     );
@@ -100,7 +102,7 @@ export function AuditLogTable({
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-        Загружаем логи…
+        Загружаем журнал действий…
       </div>
     );
   }
@@ -114,17 +116,17 @@ export function AuditLogTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
+    <div className="ui-table-wrap rounded-2xl border border-zinc-200 dark:border-zinc-800">
       <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
         <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
           <tr>
             <th className="px-4 py-3 font-medium">Дата</th>
-            <th className="px-4 py-3 font-medium">Актор</th>
-            <th className="px-4 py-3 font-medium">Action</th>
-            <th className="px-4 py-3 font-medium">Old value</th>
-            <th className="px-4 py-3 font-medium">New value</th>
+            <th className="px-4 py-3 font-medium">Пользователь</th>
+            <th className="px-4 py-3 font-medium">Действие</th>
+            <th className="px-4 py-3 font-medium">До изменения</th>
+            <th className="px-4 py-3 font-medium">После изменения</th>
             <th className="px-4 py-3 font-medium">Ошибка</th>
-            <th className="px-4 py-3 font-medium">Metadata</th>
+            <th className="px-4 py-3 font-medium">Подробности</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">

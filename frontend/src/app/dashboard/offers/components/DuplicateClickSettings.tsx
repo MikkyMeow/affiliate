@@ -151,7 +151,7 @@ export function DuplicateClickSettings({
                 )
               }
               placeholder={`от ${unitMeta.min} до ${unitMeta.max}`}
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white md:w-1/2"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white md:w-1/2"
             />
             <select
               value={duplicateClickWindowUnit}
@@ -160,7 +160,7 @@ export function DuplicateClickSettings({
                   event.target.value as DuplicateWindowUnit,
                 )
               }
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white md:w-1/2"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white md:w-1/2"
             >
               <option value="minutes">Минуты</option>
               <option value="hours">Часы</option>

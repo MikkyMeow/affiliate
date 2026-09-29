@@ -175,7 +175,7 @@ export default function AdminQuestionnairesPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -183,23 +183,23 @@ export default function AdminQuestionnairesPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы управлять анкетами.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -210,7 +210,7 @@ export default function AdminQuestionnairesPage() {
 
   if (!canAccessAdminArea(user) || !isAdminRole(user.role)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -223,18 +223,18 @@ export default function AdminQuestionnairesPage() {
 
   if (loading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Загружаем анкеты...</p>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Анкеты регистрации
           </h1>
           <HelpLink href={docsHelpLinks.adminQuestionnaires} />
@@ -271,7 +271,7 @@ export default function AdminQuestionnairesPage() {
         })}
       </div>
 
-      <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -291,7 +291,7 @@ export default function AdminQuestionnairesPage() {
                     title: event.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
               />
             </div>
 
@@ -312,7 +312,7 @@ export default function AdminQuestionnairesPage() {
                     description: event.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
               />
             </div>
           </div>
@@ -364,7 +364,7 @@ export default function AdminQuestionnairesPage() {
                 ],
               }))
             }
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             Добавить поле
           </button>
@@ -405,7 +405,7 @@ export default function AdminQuestionnairesPage() {
                           return { ...questionnaire, fields };
                         })
                       }
-                      className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="ui-button rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     >
                       Вверх
                     </button>
@@ -422,7 +422,7 @@ export default function AdminQuestionnairesPage() {
                           return { ...questionnaire, fields };
                         })
                       }
-                      className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="ui-button rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     >
                       Вниз
                     </button>
@@ -436,7 +436,7 @@ export default function AdminQuestionnairesPage() {
                           ),
                         }))
                       }
-                      className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
+                      className="ui-button rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
                     >
                       Удалить
                     </button>
@@ -446,7 +446,7 @@ export default function AdminQuestionnairesPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      Name
+                      Ключ поля
                     </label>
                     <input
                       type="text"
@@ -461,7 +461,7 @@ export default function AdminQuestionnairesPage() {
                           ),
                         }))
                       }
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                      className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -488,14 +488,14 @@ export default function AdminQuestionnairesPage() {
                           ),
                         }))
                       }
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                      className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                     >
-                      <option value="text">text</option>
-                      <option value="textarea">textarea</option>
-                      <option value="select">select</option>
-                      <option value="multiselect">multiselect</option>
-                      <option value="checkbox">checkbox</option>
-                      <option value="radio">radio</option>
+                      <option value="text">Короткий текст</option>
+                      <option value="textarea">Длинный текст</option>
+                      <option value="select">Один вариант из списка</option>
+                      <option value="multiselect">Несколько вариантов</option>
+                      <option value="checkbox">Флажок</option>
+                      <option value="radio">Один вариант</option>
                     </select>
                   </div>
                 </div>
@@ -517,7 +517,7 @@ export default function AdminQuestionnairesPage() {
                         ),
                       }))
                     }
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                    className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                   />
                 </div>
 
@@ -567,7 +567,7 @@ export default function AdminQuestionnairesPage() {
                             ),
                           }))
                         }
-                        className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ui-button rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Добавить опцию
                       </button>
@@ -609,7 +609,7 @@ export default function AdminQuestionnairesPage() {
                                 }))
                               }
                               placeholder="value"
-                              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                              className="ui-input min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                             />
                             <input
                               type="text"
@@ -636,7 +636,7 @@ export default function AdminQuestionnairesPage() {
                                 }))
                               }
                               placeholder="label"
-                              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+                              className="ui-input min-w-0 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
                             />
                             <button
                               type="button"
@@ -656,7 +656,7 @@ export default function AdminQuestionnairesPage() {
                                   ),
                                 }))
                               }
-                              className="rounded-full border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
+                              className="ui-button rounded-full border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
                             >
                               Удалить
                             </button>
@@ -702,7 +702,7 @@ export default function AdminQuestionnairesPage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
+            className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-black dark:hover:bg-zinc-200"
           >
             {saving ? 'Сохраняем...' : 'Сохранить анкету'}
           </button>
@@ -710,7 +710,7 @@ export default function AdminQuestionnairesPage() {
             href="/dashboard"
             className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
           >
-            Вернуться в dashboard
+            Вернуться к обзору
           </Link>
         </div>
       </div>

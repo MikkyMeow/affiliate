@@ -150,45 +150,45 @@ export type UpdateConversionStatusResponse = {
 export const CLICK_RESULT_OPTIONS = [
   {
     value: 'allowed_target_redirect',
-    label: 'Allowed target redirect',
+    label: 'Переход на оффер',
   },
   {
     value: 'fallback_redirect',
-    label: 'Fallback redirect',
+    label: 'Резервный переход',
   },
   {
     value: 'internal_unavailable_redirect',
-    label: 'Internal unavailable redirect',
+    label: 'Оффер недоступен',
   },
 ] as const;
 
 export const CONVERSION_STATUS_OPTIONS = [
   {
     value: 'pending',
-    label: 'Pending',
+    label: 'На проверке',
   },
   {
     value: 'approved',
-    label: 'Approved',
+    label: 'Подтверждено',
   },
   {
     value: 'rejected',
-    label: 'Rejected',
+    label: 'Отклонено',
   },
   {
     value: 'cancelled',
-    label: 'Cancelled',
+    label: 'Отменено',
   },
 ] as const;
 
 export const CONVERSION_SOURCE_OPTIONS = [
   {
     value: 'tracking',
-    label: 'Tracking',
+    label: 'Трекинг',
   },
   {
     value: 'manual',
-    label: 'Manual',
+    label: 'Вручную',
   },
 ] as const;
 

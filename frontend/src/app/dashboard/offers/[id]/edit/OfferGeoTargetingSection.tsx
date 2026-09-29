@@ -47,7 +47,7 @@ function RuleBadge({
         aria-label="Удалить страну"
         onClick={() => onRemove(rule)}
         disabled={disabled}
-        className="rounded-full p-1 text-xs text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-50 dark:hover:bg-zinc-700 dark:hover:text-white"
+        className="ui-button rounded-full p-1 text-xs text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-50 dark:hover:bg-zinc-700 dark:hover:text-white"
       >
         ×
       </button>
@@ -241,7 +241,7 @@ export function OfferGeoTargetingSection({
           </h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {ruleType === "allow"
-              ? "Трафик из этих стран разрешён. Остальные проходят по deny или общим правилам."
+              ? "В строгом режиме трафик из этих стран разрешён, если страна не запрещена."
               : "Трафик из этих стран будет заблокирован, даже если страна разрешена в другом месте."}
           </p>
         </div>
@@ -275,7 +275,7 @@ export function OfferGeoTargetingSection({
               id={`${ruleType}-country`}
               value={selectedValue}
               onChange={(event) => onChange(event.target.value)}
-              className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white sm:min-w-0"
+              className="ui-input min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white sm:min-w-0"
             >
               <option value="">Выберите страну</option>
               {selectableCountries.map((country) => (
@@ -290,7 +290,7 @@ export function OfferGeoTargetingSection({
             <button
               type="submit"
               disabled={!selectedValue || isAdding}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 dark:bg-white dark:text-black sm:shrink-0"
+              className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 dark:bg-white dark:text-black sm:shrink-0"
             >
               {isAdding ? 'Добавляем...' : 'Добавить'}
             </button>
@@ -301,27 +301,29 @@ export function OfferGeoTargetingSection({
   };
 
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-zinc-500">
-            Targeting
+            Таргетинг
           </p>
           <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Geo Targeting
+            География трафика
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Управляйте allow/deny списками и строгим режимом, чтобы заранее
-            понимать, куда уйдёт трафик.
+            Выберите разрешённые и запрещённые страны для оффера.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-              Strict targeting
+              Строгий режим
             </span>
             <button
               type="button"
+              role="switch"
+              aria-checked={strictValue}
+              aria-label="Строгий таргетинг"
               onClick={() => void handleStrictToggle()}
               disabled={savingStrict}
               className={`relative inline-flex h-8 w-14 items-center rounded-full transition ${
@@ -341,22 +343,19 @@ export function OfferGeoTargetingSection({
             {savingStrict
               ? "Сохраняем..."
               : strictValue
-                ? "Разрешены только страны из allow. Остальные уйдут на fallback."
-                : "Таргетинг информативный, трафик продолжит идти на target URL."}
+                ? "Разрешены только выбранные страны. Остальные переходы перенаправляются."
+                : "Все переходы ведут на целевую страницу; ограничения не применяются."}
           </p>
         </div>
       </div>
 
       <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-        Strict отключен — можете собирать статистику, но ничего не блокируется.
-        Strict включен — всё, что не попало в allow, отправится на fallback или
-        заглушку.
+        В строгом режиме переходы из неподходящих стран направляются на резервную страницу. Без него ограничения не применяются.
       </p>
 
       {strictValue && !fallbackUrl && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200">
-          Strict включён, но fallback URL пустой. Заблокированный трафик уйдёт
-          на внутреннюю заглушку.
+          Строгий режим включён, но резервный URL не указан. Переходы из неподходящих стран попадут на страницу блокировки.
         </div>
       )}
 
@@ -377,7 +376,7 @@ export function OfferGeoTargetingSection({
             <button
               type="button"
               onClick={() => void loadRules()}
-              className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/10"
+              className="ui-button rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/10"
             >
               Повторить попытку
             </button>
@@ -392,21 +391,20 @@ export function OfferGeoTargetingSection({
 
             {allowRules.length === 0 && denyRules.length === 0 && (
               <div className="mb-4 rounded-2xl border border-dashed border-zinc-300 px-4 py-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                Пока нет geo rules. Добавьте хотя бы одну страну в allow или
-                deny.
+                Страны пока не выбраны. Добавьте разрешённые или запрещённые страны.
               </div>
             )}
 
             <div className="grid gap-6 md:grid-cols-2 md:items-stretch">
               {renderRuleList(
-                "Allowed countries",
+                "Разрешённые страны",
                 allowRules,
                 "allow",
                 selectedAllow,
                 setSelectedAllow,
               )}
               {renderRuleList(
-                "Denied countries",
+                "Запрещённые страны",
                 denyRules,
                 "deny",
                 selectedDeny,

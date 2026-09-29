@@ -25,7 +25,7 @@ type SummaryCardConfig = {
 const SUMMARY_CARDS: SummaryCardConfig[] = [
   {
     key: 'clicks',
-    label: 'Транзакции',
+    label: 'Клики',
     hint: 'Все зафиксированные переходы',
     mode: 'count',
     gradient: 'from-blue-500/10 to-blue-500/5',
@@ -33,49 +33,49 @@ const SUMMARY_CARDS: SummaryCardConfig[] = [
   {
     key: 'conversionsTotal',
     label: 'Всего конверсий',
-    hint: 'Сумма approved + pending + rejected',
+    hint: 'Конверсии во всех статусах',
     mode: 'count',
     gradient: 'from-indigo-500/10 to-indigo-500/5',
   },
   {
     key: 'conversionsApproved',
-    label: 'Approved conversions',
-    hint: 'Конверсии в статусе Approved',
+    label: 'Подтверждено',
+    hint: 'Подтверждённые конверсии',
     mode: 'count',
     gradient: 'from-emerald-500/10 to-emerald-500/5',
   },
   {
     key: 'conversionsPending',
-    label: 'Pending conversions',
-    hint: 'Конверсии в статусе Pending',
+    label: 'На проверке',
+    hint: 'Ожидают проверки',
     mode: 'count',
     gradient: 'from-amber-500/10 to-amber-500/5',
   },
   {
     key: 'conversionsRejected',
-    label: 'Rejected conversions',
-    hint: 'Конверсии в статусе Rejected',
+    label: 'Отклонено',
+    hint: 'Отклонённые конверсии',
     mode: 'count',
     gradient: 'from-rose-500/10 to-rose-500/5',
   },
   {
     key: 'approvedRevenue',
-    label: 'Approved revenue, ₽',
-    hint: 'Revenue из approved конверсий',
+    label: 'Начисления, ₽',
+    hint: 'По подтверждённым конверсиям',
     mode: 'money',
     gradient: 'from-indigo-500/10 to-indigo-500/5',
   },
   {
     key: 'approvedPayout',
-    label: 'Approved payout, ₽',
-    hint: 'Выплаты по Approved',
+    label: 'Выплаты, ₽',
+    hint: 'По подтверждённым конверсиям',
     mode: 'money',
     gradient: 'from-emerald-500/10 to-emerald-500/5',
   },
   {
     key: 'pendingPayout',
-    label: 'Pending payout, ₽',
-    hint: 'Что ещё ждёт проверки',
+    label: 'Выплаты на проверке, ₽',
+    hint: 'По конверсиям на проверке',
     mode: 'money',
     gradient: 'from-amber-500/10 to-amber-500/5',
   },
@@ -122,22 +122,22 @@ export function OfferStatsSection({ offerId, token }: OfferStatsSectionProps) {
   };
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Offer stats</p>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Статистика</p>
           <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
             Статистика по офферу
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Approved/Pending/Rejected отдельно, чтобы ничего не смешивалось.
+            Конверсии и выплаты с разбивкой по статусам.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void loadStats()}
           disabled={loading}
-          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
         >
           {loading ? 'Обновляем…' : 'Обновить'}
         </button>
@@ -158,10 +158,10 @@ export function OfferStatsSection({ offerId, token }: OfferStatsSectionProps) {
               key={card.key}
               className={`rounded-2xl border border-zinc-100 bg-gradient-to-b ${card.gradient} p-4 shadow-sm dark:border-zinc-800`}
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                 {card.label}
               </p>
-              <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              <p className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
                 {renderSummaryValue(card)}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{card.hint}</p>
@@ -175,9 +175,9 @@ export function OfferStatsSection({ offerId, token }: OfferStatsSectionProps) {
       <div className="mt-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm uppercase tracking-wide text-zinc-500">Breakdown</p>
+            <p className="text-sm uppercase tracking-wide text-zinc-500">Детализация</p>
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              По целям (goals)
+              По целям
             </h3>
           </div>
           {loading && summary && (
@@ -190,21 +190,21 @@ export function OfferStatsSection({ offerId, token }: OfferStatsSectionProps) {
           <p className="text-sm text-zinc-500">Загружаем разбивку по целям…</p>
         ) : goalRows.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            Пока нет данных по целям. Как только появятся конверсии, блок оживёт.
+            Данные по целям появятся после первых конверсий.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="ui-table-wrap overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Goal</th>
-                  <th className="px-4 py-3 text-left font-medium">Type</th>
+                  <th className="px-4 py-3 text-left font-medium">Цель</th>
+                  <th className="px-4 py-3 text-left font-medium">Тип</th>
                   <th className="px-4 py-3 text-left font-medium">Всего</th>
-                  <th className="px-4 py-3 text-left font-medium">Approved</th>
-                  <th className="px-4 py-3 text-left font-medium">Pending</th>
-                  <th className="px-4 py-3 text-left font-medium">Rejected</th>
-                  <th className="px-4 py-3 text-left font-medium">Approved payout</th>
-                  <th className="px-4 py-3 text-left font-medium">Approved revenue</th>
+                  <th className="px-4 py-3 text-left font-medium">Подтверждено</th>
+                  <th className="px-4 py-3 text-left font-medium">На проверке</th>
+                  <th className="px-4 py-3 text-left font-medium">Отклонено</th>
+                  <th className="px-4 py-3 text-left font-medium">Выплаты</th>
+                  <th className="px-4 py-3 text-left font-medium">Начисления</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">

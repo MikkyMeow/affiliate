@@ -241,10 +241,10 @@ export function OfferGoalsSection({
 
   return (
     <>
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Goals</p>
+            <p className="text-xs uppercase tracking-wide text-zinc-500">Цели</p>
             <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               Цели оффера
             </h2>
@@ -261,9 +261,9 @@ export function OfferGoalsSection({
             <button
               type="button"
               onClick={() => setModalState({ mode: 'create' })}
-              className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black"
+              className="ui-button rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black"
             >
-              Добавить goal
+              Добавить цель
             </button>
           </div>
         </div>
@@ -279,7 +279,7 @@ export function OfferGoalsSection({
               <button
                 type="button"
                 onClick={() => void loadGoals()}
-                className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
+                className="ui-button rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
               >
                 Повторить попытку
               </button>
@@ -290,9 +290,9 @@ export function OfferGoalsSection({
               <button
                 type="button"
                 onClick={() => setModalState({ mode: 'create' })}
-                className="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                Добавить первую goal
+                Добавить первую цель
               </button>
             </div>
           ) : (
@@ -320,7 +320,7 @@ export function OfferGoalsSection({
           title={
             modalState.mode === 'edit'
               ? `Редактировать ${modalState.goal.name}`
-              : 'Новая goal'
+              : 'Новая цель'
           }
           onSubmit={async (values) => {
             if (modalState.mode === 'edit') {
@@ -351,7 +351,7 @@ function GoalCard({
   onEdit,
 }: GoalCardProps) {
   const badgeClass =
-    'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide';
+    'rounded-full border px-3 py-1 text-sm font-medium';
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
@@ -366,7 +366,7 @@ function GoalCard({
             </span>
             {goal.isDefault && (
               <span className={`${badgeClass} border-amber-200 text-amber-700 dark:border-amber-400 dark:text-amber-300`}>
-                Default
+                По умолчанию
               </span>
             )}
             {goal.limitReached && (
@@ -379,7 +379,7 @@ function GoalCard({
         <button
           type="button"
           onClick={onEdit}
-          className="self-start rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="ui-button self-start rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           Редактировать
         </button>
@@ -387,15 +387,15 @@ function GoalCard({
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
         <MetricCard
-          label="Revenue"
+          label="Начисления"
           value={formatMoney(goal.revenue, goal.currency)}
         />
         <MetricCard
-          label="Payout"
+          label="Выплаты"
           value={formatMoney(goal.payout, goal.currency)}
         />
         <MetricCard
-          label="Profit"
+          label="Прибыль"
           value={formatMoney(goal.profit, goal.currency)}
         />
       </div>
@@ -624,7 +624,7 @@ function GoalAffiliateRatesSection({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-zinc-500">
-            Partner Rates
+            Персональные ставки
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             База: {formatMoney(goal.revenue, goal.currency)} / {formatMoney(goal.payout, goal.currency)}
@@ -633,9 +633,9 @@ function GoalAffiliateRatesSection({
         <button
           type="button"
           onClick={openCreateForm}
-          className="self-start rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="ui-button self-start rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
-          Добавить override
+          Добавить ставку
         </button>
       </div>
 
@@ -649,7 +649,7 @@ function GoalAffiliateRatesSection({
         </div>
       ) : rates.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-          Переопределений пока нет.
+          Персональных ставок пока нет.
         </p>
       ) : (
         <div className="mt-4 space-y-3">
@@ -666,16 +666,16 @@ function GoalAffiliateRatesSection({
                       : rate.affiliateId}
                     </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Revenue: {formatMoney(rate.revenue, rate.currency)} · Payout:{' '}
-                    {formatMoney(rate.payout, rate.currency)} · Profit:{' '}
+                    Начисления: {formatMoney(rate.revenue, rate.currency)} · Выплаты:{' '}
+                    {formatMoney(rate.payout, rate.currency)} · Прибыль:{' '}
                     {formatMoney(rate.profit, rate.currency)}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => openEditForm(rate)}
-                    className="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   >
                     Редактировать
                   </button>
@@ -683,7 +683,7 @@ function GoalAffiliateRatesSection({
                     type="button"
                     onClick={() => void handleDelete(rate)}
                     disabled={deletingRateId === rate.id}
-                    className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
+                    className="ui-button rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/50 dark:text-red-200 dark:hover:bg-red-400/10"
                   >
                     {deletingRateId === rate.id ? 'Удаляем...' : 'Удалить'}
                   </button>
@@ -708,7 +708,7 @@ function GoalAffiliateRatesSection({
                   setForm((prev) => ({ ...prev, affiliateId: event.target.value }))
                 }
                 disabled={Boolean(editingRate)}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               >
                 <option value="">Выберите партнёра</option>
                 {affiliateOptions.map((affiliate) => (
@@ -724,7 +724,7 @@ function GoalAffiliateRatesSection({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor={`affiliate-revenue-${goal.id}`}>
-                Revenue, RUB
+                Начисления, ₽
               </label>
               <input
                 id={`affiliate-revenue-${goal.id}`}
@@ -733,7 +733,7 @@ function GoalAffiliateRatesSection({
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, revenue: event.target.value.slice(0, 20) }))
                 }
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               />
               {formErrors.revenue && (
                 <p className="text-sm text-red-600">{formErrors.revenue}</p>
@@ -742,7 +742,7 @@ function GoalAffiliateRatesSection({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor={`affiliate-payout-${goal.id}`}>
-                Payout, RUB
+                Выплаты, ₽
               </label>
               <input
                 id={`affiliate-payout-${goal.id}`}
@@ -751,7 +751,7 @@ function GoalAffiliateRatesSection({
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, payout: event.target.value.slice(0, 20) }))
                 }
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               />
               {formErrors.payout && (
                 <p className="text-sm text-red-600">{formErrors.payout}</p>
@@ -760,13 +760,13 @@ function GoalAffiliateRatesSection({
 
             <div className="space-y-2 md:col-span-2">
               <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Profit
+                Прибыль
               </p>
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
                 {profitPreview}
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Предпросмотр. Источник истины для profit остаётся на backend.
+                Разница между начислением и выплатой партнёру.
               </p>
             </div>
           </div>
@@ -781,20 +781,20 @@ function GoalAffiliateRatesSection({
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black"
+              className="ui-button rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black"
             >
               {submitting
                 ? 'Сохраняем...'
                 : editingRate
-                  ? 'Сохранить override'
-                  : 'Добавить override'}
+                  ? 'Сохранить ставку'
+                  : 'Добавить ставку'}
             </button>
           </div>
         </form>
@@ -925,13 +925,13 @@ function GoalFormModal({
 
         if (Object.keys(nextFieldErrors).length === 0) {
           nextFieldErrors.form =
-            apiError.message ?? 'Не удалось сохранить goal';
+            apiError.message ?? 'Не удалось сохранить цель';
         }
 
         setErrors(nextFieldErrors);
       } else {
         setErrors({
-          form: apiError.message ?? 'Не удалось сохранить goal',
+          form: apiError.message ?? 'Не удалось сохранить цель',
         });
       }
     } finally {
@@ -941,20 +941,20 @@ function GoalFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+      <div role="dialog" aria-modal="true" aria-labelledby="goal-form-title" className="max-h-[calc(100dvh-4rem)] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6 dark:bg-zinc-900">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-zinc-500">
-              Goal Settings
+              Настройки цели
             </p>
-            <h3 className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h3 id="goal-form-title" className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               {title}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Закрыть
           </button>
@@ -971,7 +971,7 @@ function GoalFormModal({
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, name: event.target.value }))
               }
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
             />
             {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
           </div>
@@ -990,7 +990,7 @@ function GoalFormModal({
                     type: event.target.value as OfferGoalType,
                   }))
                 }
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               >
                 {OFFER_GOAL_TYPES.map((goalType) => (
                   <option key={goalType} value={goalType}>
@@ -1003,7 +1003,7 @@ function GoalFormModal({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="goalRevenue">
-                Revenue, RUB
+                Начисления, ₽
               </label>
               <input
                 id="goalRevenue"
@@ -1012,14 +1012,14 @@ function GoalFormModal({
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, revenue: event.target.value.slice(0, 20) }))
                 }
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               />
               {errors.revenue && <p className="text-sm text-red-600">{errors.revenue}</p>}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="goalPayout">
-                Payout, RUB
+                Выплаты, ₽
               </label>
               <input
                 id="goalPayout"
@@ -1028,20 +1028,20 @@ function GoalFormModal({
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, payout: event.target.value.slice(0, 20) }))
                 }
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
               />
               {errors.payout && <p className="text-sm text-red-600">{errors.payout}</p>}
             </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Profit
+                Прибыль
               </p>
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
                 {profitPreview}
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Предпросмотр. Источник истины для profit остаётся на backend.
+                Разница между начислением и выплатой партнёру.
               </p>
             </div>
           </div>
@@ -1062,10 +1062,10 @@ function GoalFormModal({
                   htmlFor="goalDefault"
                   className="text-sm font-medium text-zinc-800 dark:text-zinc-100"
                 >
-                  Сделать goal по умолчанию
+                  Использовать по умолчанию
                 </label>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  У оффера может быть только одна goal по умолчанию.
+                  У оффера может быть только одна цель по умолчанию.
                 </p>
               </div>
             </div>
@@ -1090,7 +1090,7 @@ function GoalFormModal({
                   Включить лимит цели
                 </label>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  После достижения лимита backend начнёт отклонять новые конверсии по этой цели.
+                  После достижения лимита новые конверсии по этой цели будут отклоняться.
                 </p>
               </div>
             </div>
@@ -1110,7 +1110,7 @@ function GoalFormModal({
                         limitType: event.target.value as OfferGoalLimitType,
                       }))
                     }
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                    className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
                   >
                     {OFFER_GOAL_LIMIT_TYPES.map((limitType) => (
                       <option key={limitType} value={limitType}>
@@ -1137,7 +1137,7 @@ function GoalFormModal({
                         limitValue: event.target.value.replace(/[^\d]/g, '').slice(0, 9),
                       }))
                     }
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                    className="ui-input min-w-0 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
                   />
                   {errors.limitValue && (
                     <p className="text-sm text-red-600">{errors.limitValue}</p>
@@ -1157,19 +1157,19 @@ function GoalFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-zinc-200 px-5 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-200 px-5 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black"
+              className="ui-button rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black"
             >
               {submitting
                 ? 'Сохраняем...'
                 : mode === 'create'
-                  ? 'Создать goal'
+                  ? 'Создать цель'
                   : 'Сохранить изменения'}
             </button>
           </div>

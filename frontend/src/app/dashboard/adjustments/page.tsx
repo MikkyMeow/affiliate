@@ -431,19 +431,19 @@ export default function AdjustmentsPage() {
 
   const renderPreviewTable = useCallback(
     (rows: AdjustmentPreviewRow[], type: AdjustmentType) => (
-      <div className="overflow-x-auto">
+      <div className="ui-table-wrap overflow-x-auto">
         <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
             <tr>
-              <th className="px-4 py-3 font-medium">Row</th>
+              <th className="px-4 py-3 font-medium">Строка</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 font-medium">Партнёр</th>
               <th className="px-4 py-3 font-medium">Оффер</th>
-              <th className="px-4 py-3 font-medium">Goal</th>
+              <th className="px-4 py-3 font-medium">Цель</th>
               <th className="px-4 py-3 font-medium">
-                {type === 'conversions' ? 'Status' : 'Result'}
+                {type === 'conversions' ? 'Статус' : 'Результат'}
               </th>
-              <th className="px-4 py-3 font-medium">Errors</th>
+              <th className="px-4 py-3 font-medium">Ошибки</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -461,7 +461,7 @@ export default function AdjustmentsPage() {
                         : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200'
                     }`}
                   >
-                    {row.valid ? 'Valid' : 'Invalid'}
+                    {row.valid ? 'Без ошибок' : 'С ошибками'}
                   </span>
                 </td>
                 <td className="px-4 py-3">{renderResolvedLookup(row.resolved.affiliate)}</td>
@@ -492,7 +492,7 @@ export default function AdjustmentsPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -500,23 +500,23 @@ export default function AdjustmentsPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы открыть раздел корректировок.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -527,7 +527,7 @@ export default function AdjustmentsPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -539,37 +539,37 @@ export default function AdjustmentsPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Корректировки
           </h1>
           <HelpLink href={docsHelpLinks.adminAdjustments} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Preview и применение manual CSV для конверсий и payable clicks.
+          Загрузите конверсии или оплачиваемые клики из CSV и проверьте данные перед применением.
         </p>
       </div>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Настройки загрузки
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              UUID поддерживаются, но public IDs удобнее для ручного CSV.
+              В файле можно использовать внутренние или короткие ID.
             </p>
           </div>
           <button
             type="button"
             onClick={handlePreview}
             disabled={previewing || applying}
-            className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-black"
           >
-            {previewing ? 'Строим preview…' : 'Preview'}
+            {previewing ? 'Строим preview…' : 'Предпросмотр'}
           </button>
         </div>
 
@@ -595,7 +595,7 @@ export default function AdjustmentsPage() {
                   type: event.target.value as AdjustmentType,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="conversions">Конверсии</option>
               <option value="clicks">Клики</option>
@@ -612,7 +612,7 @@ export default function AdjustmentsPage() {
                   partnerMode: event.target.value as SettingsState['partnerMode'],
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="single_partner">Один выбранный партнёр</option>
               <option value="per_row">Партнёр в каждой строке</option>
@@ -630,7 +630,7 @@ export default function AdjustmentsPage() {
                 }))
               }
               disabled={lookupsLoading || settings.partnerMode !== 'single_partner'}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">
                 {settings.partnerMode === 'single_partner'
@@ -646,7 +646,7 @@ export default function AdjustmentsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Default offer
+            Оффер по умолчанию
             <select
               value={settings.offerId}
               onChange={(event) =>
@@ -657,7 +657,7 @@ export default function AdjustmentsPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Из CSV</option>
               {offers.map((offer) => (
@@ -669,7 +669,7 @@ export default function AdjustmentsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Default goal
+            Цель по умолчанию
             <select
               value={settings.goalId}
               onChange={(event) =>
@@ -679,7 +679,7 @@ export default function AdjustmentsPage() {
                 }))
               }
               disabled={!settings.offerId || goalsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Из CSV</option>
               {goals.map((goal) => (
@@ -691,7 +691,7 @@ export default function AdjustmentsPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Default {settings.type === 'conversions' ? 'status' : 'result'}
+            {settings.type === 'conversions' ? 'Статус по умолчанию' : 'Результат по умолчанию'}
             <select
               value={settings.defaultStatus}
               onChange={(event) =>
@@ -700,7 +700,7 @@ export default function AdjustmentsPage() {
                   defaultStatus: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Из CSV</option>
               {statusOptions.map((option) => (
@@ -734,24 +734,24 @@ export default function AdjustmentsPage() {
         ) : null}
       </section>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          CSV help
+          Формат CSV
         </h2>
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-            <p>Поддерживаются UUID и public IDs. Для ручной работы public IDs предпочтительнее.</p>
+            <p>Используйте короткие ID из кабинета или внутренние UUID.</p>
             <p>Партнёр: <span className="font-mono">#P1</span></p>
             <p>Рекламодатель: <span className="font-mono">#A1</span></p>
             <p>Оффер: <span className="font-mono">#O1</span></p>
-            <p>Goal: UUID, public ID если появится позже, либо уникальное имя цели внутри оффера.</p>
-            <p>Revenue, payout и profit не должны быть trusted values в CSV. Платформа считает деньги сама по goal и rate.</p>
-            <p>В single-partner режиме колонка <span className="font-mono">partner_id</span> не нужна. В per-row режиме она обязательна.</p>
+            <p>Цель: UUID или уникальное имя цели внутри оффера.</p>
+            <p>Начисления, выплаты и прибыль рассчитываются по цели и ставке автоматически.</p>
+            <p>При выборе одного партнёра колонка <span className="font-mono">partner_id</span> не нужна. Если партнёр указан в каждой строке, она обязательна.</p>
           </div>
           <div className="grid gap-4">
             <div>
               <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Conversion CSV
+                Пример конверсий
               </p>
               <pre className="overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-xs text-zinc-100">
                 {CONVERSION_CSV_EXAMPLE}
@@ -759,7 +759,7 @@ export default function AdjustmentsPage() {
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Click CSV
+                Пример кликов
               </p>
               <pre className="overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-xs text-zinc-100">
                 {CLICK_CSV_EXAMPLE}
@@ -769,14 +769,14 @@ export default function AdjustmentsPage() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Preview
+              Предпросмотр
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Невалидные строки не блокируют применение валидных.
+              Строки с ошибками будут пропущены при импорте.
             </p>
           </div>
           {preview && preview.batch.validRows > 0 && preview.batch.status === 'previewed' ? (
@@ -784,9 +784,9 @@ export default function AdjustmentsPage() {
               type="button"
               onClick={handleApply}
               disabled={applying}
-              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {applying ? 'Применяем…' : 'Apply'}
+              {applying ? 'Применяем…' : 'Применить'}
             </button>
           ) : null}
         </div>
@@ -799,31 +799,31 @@ export default function AdjustmentsPage() {
 
         {!preview ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Загрузите CSV и нажмите Preview.
+            Загрузите CSV и нажмите «Предпросмотр».
           </p>
         ) : (
           <>
             <div className="mb-4 grid gap-3 md:grid-cols-4">
               <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Rows</div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500">Строки</div>
                 <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   {preview.batch.totalRows}
                 </div>
               </div>
               <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Valid</div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500">Без ошибок</div>
                 <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
                   {preview.batch.validRows}
                 </div>
               </div>
               <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Invalid</div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500">С ошибками</div>
                 <div className="text-lg font-semibold text-rose-700 dark:text-rose-300">
                   {preview.batch.invalidRows}
                 </div>
               </div>
               <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Batch</div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500">Импорт</div>
                 <div className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
                   {preview.batch.id}
                 </div>
@@ -841,7 +841,7 @@ export default function AdjustmentsPage() {
             {preview.hiddenValidRows > 0 ? (
               <div className="mb-4">
                 <InlineAlert variant="info">
-                  Показаны все invalid rows и первые {preview.rows.length - preview.batch.invalidRows} valid rows. Скрыто valid rows: {preview.hiddenValidRows}.
+                  Показаны все строки с ошибками и первые {preview.rows.length - preview.batch.invalidRows} строк без ошибок. Ещё строк без ошибок: {preview.hiddenValidRows}.
                 </InlineAlert>
               </div>
             ) : null}
@@ -849,7 +849,7 @@ export default function AdjustmentsPage() {
             {preview.batch.invalidRows > 0 && preview.batch.validRows > 0 ? (
               <div className="mb-4">
                 <InlineAlert variant="warning">
-                  При apply будут созданы только valid rows. Invalid rows будут пропущены.
+                  Будут импортированы только строки без ошибок. Остальные строки будут пропущены.
                 </InlineAlert>
               </div>
             ) : null}
@@ -858,7 +858,7 @@ export default function AdjustmentsPage() {
               renderPreviewTable(preview.rows, preview.batch.type)
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                В preview нет строк для отображения.
+                В файле нет строк для предпросмотра.
               </p>
             )}
           </>
@@ -866,31 +866,31 @@ export default function AdjustmentsPage() {
       </section>
 
       {applyDetail ? (
-        <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Результат apply
+            Результат импорта
           </h2>
           <div className="mb-4 grid gap-3 md:grid-cols-4">
             <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">Created</div>
+              <div className="text-xs uppercase tracking-wide text-zinc-500">Создано</div>
               <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
                 {applyDetail.result?.created ?? 0}
               </div>
             </div>
             <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">Skipped</div>
+              <div className="text-xs uppercase tracking-wide text-zinc-500">Пропущено</div>
               <div className="text-lg font-semibold text-amber-700 dark:text-amber-300">
                 {applyDetail.result?.skipped ?? 0}
               </div>
             </div>
             <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">Status</div>
+              <div className="text-xs uppercase tracking-wide text-zinc-500">Статус</div>
               <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                 {formatBatchStatus(applyDetail.batch.status)}
               </div>
             </div>
             <div className="rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/60">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">Applied at</div>
+              <div className="text-xs uppercase tracking-wide text-zinc-500">Дата применения</div>
               <div className="text-sm text-zinc-700 dark:text-zinc-200">
                 {applyDetail.batch.appliedAt
                   ? dateFormatter.format(new Date(applyDetail.batch.appliedAt))
@@ -900,36 +900,36 @@ export default function AdjustmentsPage() {
           </div>
 
           {applyDetail.result && applyDetail.result.errors.length > 0 ? (
-            <InlineAlert variant="warning" title="Ошибки apply">
+            <InlineAlert variant="warning" title="Ошибки импорта">
               {applyDetail.result.errors.map((error) => (
                 <div key={`${error.rowNumber}-${error.code}`}>
-                  Row {error.rowNumber}: {error.message}
+                  Строка {error.rowNumber}: {error.message}
                 </div>
               ))}
             </InlineAlert>
           ) : (
             <InlineAlert variant="success">
-              Batch успешно применён.
+              Импорт завершён.
             </InlineAlert>
           )}
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              История batch
+              История импортов
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Последние preview и apply.
+              Загруженные файлы и результаты обработки.
             </p>
           </div>
           <button
             type="button"
             onClick={() => void loadHistory()}
             disabled={historyLoading}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             {historyLoading ? 'Обновляем…' : 'Обновить'}
           </button>
@@ -946,7 +946,7 @@ export default function AdjustmentsPage() {
             История пока пустая.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="ui-table-wrap overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
@@ -954,10 +954,10 @@ export default function AdjustmentsPage() {
                   <th className="px-4 py-3 font-medium">Тип</th>
                   <th className="px-4 py-3 font-medium">Файл</th>
                   <th className="px-4 py-3 font-medium">Статус</th>
-                  <th className="px-4 py-3 font-medium">Counts</th>
+                  <th className="px-4 py-3 font-medium">Строки</th>
                   <th className="px-4 py-3 font-medium">Создал</th>
-                  <th className="px-4 py-3 font-medium">Applied</th>
-                  <th className="px-4 py-3 font-medium">Detail</th>
+                  <th className="px-4 py-3 font-medium">Применено</th>
+                  <th className="px-4 py-3 font-medium">Подробности</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -972,11 +972,11 @@ export default function AdjustmentsPage() {
                     <td className="px-4 py-3">{batch.originalFilename ?? '—'}</td>
                     <td className="px-4 py-3">{formatBatchStatus(batch.status)}</td>
                     <td className="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-300">
-                      <div>Total: {batch.totalRows}</div>
-                      <div>Valid: {batch.validRows}</div>
-                      <div>Invalid: {batch.invalidRows}</div>
-                      <div>Created: {batch.createdRows}</div>
-                      <div>Skipped: {batch.skippedRows}</div>
+                      <div>Всего: {batch.totalRows}</div>
+                      <div>Без ошибок: {batch.validRows}</div>
+                      <div>С ошибками: {batch.invalidRows}</div>
+                      <div>Создано: {batch.createdRows}</div>
+                      <div>Пропущено: {batch.skippedRows}</div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">
                       {batch.createdBy?.name ?? batch.createdBy?.email ?? '—'}
@@ -990,7 +990,7 @@ export default function AdjustmentsPage() {
                       <button
                         type="button"
                         onClick={() => void openBatchDetail(batch.id)}
-                        className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ui-button rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Подробнее
                       </button>
@@ -1010,18 +1010,18 @@ export default function AdjustmentsPage() {
 
         {detailLoading ? (
           <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Загружаем batch detail…
+            Загружаем подробности импорта…
           </p>
         ) : null}
 
         {selectedHistoryDetail ? (
           <div className="mt-6 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
             <h3 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Batch detail
+              Подробности импорта
             </h3>
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <div>
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Batch ID</div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500">ID импорта</div>
                 <div className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
                   {selectedHistoryDetail.batch.id}
                 </div>
@@ -1052,7 +1052,7 @@ export default function AdjustmentsPage() {
                 {selectedHistoryDetail.preview.hiddenValidRows > 0 ? (
                   <div className="mb-4">
                     <InlineAlert variant="info">
-                      Скрыто valid rows: {selectedHistoryDetail.preview.hiddenValidRows}.
+                      Ещё строк без ошибок: {selectedHistoryDetail.preview.hiddenValidRows}.
                     </InlineAlert>
                   </div>
                 ) : null}
@@ -1066,13 +1066,13 @@ export default function AdjustmentsPage() {
             {selectedHistoryDetail.result ? (
               <div className="mt-5">
                 <div className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                  Result: created {selectedHistoryDetail.result.created}, skipped {selectedHistoryDetail.result.skipped}
+                  Создано: {selectedHistoryDetail.result.created}, пропущено: {selectedHistoryDetail.result.skipped}
                 </div>
                 {selectedHistoryDetail.result.errors.length > 0 ? (
-                  <InlineAlert variant="warning" title="Ошибки batch">
+                  <InlineAlert variant="warning" title="Ошибки импорта">
                     {selectedHistoryDetail.result.errors.map((error) => (
                       <div key={`${error.rowNumber}-${error.code}`}>
-                        Row {error.rowNumber}: {error.message}
+                        Строка {error.rowNumber}: {error.message}
                       </div>
                     ))}
                   </InlineAlert>

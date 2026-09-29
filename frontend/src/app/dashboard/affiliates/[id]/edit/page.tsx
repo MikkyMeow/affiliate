@@ -268,7 +268,7 @@ export default function EditAffiliatePage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -276,23 +276,23 @@ export default function EditAffiliatePage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы редактировать партнёра.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -303,7 +303,7 @@ export default function EditAffiliatePage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -312,7 +312,7 @@ export default function EditAffiliatePage() {
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>
@@ -322,7 +322,7 @@ export default function EditAffiliatePage() {
 
   if (initialLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Загружаем данные партнёра...</p>
       </section>
     );
@@ -330,12 +330,12 @@ export default function EditAffiliatePage() {
 
   if (loadError) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Ошибка</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{loadError}</p>
         <Link
           href="/dashboard/affiliates"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           К списку
         </Link>
@@ -344,10 +344,10 @@ export default function EditAffiliatePage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-3xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
+        <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
           Редактировать партнёра
         </h1>
         {affiliatePublicId && (
@@ -364,7 +364,7 @@ export default function EditAffiliatePage() {
         </Link>
       </div>
 
-      <div className="mb-6 grid gap-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:grid-cols-2">
+      <div className="mb-6 grid gap-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 lg:grid-cols-2">
         <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
           <p className="text-sm uppercase tracking-wide text-zinc-500">Информация о партнёре</p>
           <p>
@@ -413,7 +413,7 @@ export default function EditAffiliatePage() {
           {fallbackQuestionnaireAnswers.length > 0 ? (
             <div className="space-y-3">
               <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Saved answers
+                Сохранённые ответы
               </p>
               {fallbackQuestionnaireAnswers.map((item, index) => (
                 <div
@@ -431,7 +431,7 @@ export default function EditAffiliatePage() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
       >
         <div className="space-y-2">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="name">
@@ -445,14 +445,14 @@ export default function EditAffiliatePage() {
               setForm((prev) => ({ ...prev, name: event.target.value.slice(0, 200) }))
             }
             placeholder="Например, Partner Team #1"
-            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
         </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="email">
-            Email
+            Эл. почта
           </label>
           <input
             id="email"
@@ -462,7 +462,7 @@ export default function EditAffiliatePage() {
               setForm((prev) => ({ ...prev, email: event.target.value.slice(0, 200) }))
             }
             placeholder="contact@example.com"
-            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-transparent dark:text-zinc-100 dark:focus:border-white"
           />
           {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
         </div>
@@ -480,7 +480,7 @@ export default function EditAffiliatePage() {
                 status: event.target.value === 'inactive' ? 'inactive' : 'active',
               }))
             }
-            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
           >
             <option value="active">Активен</option>
             <option value="inactive">Неактивен</option>
@@ -496,7 +496,7 @@ export default function EditAffiliatePage() {
         <button
           type="submit"
           disabled={submitting || !isFormValid}
-          className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+          className="ui-button w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
         >
           {submitting ? 'Сохраняем…' : 'Сохранить изменения'}
         </button>
@@ -504,11 +504,11 @@ export default function EditAffiliatePage() {
 
       <form
         onSubmit={handleManagerSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
       >
         <div>
           <p className="text-sm uppercase tracking-wide text-zinc-500">
-            Responsible manager
+            Ответственный менеджер
           </p>
           <h2 className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
             Ответственный менеджер
@@ -526,9 +526,9 @@ export default function EditAffiliatePage() {
             id="affiliate-manager"
             value={selectedManagerId}
             onChange={(event) => setSelectedManagerId(event.target.value)}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+            className="ui-input min-w-0 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
           >
-            <option value="">Not assigned</option>
+            <option value="">Не назначен</option>
             {managerOptions.map((manager) => (
               <option key={manager.id} value={manager.id}>
                 {manager.displayName ?? manager.email ?? manager.id}
@@ -552,7 +552,7 @@ export default function EditAffiliatePage() {
         <button
           type="submit"
           disabled={managerSubmitting}
-          className="w-full rounded-full border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="ui-button w-full rounded-full border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           {managerSubmitting ? 'Сохраняем…' : 'Сохранить менеджера'}
         </button>
@@ -560,12 +560,12 @@ export default function EditAffiliatePage() {
 
       <form
         onSubmit={handleInternalNoteSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
       >
         <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Private information</p>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Внутренняя заметка</p>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Visible only to admin and managers
+            Видна только администраторам и менеджерам
           </p>
         </div>
         <textarea
@@ -573,7 +573,7 @@ export default function EditAffiliatePage() {
           onChange={(event) => setInternalNote(event.target.value)}
           rows={6}
           placeholder="Внутренняя заметка для команды сети"
-          className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
+          className="ui-input min-w-0 w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-white"
         />
         {internalNoteMessage ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{internalNoteMessage}</p>
@@ -581,7 +581,7 @@ export default function EditAffiliatePage() {
         <button
           type="submit"
           disabled={internalNoteSubmitting}
-          className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+          className="ui-button rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
         >
           {internalNoteSubmitting ? 'Сохраняем…' : 'Сохранить приватную информацию'}
         </button>

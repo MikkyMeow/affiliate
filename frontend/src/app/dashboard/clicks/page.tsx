@@ -25,12 +25,12 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const SORT_OPTIONS = [
-  { value: 'createdAt:desc', label: 'Newest first' },
-  { value: 'createdAt:asc', label: 'Oldest first' },
-  { value: 'clickId:asc', label: 'Click ID A-Z' },
-  { value: 'clickId:desc', label: 'Click ID Z-A' },
-  { value: 'offerTitle:asc', label: 'Offer A-Z' },
-  { value: 'affiliateName:asc', label: 'Partner A-Z' },
+  { value: 'createdAt:desc', label: 'Сначала новые' },
+  { value: 'createdAt:asc', label: 'Сначала старые' },
+  { value: 'clickId:asc', label: 'ID клика: по возрастанию' },
+  { value: 'clickId:desc', label: 'ID клика: по убыванию' },
+  { value: 'offerTitle:asc', label: 'Оффер: А–Я' },
+  { value: 'affiliateName:asc', label: 'Партнёр: А–Я' },
 ];
 
 type OfferLookupResponse = {
@@ -173,7 +173,7 @@ function renderSourceBadge(source: string) {
 
   return (
     <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-      Manual
+      Вручную
     </span>
   );
 }
@@ -422,7 +422,7 @@ export default function ClicksPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -430,23 +430,23 @@ export default function ClicksPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Войдите, чтобы увидеть список транзакций.
+          Войдите, чтобы увидеть список кликов.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -457,16 +457,16 @@ export default function ClicksPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Просматривать транзакции могут только администраторы и менеджеры.
+          Просматривать клики могут только администраторы и менеджеры.
         </p>
         <Link
           href="/"
-          className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+          className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
         >
           На главную
         </Link>
@@ -475,42 +475,42 @@ export default function ClicksPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Транзакции
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
+            Клики
           </h1>
           <HelpLink href={docsHelpLinks.adminClicks} />
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Фильтры и пагинация выполняются на бэкенде. URL сохраняет текущее состояние списка.
+          Все переходы по офферам. Используйте фильтры, чтобы найти нужные клики.
         </p>
       </div>
 
-      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-8 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Фильтры
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              При смене фильтров список начинается с первой страницы.
+              Выберите параметры и нажмите «Применить».
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleApplyFilters}
-              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+              className="ui-button rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
             >
               Применить
             </button>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Сбросить
             </button>
@@ -525,7 +525,7 @@ export default function ClicksPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 md:col-span-2">
-            Search
+            Поиск
             <input
               type="text"
               value={filters.search}
@@ -536,12 +536,12 @@ export default function ClicksPage() {
                 }))
               }
               placeholder="Click ID, offer, partner, advertiser, sub1-sub5, IP"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Sorting
+            Сортировка
             <select
               value={`${filters.sort}:${filters.order}`}
               onChange={(event) => {
@@ -552,7 +552,7 @@ export default function ClicksPage() {
                   order,
                 }));
               }}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -572,7 +572,7 @@ export default function ClicksPage() {
                   dateFrom: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
@@ -586,7 +586,7 @@ export default function ClicksPage() {
                   dateTo: value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
@@ -601,7 +601,7 @@ export default function ClicksPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {offers.map((offer) => (
@@ -623,7 +623,7 @@ export default function ClicksPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {affiliates.map((affiliate) => (
@@ -645,7 +645,7 @@ export default function ClicksPage() {
                 }))
               }
               disabled={lookupsLoading}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {advertisers.map((advertiser) => (
@@ -657,7 +657,7 @@ export default function ClicksPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Country
+            Страна
             <select
               value={filters.countryCode}
               onChange={(event) =>
@@ -666,7 +666,7 @@ export default function ClicksPage() {
                   countryCode: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {COUNTRY_OPTIONS.map((country) => (
@@ -678,7 +678,7 @@ export default function ClicksPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Result
+            Результат
             <select
               value={filters.redirectOutcome}
               onChange={(event) =>
@@ -687,7 +687,7 @@ export default function ClicksPage() {
                   redirectOutcome: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             >
               <option value="">Все</option>
               {CLICK_RESULT_OPTIONS.map((option) => (
@@ -699,7 +699,7 @@ export default function ClicksPage() {
           </label>
 
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-            Click ID
+            ID клика
             <input
               type="text"
               value={filters.clickId}
@@ -709,7 +709,7 @@ export default function ClicksPage() {
                   clickId: event.target.value,
                 }))
               }
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+              className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
             />
           </label>
 
@@ -728,7 +728,7 @@ export default function ClicksPage() {
                     [field]: event.target.value,
                   }))
                 }
-                className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               />
             </label>
           ))}
@@ -747,7 +747,7 @@ export default function ClicksPage() {
               <select
                 value={filters.limit}
                 onChange={(event) => handleLimitChange(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
+                className="ui-input min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none transition focus:border-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-white"
               >
                 {PAGE_SIZE_OPTIONS.map((option) => (
                   <option key={option} value={String(option)}>
@@ -766,26 +766,26 @@ export default function ClicksPage() {
             </InlineAlert>
           </div>
         ) : loading && transactions.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             Загружаем транзакции…
           </div>
         ) : transactions.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
             По текущим фильтрам транзакции не найдены.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="ui-table-wrap overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                 <tr>
                   <th className="px-6 py-3 font-medium">Дата</th>
-                  <th className="px-6 py-3 font-medium">Click ID</th>
+                  <th className="px-6 py-3 font-medium">ID клика</th>
                   <th className="px-6 py-3 font-medium">Оффер</th>
                   <th className="px-6 py-3 font-medium">Партнёр</th>
                   <th className="px-6 py-3 font-medium">Рекламодатель</th>
-                  <th className="px-6 py-3 font-medium">Country</th>
-                  <th className="px-6 py-3 font-medium">Result</th>
-                  <th className="px-6 py-3 font-medium">Sub IDs</th>
+                  <th className="px-6 py-3 font-medium">Страна</th>
+                  <th className="px-6 py-3 font-medium">Результат</th>
+                  <th className="px-6 py-3 font-medium">Метки перехода</th>
                   <th className="px-6 py-3 font-medium">IP</th>
                 </tr>
               </thead>
@@ -869,12 +869,12 @@ export default function ClicksPage() {
         <span>
           Страница {meta.page} из {Math.max(meta.totalPages, 1)}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => handlePageChange(meta.page - 1)}
             disabled={!canGoPrev || loading}
-            className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Назад
           </button>
@@ -882,7 +882,7 @@ export default function ClicksPage() {
             type="button"
             onClick={() => handlePageChange(meta.page + 1)}
             disabled={!canGoNext || loading}
-            className="rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-4 py-2 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Вперёд
           </button>

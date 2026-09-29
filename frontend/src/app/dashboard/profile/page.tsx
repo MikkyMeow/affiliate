@@ -110,7 +110,7 @@ export default function DashboardProfilePage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -118,23 +118,23 @@ export default function DashboardProfilePage() {
 
   if (!user || !accessToken || !canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Профиль в разделе dashboard доступен только администраторам и менеджерам.
+          Профиль в разделе управления доступен только администраторам и менеджерам.
         </p>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-4xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8 space-y-2">
-        <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+        <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
             Мой профиль
           </h1>
           <HelpLink href={docsHelpLinks.adminProfile} />
@@ -146,7 +146,7 @@ export default function DashboardProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Данные пользователя
             </h2>
@@ -158,7 +158,7 @@ export default function DashboardProfilePage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-zinc-500 dark:text-zinc-400">Email</dt>
+                <dt className="text-zinc-500 dark:text-zinc-400">Эл. почта</dt>
                 <dd className="mt-1 font-medium text-zinc-900 dark:text-zinc-50">
                   {user.email}
                 </dd>
@@ -175,7 +175,7 @@ export default function DashboardProfilePage() {
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Часовой пояс
           </h2>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <form onSubmit={handleTimezoneSubmit} className="space-y-4">
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 По умолчанию используется часовой пояс системы. При необходимости его можно переопределить вручную.
@@ -185,7 +185,7 @@ export default function DashboardProfilePage() {
                 <select
                   value={timezone}
                   onChange={(event) => setTimezone(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   <option value="">
                     Системный ({systemTimeZone})
@@ -200,7 +200,7 @@ export default function DashboardProfilePage() {
               <button
                 type="submit"
                 disabled={savingTimezone}
-                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
+                className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
               >
                 {savingTimezone ? 'Сохраняем…' : 'Сохранить часовой пояс'}
               </button>
@@ -208,7 +208,7 @@ export default function DashboardProfilePage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Смена пароля
           </h2>
@@ -225,7 +225,7 @@ export default function DashboardProfilePage() {
                     currentPassword: event.target.value,
                   }))
                 }
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               />
             </label>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -240,7 +240,7 @@ export default function DashboardProfilePage() {
                     newPassword: event.target.value,
                   }))
                 }
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               />
             </label>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -255,13 +255,13 @@ export default function DashboardProfilePage() {
                     confirmPassword: event.target.value,
                   }))
                 }
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               />
             </label>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
+              className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
             >
               {submitting ? 'Обновляем…' : 'Изменить пароль'}
             </button>

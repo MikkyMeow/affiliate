@@ -357,7 +357,7 @@ export default function ManagersPage() {
 
   if (authLoading) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10">
+      <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <p className="text-sm text-zinc-500">Проверяем авторизацию...</p>
       </section>
     );
@@ -365,23 +365,23 @@ export default function ManagersPage() {
 
   if (!user || !accessToken) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нужна авторизация
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Войдите, чтобы управлять менеджерами.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={authLinks.login}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
+            className="ui-button rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-black"
           >
             Войти
           </Link>
           <Link
             href={authLinks.register}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Зарегистрироваться
           </Link>
@@ -392,7 +392,7 @@ export default function ManagersPage() {
 
   if (!canAccessAdminArea(user)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -405,7 +405,7 @@ export default function ManagersPage() {
 
   if (!isAdminRole(user.role)) {
     return (
-      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <section className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center sm:px-6">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Нет доступа
         </h1>
@@ -417,18 +417,18 @@ export default function ManagersPage() {
   }
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-6 py-10">
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-zinc-500">Dashboard</p>
+          <p className="text-sm uppercase tracking-wide text-zinc-500">Управление</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold sm:text-3xl text-zinc-900 dark:text-zinc-50">
               Менеджеры
             </h1>
             <HelpLink href={docsHelpLinks.adminManagers} />
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Создавайте внутренних пользователей с ролью manager и передавайте пароль
+            Добавляйте менеджеров и передавайте пароль
             только один раз.
           </p>
         </div>
@@ -444,11 +444,11 @@ export default function ManagersPage() {
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder="Поиск по имени или email"
-            className="w-72 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="ui-input min-w-0 w-72 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />
           <button
             type="submit"
-            className="rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="ui-button rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             Найти
           </button>
@@ -477,7 +477,7 @@ export default function ManagersPage() {
                 <button
                   type="button"
                   onClick={() => void handleCopyPassword()}
-                  className="rounded-full border border-amber-300 px-4 py-2 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-500/10"
+                  className="ui-button rounded-full border border-amber-300 px-4 py-2 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-500/10"
                 >
                   {copyState === 'copied'
                     ? 'Скопировано'
@@ -517,16 +517,16 @@ export default function ManagersPage() {
           </div>
 
           {managers.length === 0 && !loading ? (
-            <div className="px-6 py-10 text-center text-sm text-zinc-500">
+            <div className="px-4 py-8 sm:px-6 sm:py-10 text-center text-sm text-zinc-500">
               Менеджеры пока не созданы.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="ui-table-wrap overflow-x-auto">
               <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
                 <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/40">
                   <tr>
                     <th className="px-6 py-3 font-medium">Имя</th>
-                    <th className="px-6 py-3 font-medium">Email</th>
+                    <th className="px-6 py-3 font-medium">Эл. почта</th>
                     <th className="px-6 py-3 font-medium">Создан</th>
                     <th className="px-6 py-3 text-right font-medium">Действия</th>
                   </tr>
@@ -557,7 +557,7 @@ export default function ManagersPage() {
                             <button
                               type="button"
                               onClick={() => setSelectedManagerId(manager.id)}
-                              className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                              className="ui-button rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
                             >
                               Редактировать
                             </button>
@@ -565,7 +565,7 @@ export default function ManagersPage() {
                               type="button"
                               onClick={() => void handleResetPassword(manager)}
                               disabled={resettingManagerId === manager.id}
-                              className="rounded-full border border-amber-300 px-4 py-2 text-xs font-medium text-amber-900 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-500/10"
+                              className="ui-button rounded-full border border-amber-300 px-4 py-2 text-xs font-medium text-amber-900 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-500/10"
                             >
                               {resettingManagerId === manager.id
                                 ? 'Сбрасываем…'
@@ -583,7 +583,7 @@ export default function ManagersPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Создать менеджера
             </h2>
@@ -600,11 +600,11 @@ export default function ManagersPage() {
                       displayName: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Email
+                Эл. почта
                 <input
                   type="email"
                   required
@@ -615,7 +615,7 @@ export default function ManagersPage() {
                       email: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
               {createError ? (
@@ -624,14 +624,14 @@ export default function ManagersPage() {
               <button
                 type="submit"
                 disabled={createSubmitting}
-                className="rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
+                className="ui-button rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
               >
                 {createSubmitting ? 'Создаём…' : 'Создать менеджера'}
               </button>
             </form>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Редактирование
             </h2>
@@ -653,11 +653,11 @@ export default function ManagersPage() {
                         displayName: event.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                   />
                 </label>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Email
+                  Эл. почта
                   <input
                     type="email"
                     required
@@ -668,7 +668,7 @@ export default function ManagersPage() {
                         email: event.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    className="ui-input min-w-0 mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                   />
                 </label>
                 {editError ? <InlineAlert variant="error">{editError}</InlineAlert> : null}
@@ -677,7 +677,7 @@ export default function ManagersPage() {
                   <button
                     type="submit"
                     disabled={editSubmitting}
-                    className="rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                    className="ui-button rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
                   >
                     {editSubmitting ? 'Сохраняем…' : 'Сохранить'}
                   </button>
@@ -687,7 +687,7 @@ export default function ManagersPage() {
                       setDeleteError(null);
                       setDeleteModalOpen(true);
                     }}
-                    className="rounded-full border border-red-300 px-5 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/10"
+                    className="ui-button rounded-full border border-red-300 px-5 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/10"
                   >
                     Удалить менеджера
                   </button>
@@ -700,7 +700,7 @@ export default function ManagersPage() {
 
       {deleteModalOpen && selectedManager ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-6">
-          <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <p className="text-sm uppercase tracking-wide text-zinc-500">
               Подтверждение
             </p>
@@ -733,7 +733,7 @@ export default function ManagersPage() {
                   setDeleteModalOpen(false);
                   setDeleteError(null);
                 }}
-                className="rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="ui-button rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
                 Отмена
               </button>
@@ -741,7 +741,7 @@ export default function ManagersPage() {
                 type="button"
                 onClick={() => void handleDeleteManager()}
                 disabled={deleteSubmitting}
-                className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="ui-button rounded-full bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {deleteSubmitting ? 'Удаляем…' : 'Удалить'}
               </button>
