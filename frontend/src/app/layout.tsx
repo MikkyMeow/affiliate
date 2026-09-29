@@ -6,9 +6,9 @@ import { AppShell } from "@/components/AppShell";
 import { AppNavbar } from "@/components/AppNavbar";
 
 export const metadata: Metadata = {
-  title: "MikiLead — CPA сеть для арбитража трафика",
+  title: "MikiLead — CPA-платформа",
   description:
-    "MikiLead — CPA сеть для вебмастеров и арбитражников. Высокие выплаты, проверенные офферы, удобная платформа для заработка на трафике.",
+    "CPA-платформа для партнёров, рекламодателей и команды сети. Офферы, учёт кликов и конверсий, статистика в одном кабинете.",
 };
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru" suppressHydrationWarning>
       <body className="antialiased">
         <Providers>
           <div className="min-h-screen bg-white dark:bg-black">

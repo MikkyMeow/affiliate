@@ -6,25 +6,27 @@ import type { PublicDocHeading } from "@/features/docs/public-docs-utils";
 
 interface PublicMarkdownContentProps {
   markdown: string;
+  title?: string;
   sourcePath: string;
   headings?: PublicDocHeading[];
 }
 
 export function PublicMarkdownContent({
   markdown,
+  title,
   sourcePath,
   headings = [],
 }: PublicMarkdownContentProps) {
   let headingIndex = 0;
 
   return (
-    <div className="max-w-none text-[15px] leading-7 text-zinc-700 dark:text-zinc-300">
+    <div className="min-w-0 max-w-none break-words text-[15px] leading-7 text-zinc-700 dark:text-zinc-300">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="mb-6 text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-              {children}
+            <h1 className="mb-6 text-2xl font-semibold sm:text-3xl tracking-tight text-zinc-950 dark:text-zinc-50">
+              {title ?? children}
             </h1>
           ),
           h2: ({ children }) => (
@@ -48,7 +50,11 @@ export function PublicMarkdownContent({
               {children}
             </h4>
           ),
-          p: ({ children }) => <p className="my-4">{children}</p>,
+          p: ({ children }) => children === "Статус: draft" ? (
+            <p className="my-4 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+              Черновик
+            </p>
+          ) : <p className="my-4">{children}</p>,
           ul: ({ children }) => (
             <ul className="my-4 list-disc space-y-2 pl-6 marker:text-zinc-500 dark:marker:text-zinc-400">
               {children}
@@ -89,7 +95,7 @@ export function PublicMarkdownContent({
             </td>
           ),
           pre: ({ children }) => (
-            <pre className="my-6 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-sm leading-6 text-zinc-100">
+            <pre className="my-6 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-sm leading-6 text-zinc-100 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
               {children}
             </pre>
           ),

@@ -10,13 +10,13 @@ type RoleQuickStartCardProps = {
 
 export function RoleQuickStartCard({
   href,
-  title = "Новичок в платформе?",
+  title = "Впервые на платформе?",
   description,
 }: RoleQuickStartCardProps) {
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
       <p className="font-semibold">{title}</p>
-      <p className="mt-2 text-emerald-900/80 dark:text-emerald-100/80">
+      <p className="mt-2 leading-6 text-emerald-900/80 dark:text-emerald-100/80">
         {description}
       </p>
       <Link

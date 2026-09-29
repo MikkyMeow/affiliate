@@ -80,12 +80,15 @@ export function PublicDocsSearch({ index }: PublicDocsSearchProps) {
   }, [query]);
 
   const results = useMemo(() => searchPublicDocs(index, debouncedQuery), [debouncedQuery, index]);
-  const hasQuery = debouncedQuery.trim().length > 0 || query.trim().length > 0;
+  const hasQuery = query.trim().length > 0;
+  const isSearching = query !== debouncedQuery;
 
   return (
     <div className="relative">
       <input
         type="search"
+        aria-label="Поиск по документации"
+        autoComplete="off"
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -97,30 +100,33 @@ export function PublicDocsSearch({ index }: PublicDocsSearchProps) {
           }
         }}
         placeholder="Поиск по документации"
-        className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-sky-500 dark:focus:ring-sky-950"
+        className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-800"
       />
 
       {hasQuery ? (
         <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
-          {results.length > 0 ? (
+          {isSearching ? (
+            <p role="status" className="px-3 py-4 text-sm text-zinc-500 dark:text-zinc-400">Ищем документы…</p>
+          ) : results.length > 0 ? (
             <div className="space-y-1">
               {results.map((result) => (
                 <Link
                   key={result.href}
                   href={result.href}
+                  onClick={() => {
+                    setQuery("");
+                    setDebouncedQuery("");
+                  }}
                   className="block rounded-xl px-3 py-3 transition hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                      <div className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
                         {result.title}
                       </div>
-                      <div className="mt-1 text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+                      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                         {result.section}
                       </div>
-                    </div>
-                    <div className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">
-                      {result.href}
                     </div>
                   </div>
                   {result.snippet ? (
@@ -132,8 +138,8 @@ export function PublicDocsSearch({ index }: PublicDocsSearchProps) {
               ))}
             </div>
           ) : (
-            <div className="px-3 py-4 text-sm text-zinc-500 dark:text-zinc-400">
-              Ничего не найдено
+            <div role="status" className="px-3 py-4 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+              Ничего не найдено. Попробуйте другое название или более короткий запрос.
             </div>
           )}
         </div>

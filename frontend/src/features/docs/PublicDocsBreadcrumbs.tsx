@@ -6,7 +6,7 @@ interface PublicDocsBreadcrumbsProps {
 
 export function PublicDocsBreadcrumbs({ items }: PublicDocsBreadcrumbsProps) {
   return (
-    <nav aria-label="Breadcrumbs" className="mb-6">
+    <nav aria-label="Навигационная цепочка" className="mb-6">
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
@@ -21,7 +21,7 @@ export function PublicDocsBreadcrumbs({ items }: PublicDocsBreadcrumbsProps) {
                   {item.label}
                 </Link>
               ) : (
-                <span className={isLast ? "font-medium text-zinc-950 dark:text-zinc-50" : ""}>
+                <span aria-current={isLast ? "page" : undefined} className={isLast ? "font-medium text-zinc-950 dark:text-zinc-50" : ""}>
                   {item.label}
                 </span>
               )}

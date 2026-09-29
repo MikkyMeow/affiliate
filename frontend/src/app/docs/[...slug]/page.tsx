@@ -40,13 +40,13 @@ export async function generateMetadata({
 
   if (!doc) {
     return {
-      title: "Документация | CPA Platform",
+      title: "Документация | MikiLead",
       description: "Справочник по работе с CPA-платформой",
     };
   }
 
   return {
-    title: `${doc.title} | Документация | CPA Platform`,
+    title: `${doc.title} | Документация | MikiLead`,
     description: "Справочник по работе с CPA-платформой",
   };
 }
@@ -79,39 +79,37 @@ export default async function DocPage({ params }: DocPageProps) {
       activeHref={href}
       title={doc.title}
       searchIndex={searchIndex}
-      toc={<PublicDocsToc headings={headings} />}
+      toc={headings.length ? <PublicDocsToc headings={headings} /> : undefined}
     >
       <PublicDocsBreadcrumbs items={breadcrumbs} />
       {doc.missing ? (
-        <div className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
-          <h2 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
+          <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
             Документ пока недоступен
-          </h2>
+          </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Файл для маршрута <span className="font-medium">{href}</span> не
-            найден в <span className="font-medium">{doc.sourcePath}</span>.
-            Навигация продолжает работать, а страница не падает.
+            Не удалось открыть этот раздел. Выберите другую тему в меню или
+            вернитесь к началу документации.
           </p>
           <Link
             href="/docs"
-            className="mt-5 inline-flex rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
+            className="mt-5 inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
           >
             Вернуться к документации
           </Link>
         </div>
       ) : isEmpty ? (
-        <div className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
-          <h2 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
-            Документ пока пуст
-          </h2>
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
+          <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+            Раздел готовится
+          </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Файл для маршрута <span className="font-medium">{href}</span> найден,
-            но не содержит markdown-контента. Страница остаётся доступной, а
-            навигация не ломается.
+            Инструкция появится здесь позже. Пока можно открыть другие разделы
+            документации.
           </p>
           <Link
             href="/docs"
-            className="mt-5 inline-flex rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
+            className="mt-5 inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
           >
             Вернуться к документации
           </Link>
@@ -122,6 +120,7 @@ export default async function DocPage({ params }: DocPageProps) {
             <PublicDocsToc headings={headings} />
           </div>
           <PublicMarkdownContent
+            title={doc.title}
             markdown={doc.markdown ?? ""}
             sourcePath={doc.sourcePath}
             headings={headings}

@@ -22,11 +22,11 @@ function NavCard({
   return (
     <Link
       href={href}
-      className={`rounded-3xl border border-zinc-200 bg-zinc-50 px-5 py-4 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-950 ${
+      className={`min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-4 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-950 ${
         align === "right" ? "text-right" : ""
       }`}
     >
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+      <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
         {direction === "previous" ? "← Предыдущий раздел" : "Следующий раздел →"}
       </div>
       <div className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{eyebrow}</div>
@@ -42,7 +42,7 @@ export function PublicDocsPrevNext({ previous, next }: PublicDocsPrevNextProps) 
 
   return (
     <nav
-      aria-label="Next and previous sections"
+      aria-label="Соседние разделы"
       className="mt-10 grid gap-4 border-t border-zinc-200 pt-8 dark:border-zinc-800 md:grid-cols-2"
     >
       {previous ? (
@@ -53,7 +53,7 @@ export function PublicDocsPrevNext({ previous, next }: PublicDocsPrevNextProps) 
           direction="previous"
         />
       ) : (
-        <div />
+        <div className="hidden md:block" />
       )}
       {next ? (
         <NavCard

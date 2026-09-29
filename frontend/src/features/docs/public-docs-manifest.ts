@@ -49,7 +49,7 @@ const manifestItems: PublicDocItem[] = [
     section: "general",
   },
   {
-    title: "Dashboard",
+    title: "Обзор",
     href: "/docs/admin/dashboard",
     filePath: "docs/user/admin/01-dashboard.md",
     sourcePath: "admin/01-dashboard.md",
@@ -84,14 +84,14 @@ const manifestItems: PublicDocItem[] = [
     section: "admin",
   },
   {
-    title: "Доступы",
+    title: "Доступ к офферам",
     href: "/docs/admin/offer-access",
     filePath: "docs/user/admin/06-offer-access.md",
     sourcePath: "admin/06-offer-access.md",
     section: "admin",
   },
   {
-    title: "GEO",
+    title: "География",
     href: "/docs/admin/geo-targeting",
     filePath: "docs/user/admin/07-geo-targeting.md",
     sourcePath: "admin/07-geo-targeting.md",
@@ -133,7 +133,7 @@ const manifestItems: PublicDocItem[] = [
     section: "admin",
   },
   {
-    title: "Аудит",
+    title: "Журнал действий",
     href: "/docs/admin/audit-logs",
     filePath: "docs/user/admin/13-audit-logs.md",
     sourcePath: "admin/13-audit-logs.md",
@@ -147,7 +147,7 @@ const manifestItems: PublicDocItem[] = [
     section: "admin",
   },
   {
-    title: "Dashboard",
+    title: "Обзор",
     href: "/docs/partner/dashboard",
     filePath: "docs/user/partner/01-dashboard.md",
     sourcePath: "partner/01-dashboard.md",
@@ -168,7 +168,7 @@ const manifestItems: PublicDocItem[] = [
     section: "partner",
   },
   {
-    title: "Tracking-ссылки",
+    title: "Трекинговые ссылки",
     href: "/docs/partner/tracking-links",
     filePath: "docs/user/partner/04-tracking-links.md",
     sourcePath: "partner/04-tracking-links.md",
@@ -210,7 +210,7 @@ const manifestItems: PublicDocItem[] = [
     section: "partner",
   },
   {
-    title: "Dashboard",
+    title: "Обзор",
     href: "/docs/advertiser/dashboard",
     filePath: "docs/user/advertiser/01-dashboard.md",
     sourcePath: "advertiser/01-dashboard.md",
@@ -231,7 +231,7 @@ const manifestItems: PublicDocItem[] = [
     section: "advertiser",
   },
   {
-    title: "Postback",
+    title: "Постбеки",
     href: "/docs/advertiser/postbacks",
     filePath: "docs/user/advertiser/04-postbacks.md",
     sourcePath: "advertiser/04-postbacks.md",
@@ -305,7 +305,7 @@ export const publicDocsSections: PublicDocSectionGroup[] = [
   },
   {
     id: "admin",
-    title: "Администратор",
+    title: "Команда сети",
     items: manifestItems.filter((item) => item.section === "admin"),
   },
   {

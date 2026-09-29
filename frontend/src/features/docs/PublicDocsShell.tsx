@@ -31,11 +31,12 @@ function SidebarNav({
   onNavigate?: () => void;
 }) {
   return (
-    <nav>
+    <nav aria-label="Разделы документации">
       <Link
         href={publicDocsHome.href}
         onClick={onNavigate}
-        className={`mb-5 block rounded-2xl px-4 py-3 text-sm font-medium transition ${navItemClassName(
+        aria-current={activeHref === publicDocsHome.href ? "page" : undefined}
+        className={`mb-4 block rounded-xl px-3 py-2.5 text-sm font-medium transition ${navItemClassName(
           activeHref === publicDocsHome.href,
         )}`}
       >
@@ -45,7 +46,7 @@ function SidebarNav({
       <div className="space-y-6">
         {publicDocsSections.map((section) => (
           <section key={section.id}>
-            <h2 className="mb-2 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+            <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {section.title}
             </h2>
             <div className="space-y-1">
@@ -54,7 +55,8 @@ function SidebarNav({
                   key={item.href}
                   href={item.href}
                   onClick={onNavigate}
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${navItemClassName(
+                  aria-current={activeHref === item.href ? "page" : undefined}
+                  className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${navItemClassName(
                     activeHref === item.href,
                   )}`}
                 >
@@ -80,33 +82,16 @@ export function PublicDocsShell({
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="rounded-[2rem] border border-zinc-200 bg-white/95 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/95">
-        <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
+      <div className="rounded-2xl border border-zinc-200 bg-white/95 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="border-b border-zinc-200 px-4 py-5 dark:border-zinc-800 sm:px-6">
           <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-2">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                >
-                  <span aria-hidden="true">←</span>
-                  На сайт
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-semibold text-zinc-950 dark:text-zinc-50">
-                    Документация
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-                    Справочник по работе с CPA-платформой
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  Текущий раздел:
-                </span>{" "}
-                {title}
-              </div>
+            <div>
+              <Link href="/docs" className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+                Документация
+              </Link>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Справочник по работе с MikiLead
+              </p>
             </div>
 
             <PublicDocsSearch index={searchIndex} />
@@ -119,9 +104,9 @@ export function PublicDocsShell({
                 onClick={() => {
                   setIsMobileNavOpen((value) => !value);
                 }}
-                className="inline-flex rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
+                className="inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
               >
-                Разделы документации
+                {isMobileNavOpen ? "Скрыть разделы" : "Разделы документации"}
               </button>
             </div>
           </div>
@@ -131,7 +116,7 @@ export function PublicDocsShell({
           <div className="border-b border-zinc-200 px-4 py-4 dark:border-zinc-800 lg:hidden">
             <div
               id="public-docs-mobile-nav"
-              className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900"
             >
               <SidebarNav
                 activeHref={activeHref}
@@ -143,16 +128,18 @@ export function PublicDocsShell({
           </div>
         ) : null}
 
-        <div className="grid gap-0 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_260px]">
-          <aside className="hidden border-r border-zinc-200 px-5 py-5 dark:border-zinc-800 lg:block">
-            <SidebarNav activeHref={activeHref} />
+        <div className={`grid gap-0 lg:grid-cols-[240px_minmax(0,1fr)] ${toc ? "xl:grid-cols-[240px_minmax(0,1fr)_220px]" : ""}`}>
+          <aside className="hidden border-r border-zinc-200 p-3 dark:border-zinc-800 lg:block">
+            <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto py-2">
+              <SidebarNav activeHref={activeHref} />
+            </div>
           </aside>
 
-          <section className="min-w-0 px-6 py-6 sm:px-8 sm:py-8">{children}</section>
+          <section aria-label={title} className="min-w-0 px-4 py-6 sm:px-6 sm:py-8">{children}</section>
 
           {toc ? (
-            <aside className="hidden border-l border-zinc-200 px-5 py-8 dark:border-zinc-800 xl:block">
-              <div className="sticky top-8">{toc}</div>
+            <aside className="hidden border-l border-zinc-200 px-4 py-8 dark:border-zinc-800 xl:block">
+              <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto">{toc}</div>
             </aside>
           ) : null}
         </div>

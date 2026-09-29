@@ -12,11 +12,11 @@ export function PublicDocsToc({ headings }: PublicDocsTocProps) {
   }
 
   return (
-    <div className="rounded-3xl border border-zinc-200 bg-zinc-50/80 p-5 dark:border-zinc-800 dark:bg-zinc-900/80">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
+      <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
         На этой странице
       </h2>
-      <nav className="mt-4">
+      <nav aria-label="Содержание страницы" className="mt-3">
         <ul className="space-y-2">
           {headings.map((heading) => (
             <li key={heading.id} className={heading.level === 3 ? "pl-4" : ""}>

@@ -5,8 +5,8 @@ import { buildPublicDocsSearchIndex } from "@/features/docs/public-docs-search";
 const popularDocs = [
   { title: "Обзор платформы", href: "/docs/platform-overview" },
   { title: "Роли", href: "/docs/roles" },
-  { title: "Tracking-ссылки партнёра", href: "/docs/partner/tracking-links" },
-  { title: "Postback рекламодателя", href: "/docs/advertiser/postbacks" },
+  { title: "Трекинговые ссылки партнёра", href: "/docs/partner/tracking-links" },
+  { title: "Постбеки рекламодателя", href: "/docs/advertiser/postbacks" },
 ];
 
 export default async function DocsNotFoundPage() {
@@ -18,21 +18,21 @@ export default async function DocsNotFoundPage() {
       title="Страница не найдена"
       searchIndex={searchIndex}
     >
-      <div className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
-        <h2 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+      <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 dark:border-zinc-700 dark:bg-zinc-900/70">
+        <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
           Документ не найден
-        </h2>
+        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Для этого адреса нет публичного документа в whitelist manifest.
+          Возможно, адрес изменился или в ссылке есть ошибка. Найдите нужную тему через поиск или откройте один из разделов ниже.
         </p>
         <Link
           href="/docs"
-          className="mt-5 inline-flex rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          className="mt-5 inline-flex min-h-11 items-center rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
         >
           Открыть документацию
         </Link>
         <div className="mt-8">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+          <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             Популярные разделы
           </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">

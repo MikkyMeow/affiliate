@@ -94,14 +94,14 @@ function RegisterPageContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
-      <main className="flex w-full max-w-xl flex-col gap-6 rounded-2xl bg-white p-10 shadow-xl dark:bg-black">
+    <div className="flex min-h-[calc(100dvh-4.5rem)] items-center justify-center bg-zinc-50 px-4 py-8 sm:px-6 sm:py-12 dark:bg-zinc-950">
+      <main className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Регистрация
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Создай аккаунт, чтобы продолжить работу в панели.
+          <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            Выберите тип аккаунта и заполните данные для входа.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -109,11 +109,12 @@ function RegisterPageContent() {
             Имя
             <input
               type="text"
+              autoComplete="name"
               name="name"
               required
               value={form.name}
               onChange={handleChange}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base font-normal text-zinc-900 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800"
             />
           </label>
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -123,7 +124,7 @@ function RegisterPageContent() {
               required
               value={form.accountType}
               onChange={handleChange}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base font-normal text-zinc-900 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800"
             >
               <option value="affiliate">Партнёр</option>
               <option value="advertiser">Рекламодатель</option>
@@ -133,31 +134,40 @@ function RegisterPageContent() {
             Email
             <input
               type="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
               name="email"
               required
               value={form.email}
               onChange={handleChange}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base font-normal text-zinc-900 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800"
             />
           </label>
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Пароль
             <input
               type="password"
+              autoComplete="new-password"
+              aria-describedby="password-hint"
               name="password"
               minLength={8}
               required
               value={form.password}
               onChange={handleChange}
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 shadow-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base font-normal text-zinc-900 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800"
             />
+            <span id="password-hint" className="mt-2 block text-xs font-normal text-zinc-500 dark:text-zinc-400">
+              Не менее 8 символов.
+            </span>
           </label>
           <button
             type="submit"
             disabled={loading}
-            className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-100 dark:text-black"
+            className="min-h-11 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white"
           >
-            {loading ? "Создаём..." : "Создать аккаунт"}
+            {loading ? "Создаём аккаунт…" : "Создать аккаунт"}
           </button>
         </form>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -176,13 +186,13 @@ function RegisterPageContent() {
 
 function AuthPageFallback({ title }: { title: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
-      <main className="flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-10 text-center shadow-xl dark:bg-black">
+    <div className="flex min-h-[calc(100dvh-4.5rem)] items-center justify-center bg-zinc-50 px-4 py-8 sm:px-6 sm:py-12 dark:bg-zinc-950">
+      <main className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-sm uppercase tracking-wide text-zinc-400">
           Загрузка
         </p>
         <p className="text-base text-zinc-800 dark:text-zinc-100">
-          Открываем страницу «{title}»...
+          Открываем страницу «{title}»…
         </p>
       </main>
     </div>
